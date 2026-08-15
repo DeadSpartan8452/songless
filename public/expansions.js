@@ -511,10 +511,18 @@
 
     const invites = byId('party-invites');
     const internetButton = byId('party-copy-internet');
+    const internetLink = byId('party-internet-link');
+    const internetUrl = party.inviteUrls && typeof party.inviteUrls.internet === 'string'
+      && party.inviteUrls.internet.startsWith('https://')
+      ? party.inviteUrls.internet
+      : '';
     invites.classList.toggle('hidden', !partyState.isHost);
     byId('party-copy-lan').disabled = !(party.inviteUrls && party.inviteUrls.lan);
-    internetButton.disabled = !(party.inviteUrls && party.inviteUrls.internet);
+    internetButton.disabled = !internetUrl;
     internetButton.innerText = internetButton.disabled ? 'Lien Internet non activé' : 'Copier le lien Internet sécurisé';
+    internetLink.classList.toggle('hidden', !internetUrl);
+    internetLink.href = internetUrl || '#';
+    internetLink.innerText = internetUrl ? `Lien à envoyer : ${internetUrl}` : '';
 
     byId('party-players').innerHTML = partyState.players.map(player => `
       <div class="party-player${player.profileId === partyState.viewerProfileId ? ' me' : ''}">

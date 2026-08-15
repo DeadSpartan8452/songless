@@ -74,6 +74,12 @@
 .party-divider::before, .party-divider::after { content: ''; flex: 1; height: 1px; background: #e5dfd7; }
 .party-head { display: flex; justify-content: space-between; gap: 12px; font-size: 1.05rem; margin-bottom: 14px; }
 .party-invites { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+.party-join-link {
+  flex-basis: 100%;
+  color: #d8b4fe;
+  font-size: .82rem;
+  overflow-wrap: anywhere;
+}
 #party-code { letter-spacing: .16em; font-size: 1.35rem; color: var(--accent); }
 .party-players { display: grid; gap: 8px; margin: 12px 0; }
 .party-player {
