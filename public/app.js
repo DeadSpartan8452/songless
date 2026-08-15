@@ -3758,6 +3758,8 @@ function renderGenreSelects() {
 function initDownloadEvents() {
   if (!downloadBtn) return;
 
+  initDownloadApprovalPolling();
+
   // On mémorise la liste canonique des genres pour les menus déroulants.
   fetch('/api/genres')
     .then(r => r.json())
@@ -3786,6 +3788,56 @@ function initDownloadEvents() {
   if (libraryGenreFilter) {
     libraryGenreFilter.addEventListener('change', filterLibraryDisplay);
   }
+}
+
+let downloadApprovalBusy = false;
+const handledDownloadApprovals = new Set();
+
+/**
+ * Affiche sur le PC les demandes de grosses compilations venues des
+ * téléphones. Le serveur ne donne cette route qu'à l'hôte local.
+ */
+function initDownloadApprovalPolling() {
+  const poll = async () => {
+    if (downloadApprovalBusy || document.hidden) return;
+    try {
+      const response = await fetch('/api/download/approvals', { cache: 'no-store' });
+      if (!response.ok) return;
+      const data = await response.json();
+      const approval = (data.pending || []).find(item => !handledDownloadApprovals.has(item.id));
+      if (!approval) return;
+
+      downloadApprovalBusy = true;
+      const capped = approval.sourceCount > approval.count
+        ? `\nLa vidéo en contient ${approval.sourceCount}, le plafond est ${approval.count}.`
+        : '';
+      const accepted = confirm(
+        `Un téléphone propose « ${approval.title} » (${approval.sourceCount} morceaux).`
+        + `${capped}\n\nOK : importer jusqu'à ${approval.count} morceaux.`
+        + '\nAnnuler : importer seulement les 30 premiers.'
+      );
+      const decisionResponse = await fetch(`/api/download/approvals/${encodeURIComponent(approval.id)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ accepted }),
+      });
+      if (!decisionResponse.ok) throw new Error('Décision non transmise');
+      handledDownloadApprovals.add(approval.id);
+      showToast(accepted
+        ? `Import de ${approval.count} morceaux autorisé.`
+        : 'Import limité aux 30 premiers morceaux.', accepted ? 'ok' : 'warn');
+    } catch (_) {
+      // Le prochain passage retentera si le serveur ou la page se reconnecte.
+    } finally {
+      downloadApprovalBusy = false;
+    }
+  };
+
+  poll();
+  setInterval(poll, 2000);
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) poll();
+  });
 }
 
 function logDownload(message, type = '') {

@@ -362,6 +362,14 @@
           if (event === 'list' && data.compilation) {
             setGiftStatus(`Compilation détectée : ${data.total} morceaux à rechercher…`);
           }
+          if (event === 'approval') {
+            setGiftStatus(`Cette compilation contient ${data.total} morceaux. En attente de l'accord du PC pour dépasser les ${data.freeLimit} premiers…`);
+          }
+          if (event === 'approval-result') {
+            setGiftStatus(data.accepted
+              ? `Accord reçu : import jusqu'à ${data.limit} morceaux…`
+              : `Import limité aux ${data.limit} premiers morceaux…`);
+          }
           if (event === 'item') {
             const prefix = `${Number(data.index) || 0}/${Number(data.total) || 0}`;
             if (data.etat === 'en-cours') setGiftStatus(`${prefix} · recherche de ${data.titre}…`);

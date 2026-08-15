@@ -887,6 +887,63 @@ app.get('/api/download/status', (req, res) => {
   res.json(downloader.checkTools());
 });
 
+// Une compilation proposée depuis un téléphone reste raisonnable jusqu'à
+// 30 titres. Au-delà, l'ordinateur hôte choisit s'il souhaite importer le
+// reste. Les demandes ne sont jamais persistées et expirent après deux
+// minutes : aucun lien, titre ou choix ne finit dans les données de profil.
+const PHONE_COMPILATION_FREE_LIMIT = 30;
+const COMPILATION_HARD_LIMIT = 100;
+const DOWNLOAD_APPROVAL_TTL = 2 * 60_000;
+const downloadApprovals = new Map();
+
+function requestDownloadApproval(media) {
+  const id = crypto.randomBytes(18).toString('base64url');
+  let finish;
+  const promise = new Promise((resolve) => { finish = resolve; });
+  const approval = {
+    id,
+    title: String(media.title || 'Compilation').slice(0, 180),
+    count: Math.min(Number(media.chapterCount) || media.entries.length, COMPILATION_HARD_LIMIT),
+    sourceCount: Number(media.chapterCount) || media.entries.length,
+    createdAt: Date.now(),
+    finish,
+  };
+  approval.timer = setTimeout(() => {
+    if (!downloadApprovals.delete(id)) return;
+    finish(false);
+  }, DOWNLOAD_APPROVAL_TTL);
+  downloadApprovals.set(id, approval);
+  return { id, promise };
+}
+
+app.get('/api/download/approvals', (req, res) => {
+  const now = Date.now();
+  const pending = [];
+  for (const approval of downloadApprovals.values()) {
+    if (approval.createdAt + DOWNLOAD_APPROVAL_TTL <= now) continue;
+    pending.push({
+      id: approval.id,
+      title: approval.title,
+      count: approval.count,
+      sourceCount: approval.sourceCount,
+      expiresAt: approval.createdAt + DOWNLOAD_APPROVAL_TTL,
+    });
+  }
+  res.json({ pending });
+});
+
+app.post('/api/download/approvals/:id', (req, res) => {
+  const approval = downloadApprovals.get(req.params.id);
+  if (!approval) {
+    return res.status(404).json({ error: 'Cette demande a expiré ou a déjà été traitée.' });
+  }
+  const accepted = req.body && req.body.accepted === true;
+  downloadApprovals.delete(req.params.id);
+  clearTimeout(approval.timer);
+  approval.finish(accepted);
+  res.json({ ok: true, accepted });
+});
+
 /**
  * Route: Télécharger un titre et l'ajouter à la bibliothèque.
  * Réponse en flux (Server-Sent Events) pour suivre la progression en direct.
@@ -923,7 +980,7 @@ app.post('/api/download', async (req, res) => {
   try {
     const value = String(query).trim();
     const isUrl = /^https?:\/\//i.test(value);
-    const chapterLimit = req.songlessRemote ? 10 : 100;
+    const chapterLimit = COMPILATION_HARD_LIMIT;
     const media = isUrl ? await downloader.inspectMediaUrl(value, {
       limite: chapterLimit,
       onLog: (message) => send('progress', { message }),
@@ -934,20 +991,43 @@ app.post('/api/download', async (req, res) => {
         throw new Error('Compilation détectée, mais ses morceaux ne sont pas listés en chapitres. Songless refuse de télécharger toute la vidéo comme un seul titre.');
       }
 
+      let approvedBeyondThirty = true;
+      if (req.songlessRemote && media.chapterCount > PHONE_COMPILATION_FREE_LIMIT) {
+        const approval = requestDownloadApproval(media);
+        send('approval', {
+          id: approval.id,
+          total: media.chapterCount,
+          freeLimit: PHONE_COMPILATION_FREE_LIMIT,
+          hardLimit: COMPILATION_HARD_LIMIT,
+        });
+        approvedBeyondThirty = await approval.promise;
+        send('approval-result', {
+          accepted: approvedBeyondThirty,
+          limit: approvedBeyondThirty ? COMPILATION_HARD_LIMIT : PHONE_COMPILATION_FREE_LIMIT,
+        });
+      }
+
+      const allowedLimit = req.songlessRemote && !approvedBeyondThirty
+        ? PHONE_COMPILATION_FREE_LIMIT
+        : COMPILATION_HARD_LIMIT;
+      const selectedEntries = media.entries.slice(0, allowedLimit);
+      const wasTruncated = media.chapterCount > selectedEntries.length;
+
       send('list', {
         titre: media.title,
-        total: media.entries.length,
-        tronquee: media.truncated,
+        total: selectedEntries.length,
+        sourceTotal: media.chapterCount,
+        tronquee: wasTruncated,
         compilation: true,
-        limite: chapterLimit,
+        limite: allowedLimit,
       });
 
       const bilan = { ajoutes: [], doublons: [], erreurs: [] };
-      for (let index = 0; index < media.entries.length; index++) {
-        const item = media.entries[index];
+      for (let index = 0; index < selectedEntries.length; index++) {
+        const item = selectedEntries[index];
         send('item', {
           index: index + 1,
-          total: media.entries.length,
+          total: selectedEntries.length,
           titre: item.title,
           etat: 'en-cours',
         });
@@ -957,21 +1037,21 @@ app.post('/api/download', async (req, res) => {
             onLog: (message) => send('progress', {
               message,
               index: index + 1,
-              total: media.entries.length,
+              total: selectedEntries.length,
             }),
           });
           if (entry.alreadyPresent) {
             bilan.doublons.push({ titre: entry.title || item.title });
-            send('item', { index: index + 1, total: media.entries.length,
+            send('item', { index: index + 1, total: selectedEntries.length,
               titre: entry.title || item.title, etat: 'doublon' });
           } else {
             bilan.ajoutes.push({ titre: entry.title, artiste: entry.artist, genre: entry.genre });
-            send('item', { index: index + 1, total: media.entries.length,
+            send('item', { index: index + 1, total: selectedEntries.length,
               titre: entry.title, etat: 'ajoute', genre: entry.genre });
           }
         } catch (error) {
           bilan.erreurs.push({ titre: item.title, erreur: error.message });
-          send('item', { index: index + 1, total: media.entries.length,
+          send('item', { index: index + 1, total: selectedEntries.length,
             titre: item.title, etat: 'erreur', erreur: error.message });
         }
       }
@@ -979,7 +1059,7 @@ app.post('/api/download', async (req, res) => {
       send('done', {
         ...bilan,
         compilation: true,
-        tronquee: media.truncated,
+        tronquee: wasTruncated,
       });
       return;
     }
