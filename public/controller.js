@@ -206,6 +206,51 @@
   function receiveState(next) {
     state = next;
     renderRoom();
+    maybeShowPartyTutorial(next);
+  }
+
+  function tutorialStorageKey(current) {
+    if (!party || !current) return '';
+    return `songless_tutorial_${party.code}_${party.profileId}_${current.mode}`;
+  }
+
+  function maybeShowPartyTutorial(current) {
+    const key = tutorialStorageKey(current);
+    if (!key || readSession(key)) return;
+    writeSession(key, '1');
+    showPartyTutorial(current);
+  }
+
+  function showPartyTutorial(current = state) {
+    if (!current) return;
+    const answerLabel = {
+      titre: 'le titre de la musique',
+      artiste: 'l’artiste',
+      annee: 'l’année (à deux ans près)',
+    }[(current.settings || {}).answer] || 'le titre de la musique';
+    const points = Number((current.settings || {}).points) || 1000;
+    const modeRules = current.mode === 'buzzer'
+      ? `
+        <div class="tutorial-rule"><span>🔴</span><p><strong>Buzze en premier.</strong><br>Quand quelqu’un buzze, les autres attendent.</p></div>
+        <div class="tutorial-rule"><span>⌨️</span><p><strong>Tu as 5 secondes</strong> pour écrire ${answerLabel}.</p></div>
+        <div class="tutorial-rule"><span>⏳</span><p><strong>Mauvaise réponse :</strong> toi seul es bloqué 3 secondes. Les autres peuvent immédiatement buzzer.</p></div>
+        <div class="tutorial-rule"><span>⭐</span><p>Une bonne réponse rapporte <strong>${points} points</strong>.</p></div>`
+      : `
+        <div class="tutorial-rule"><span>🎧</span><p>Écoute l’extrait sur le PC, puis écris <strong>${answerLabel}</strong> sur ton téléphone.</p></div>
+        <div class="tutorial-rule"><span>📨</span><p><strong>Envoie une seule réponse</strong>, puis attends la révélation de l’hôte.</p></div>
+        <div class="tutorial-rule"><span>⭐</span><p>Une réponse rapide rapporte davantage, jusqu’à <strong>${points} points</strong>.</p></div>`;
+    const infiniteRule = current.infinite
+      ? '<div class="tutorial-rule"><span>∞</span><p><strong>Mode infini :</strong> les manches continuent jusqu’à ce que l’hôte termine la partie.</p></div>'
+      : `<div class="tutorial-rule"><span>🏁</span><p>La partie dure <strong>${Number(current.totalRounds) || 1} manches</strong>.</p></div>`;
+
+    byId('tutorial-content').innerHTML = modeRules + infiniteRule;
+    byId('tutorial-title').innerText = current.mode === 'buzzer'
+      ? 'Mode Buzzer' : 'Réponses simultanées';
+    byId('tutorial-gate').classList.remove('hidden');
+  }
+
+  function closePartyTutorial() {
+    byId('tutorial-gate').classList.add('hidden');
   }
 
   function renderRoom() {
@@ -459,6 +504,8 @@
     }
     if (event.target.closest('#join-btn')) joinParty();
     if (event.target.closest('#leave-btn')) leaveParty();
+    if (event.target.closest('#tutorial-open-btn')) showPartyTutorial();
+    if (event.target.closest('#tutorial-close-btn')) closePartyTutorial();
     if (event.target.closest('#buzz-btn')) playerAction('buzz');
     if (event.target.closest('#answer-btn')) submitAnswer();
     if (event.target.closest('#gift-link-btn')) giveMusicLink();

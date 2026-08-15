@@ -130,6 +130,7 @@ h2 { margin: 0 0 14px; font-size: 1.05rem; }
 .room-head { display: flex; justify-content: space-between; align-items: center; }
 .room-head .eyebrow { display: block; margin-bottom: 2px; }
 #room-code { font-size: 1.45rem; letter-spacing: .13em; }
+.room-actions { display: flex; gap: 12px; align-items: center; }
 .text-btn { border: 0; color: var(--muted); background: transparent; text-decoration: underline; }
 .status-card { text-align: center; }
 #room-subtitle { color: var(--muted); }
@@ -220,6 +221,23 @@ h2 { margin: 0 0 14px; font-size: 1.05rem; }
   box-shadow: 0 0 0 2px rgba(139, 92, 246, .18);
 }
 .confirm-profile-btn { margin-top: 12px; }
+.tutorial-gate { z-index: 15; }
+.tutorial-sheet { display: grid; gap: 16px; }
+.tutorial-sheet h1 { margin-bottom: 0; }
+.tutorial-content { display: grid; gap: 10px; }
+.tutorial-rule {
+  display: grid;
+  grid-template-columns: 34px 1fr;
+  gap: 11px;
+  align-items: start;
+  padding: 13px;
+  border: 1px solid var(--border);
+  border-radius: 13px;
+  background: var(--panel-2);
+}
+.tutorial-rule > span { font-size: 1.25rem; text-align: center; }
+.tutorial-rule p { margin: 0; color: var(--muted); line-height: 1.4; }
+.tutorial-rule strong { color: var(--text); }
 .divider { display: flex; align-items: center; gap: 10px; margin: 20px 0 12px; color: var(--muted); font-size: .8rem; }
 .divider::before, .divider::after { content: ""; flex: 1; height: 1px; background: var(--border); }
 .create-profile { display: grid; grid-template-columns: 64px 1fr; gap: 9px; }

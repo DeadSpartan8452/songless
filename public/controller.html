@@ -34,7 +34,10 @@
     <section id="room-screen" class="screen hidden">
       <div class="room-head">
         <div><span class="eyebrow">CODE</span><strong id="room-code">—</strong></div>
-        <button id="leave-btn" class="text-btn" type="button">Quitter</button>
+        <div class="room-actions">
+          <button id="tutorial-open-btn" class="text-btn" type="button">Règles</button>
+          <button id="leave-btn" class="text-btn" type="button">Quitter</button>
+        </div>
       </div>
 
       <div class="card status-card">
@@ -82,6 +85,16 @@
         <input id="new-name" maxlength="20" placeholder="Prénom ou pseudo" aria-label="Nom du profil">
         <button id="create-profile-btn" class="primary-btn" type="button">Créer</button>
       </div>
+    </div>
+  </div>
+
+  <div id="tutorial-gate" class="gate tutorial-gate hidden" role="dialog"
+       aria-modal="true" aria-labelledby="tutorial-title">
+    <div class="gate-sheet tutorial-sheet">
+      <p class="eyebrow">RÈGLES DE LA PARTIE</p>
+      <h1 id="tutorial-title">Comment jouer ?</h1>
+      <div id="tutorial-content" class="tutorial-content"></div>
+      <button id="tutorial-close-btn" class="primary-btn" type="button">J’ai compris, jouer !</button>
     </div>
   </div>
 
