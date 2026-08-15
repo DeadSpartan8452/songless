@@ -24,6 +24,7 @@
   let partyAutoRevealRound = null;
   let partyHighlightRound = null;
   let partyHighlightPromise = null;
+  let partyLastChatId = 0;
   let hostPlaybackSignature = '';
   let partyActionSignature = '';
   let partySuggestionTimer = null;
@@ -597,11 +598,12 @@
       await partyCommand('reveal', {
         track: {
           title: currentTrack.title,
+          originalTitle: currentTrack.originalTitle,
           artist: currentTrack.artist,
           genre: currentTrack.genre,
         },
         highlightOffset,
-        highlightDuration: 3,
+        highlightDuration: 5,
         autoNext: true,
         reason,
       });
@@ -643,7 +645,7 @@
     icon.classList.remove('hidden');
     byId('result-title').innerText = won ? 'Gagné !' : 'Perdu pour cette manche';
     byId('result-subtitle').innerText = partyState.autoNextAt
-      ? 'Passage connu… prochaine manche dans 3 secondes.'
+      ? 'Passage connu… prochaine manche dans 5 secondes.'
       : 'Passage connu du morceau.';
     remplirFicheResultat();
     updateRevealPlayer();
@@ -691,6 +693,7 @@
         <span class="party-answer">${partyAnswerLabel(player)} · session ${Number(player.session && player.session.correct) || 0}/${Number(player.session && player.session.rounds) || 0}</span>
         <span class="party-score">${Number(player.score) || 0} pt<small>${Number(player.globalStats && player.globalStats.wins) || 0} victoire${Number(player.globalStats && player.globalStats.wins) > 1 ? 's' : ''} globale${Number(player.globalStats && player.globalStats.wins) > 1 ? 's' : ''}</small></span>
       </div>`).join('');
+    renderPartyChat();
 
     byId('party-host-actions').classList.toggle('hidden', !partyState.isHost);
     byId('party-round-btn').disabled = partyRoundStarting
@@ -728,9 +731,43 @@
     zone.classList.remove('hidden');
   }
 
+  function renderPartyChat() {
+    const zone = byId('party-chat-messages');
+    if (!zone || !partyState) return;
+    const messages = Array.isArray(partyState.chat) ? partyState.chat.slice(-40) : [];
+    zone.innerHTML = messages.length
+      ? messages.map(message => `
+          <div class="party-chat-message">
+            <strong>${escapeHtml(String(message.emoji || '🎧'))} ${escapeHtml(String(message.nom || 'Joueur'))}</strong>
+            ${escapeHtml(String(message.message || ''))}
+          </div>`).join('')
+      : '<div class="party-chat-empty">Aucun message pour le moment.</div>';
+    const newest = messages.length ? Number(messages[messages.length - 1].id) || 0 : 0;
+    if (newest !== partyLastChatId) {
+      partyLastChatId = newest;
+      zone.scrollTop = zone.scrollHeight;
+    }
+  }
+
+  async function sendPartyChat() {
+    const input = byId('party-chat-input');
+    const message = input && input.value.trim();
+    if (!message) return;
+    try {
+      await partyPlayerAction('chat', { message });
+      input.value = '';
+      input.focus();
+    } catch (error) {
+      showPartyError(error);
+    }
+  }
+
   function partyAnswerLabel(player) {
     if (player.correct === true) return `Bonne réponse${player.answer ? ` · ${escapeHtml(String(player.answer))}` : ''}`;
-    if (player.wrongAttempts) return `${Number(player.wrongAttempts)} tentative${Number(player.wrongAttempts) > 1 ? 's' : ''} ratée${Number(player.wrongAttempts) > 1 ? 's' : ''}`;
+    if (player.wrongAttempts) {
+      const penalty = Number(player.roundPenaltyPoints) || 0;
+      return `${Number(player.wrongAttempts)} tentative${Number(player.wrongAttempts) > 1 ? 's' : ''} ratée${Number(player.wrongAttempts) > 1 ? 's' : ''}${penalty ? ` · −${penalty} pt` : ''}`;
+    }
     if (player.buzzPosition) return `Buzzer n°${player.buzzPosition}`;
     if (player.answer) return escapeHtml(String(player.answer));
     if (player.correct === true) return 'Bonne réponse';
@@ -787,7 +824,8 @@
         return;
       }
       if (me.buzzerBlockedSeconds) {
-        zone.innerHTML = `<div class="mode-status">Mauvaise réponse : ta pénalité dure encore ${Number(me.buzzerBlockedSeconds)} s. Les autres peuvent buzzer.</div>`;
+        const points = Number(me.lastPenaltyPoints) || 0;
+        zone.innerHTML = `<div class="mode-status">Mauvaise réponse : ta pénalité dure encore ${Number(me.buzzerBlockedSeconds)} s.${points ? ` −${points} point${points > 1 ? 's' : ''}.` : ''} Les autres peuvent buzzer.</div>`;
         return;
       }
       zone.innerHTML = '<button class="cta-btn buzz-button" id="party-buzz-btn">BUZZER</button>';
@@ -953,9 +991,14 @@
     try {
       const highlightOffset = await partyHighlightOffset(partyState.round);
       await partyCommand('reveal', {
-        track: { title: currentTrack.title, artist: currentTrack.artist, genre: currentTrack.genre },
+        track: {
+          title: currentTrack.title,
+          originalTitle: currentTrack.originalTitle,
+          artist: currentTrack.artist,
+          genre: currentTrack.genre,
+        },
         highlightOffset,
-        highlightDuration: 3,
+        highlightDuration: 5,
         autoNext: false,
         reason: 'manual',
       });
@@ -994,6 +1037,7 @@
     partyAutoRevealRound = null;
     partyHighlightRound = null;
     partyHighlightPromise = null;
+    partyLastChatId = 0;
     pauseAudio();
     pollTimer = null;
     party = null;
@@ -1085,6 +1129,7 @@
       if (event.target.closest('#party-answer-btn')) submitPartyAnswer();
       if (event.target.closest('#party-vote-skip')) partyPlayerAction('vote-skip').catch(showPartyError);
       if (event.target.closest('#party-vote-more')) partyPlayerAction('vote-more').catch(showPartyError);
+      if (event.target.closest('#party-chat-send')) sendPartyChat();
       if (event.target.closest('#party-round-btn')) startPartyRound();
       if (event.target.closest('#party-reveal-btn')) revealParty();
       if (event.target.closest('#party-finish-btn')) {
@@ -1097,6 +1142,11 @@
       if (event.target.id === 'party-answer-input') schedulePartySuggestions();
     });
     byId('party-room').addEventListener('keydown', event => {
+      if (event.target.id === 'party-chat-input' && event.key === 'Enter') {
+        event.preventDefault();
+        sendPartyChat();
+        return;
+      }
       if (event.target.id !== 'party-answer-input') return;
       const list = byId('party-answer-suggestions');
       const items = list ? [...list.querySelectorAll('[data-party-suggestion]')] : [];

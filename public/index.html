@@ -346,6 +346,15 @@
             <div class="party-players" id="party-players"></div>
             <div class="party-player-actions" id="party-player-actions"></div>
             <div class="party-votes hidden" id="party-votes"></div>
+            <section class="party-chat" aria-label="Chat de la partie">
+              <div class="party-chat-title">💬 Chat</div>
+              <div class="party-chat-messages" id="party-chat-messages"></div>
+              <div class="party-chat-form">
+                <input id="party-chat-input" maxlength="240" autocomplete="off"
+                       placeholder="Écrire à tout le monde…">
+                <button id="party-chat-send" type="button">Envoyer</button>
+              </div>
+            </section>
             <div class="party-host-actions hidden" id="party-host-actions">
               <button class="cta-btn" id="party-round-btn">Lancer la manche</button>
               <button class="ghost-btn" id="party-reveal-btn">Révéler et compter</button>
@@ -431,9 +440,9 @@
                 <div class="party-tutorial">
                   <strong>Comment jouer ?</strong>
                   <span><b>Réponses simultanées :</b> tout le monde écrit sa réponse pendant l’extrait.</span>
-                  <span><b>Buzzer :</b> le premier met la musique en pause et dispose de 10 s pour répondre. Une erreur pénalise seulement ce joueur pendant 3 s.</span>
+                  <span><b>Buzzer :</b> le premier met la musique en pause et dispose de 10 s. Après 3 erreurs dans la manche, ses erreurs retirent aussi 10 % des points.</span>
                   <span><b>Votes :</b> la majorité peut passer le morceau ou ajouter 5 s à l’extrait.</span>
-                  <span><b>Bonne réponse au buzzer :</b> résultat et passage connu automatiques, puis manche suivante après 3 s.</span>
+                  <span><b>Bonne réponse au buzzer :</b> résultat et passage connu automatiques, puis manche suivante après 5 s.</span>
                   <span><b>Infini :</b> les manches et le score continuent sans plafond jusqu’au bouton « Terminer ».</span>
                   <span><b>PC hôte :</b> ton profil joue aussi, sous les commandes de la partie.</span>
                 </div>

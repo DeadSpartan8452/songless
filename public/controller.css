@@ -152,8 +152,8 @@ h2 { margin: 0 0 14px; font-size: 1.05rem; }
   margin-top: 14px;
 }
 .vote-btn {
-  min-height: 48px;
-  padding: 9px;
+  min-height: 64px;
+  padding: 13px 9px;
   border: 1px solid var(--border);
   border-radius: 12px;
   color: var(--text);
@@ -163,6 +163,31 @@ h2 { margin: 0 0 14px; font-size: 1.05rem; }
 }
 .vote-btn.voted { border-color: var(--accent); background: rgba(139, 92, 246, .24); }
 .vote-btn:disabled { opacity: .7; cursor: default; }
+.chat-messages {
+  display: grid;
+  gap: 8px;
+  min-height: 72px;
+  max-height: 240px;
+  overflow-y: auto;
+}
+.chat-empty { color: var(--muted); font-size: .86rem; }
+.chat-message {
+  padding: 9px 11px;
+  border-radius: 11px;
+  background: var(--panel-2);
+  overflow-wrap: anywhere;
+}
+.chat-message strong { color: #d9c9ff; }
+.chat-form { display: grid; grid-template-columns: 1fr auto; gap: 8px; margin-top: 12px; }
+.chat-form input {
+  min-width: 0;
+  padding: 11px;
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  color: var(--text);
+  background: #101016;
+}
+.chat-form .primary-btn { width: auto; min-height: 46px; padding-inline: 14px; }
 .answer-block { display: grid; gap: 10px; }
 .answer-search { position: relative; }
 .answer-search-icon {
@@ -228,6 +253,7 @@ h2 { margin: 0 0 14px; font-size: 1.05rem; }
 .reveal-card strong { font-size: 1.25rem; }
 .reveal-card .correct { color: var(--ok); }
 .reveal-card .wrong { color: var(--bad); }
+.reveal-card .original-title { margin-top: 4px; color: var(--muted); font-size: .82rem; }
 .round-result-icon {
   font-size: clamp(4.8rem, 25vw, 7.5rem);
   line-height: 1;

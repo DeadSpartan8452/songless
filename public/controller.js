@@ -30,6 +30,7 @@
   let reverseBufferKey = '';
   let reverseBufferPromise = null;
   let answerSuggestionTimer = null;
+  let lastChatId = 0;
 
   // Nettoie l'ancienne association créée par les versions précédentes.
   try { localStorage.removeItem('songless_controller_profile'); } catch (_) {}
@@ -248,7 +249,7 @@
         <div class="tutorial-rule"><span>🎧</span><p>Le son démarre <strong>en même temps</strong> sur ton téléphone et le PC.</p></div>
         <div class="tutorial-rule"><span>🔴</span><p><strong>Buzze en premier.</strong><br>Quand quelqu’un buzze, les autres attendent.</p></div>
         <div class="tutorial-rule"><span>⌨️</span><p><strong>Tu as 10 secondes</strong> pour écrire ${answerLabel}. La musique reprend ensuite si personne n’a trouvé.</p></div>
-        <div class="tutorial-rule"><span>⏳</span><p><strong>Mauvaise réponse :</strong> toi seul es bloqué 3 secondes. Les autres peuvent immédiatement buzzer.</p></div>
+        <div class="tutorial-rule"><span>⏳</span><p><strong>Mauvaise réponse :</strong> toi seul es bloqué 3 secondes. À partir de la 3ᵉ erreur, tu perds aussi 10 % des points de la manche.</p></div>
         <div class="tutorial-rule"><span>🗳️</span><p>Vote pour <strong>passer</strong> ou ajouter <strong>5 secondes</strong> à l’extrait.</p></div>
         <div class="tutorial-rule"><span>⭐</span><p>Une bonne réponse rapporte <strong>${points} points</strong>.</p></div>`
       : `
@@ -476,6 +477,7 @@
     renderVotes();
     renderReveal();
     renderRanking();
+    renderChat();
   }
 
   function currentPlayer() {
@@ -524,7 +526,8 @@
         return;
       }
       if (me.buzzerBlockedSeconds) {
-        zone.innerHTML = `<div class="wait-note">Mauvaise réponse : ta pénalité dure encore ${Number(me.buzzerBlockedSeconds)} s. Les autres peuvent buzzer.</div>`;
+        const points = Number(me.lastPenaltyPoints) || 0;
+        zone.innerHTML = `<div class="wait-note">Mauvaise réponse : ta pénalité dure encore ${Number(me.buzzerBlockedSeconds)} s.${points ? ` Tu perds aussi ${points} point${points > 1 ? 's' : ''}.` : ''} Les autres peuvent buzzer.</div>`;
         return;
       }
       zone.innerHTML = '<button id="buzz-btn" class="buzz-btn" type="button">BUZZER</button>';
@@ -641,6 +644,8 @@
     card.innerHTML = `
       ${verdict}
       <strong>${escapeHtml(state.revealedTrack.title)}</strong>
+      ${state.revealedTrack.originalTitle
+        ? `<span class="original-title">Titre original : ${escapeHtml(state.revealedTrack.originalTitle)}</span>` : ''}
       <span>${escapeHtml(state.revealedTrack.artist)}</span>`;
     card.classList.remove('hidden');
   }
@@ -657,14 +662,44 @@
       : '<div class="wait-note">Aucun joueur n’a encore rejoint.</div>';
   }
 
+  function renderChat() {
+    const zone = byId('chat-messages');
+    if (!zone || !state) return;
+    const messages = Array.isArray(state.chat) ? state.chat.slice(-40) : [];
+    zone.innerHTML = messages.length
+      ? messages.map(message => `
+          <div class="chat-message">
+            <strong>${escapeHtml(message.emoji || '🎧')} ${escapeHtml(message.nom || 'Joueur')}</strong>
+            ${escapeHtml(message.message || '')}
+          </div>`).join('')
+      : '<div class="chat-empty">Aucun message pour le moment.</div>';
+    const newest = messages.length ? Number(messages[messages.length - 1].id) || 0 : 0;
+    if (newest !== lastChatId) {
+      lastChatId = newest;
+      zone.scrollTop = zone.scrollHeight;
+    }
+  }
+
+  async function sendChat() {
+    const input = byId('chat-input');
+    const message = input && input.value.trim();
+    if (!message) return;
+    if (await playerAction('chat', { message })) {
+      input.value = '';
+      input.focus();
+    }
+  }
+
   async function playerAction(action, data = {}) {
     try {
       receiveState(await api(`/api/party/${encodeURIComponent(party.code)}/action`, {
         method: 'POST',
         body: JSON.stringify({ playerToken: party.playerToken, action, data }),
       }));
+      return true;
     } catch (error) {
       toast(error.message);
+      return false;
     }
   }
 
@@ -793,6 +828,7 @@
     reverseBuffer = null;
     reverseBufferKey = '';
     reverseBufferPromise = null;
+    lastChatId = 0;
     stopPartyAudio('🔊 Son prêt pour une autre partie.');
     writeJson(PARTY_KEY, null);
     byId('room-screen').classList.add('hidden');
@@ -833,6 +869,7 @@
     if (event.target.closest('#answer-btn')) submitAnswer();
     if (event.target.closest('#vote-skip-btn')) playerAction('vote-skip');
     if (event.target.closest('#vote-more-btn')) playerAction('vote-more');
+    if (event.target.closest('#chat-send-btn')) sendChat();
     if (event.target.closest('#gift-link-btn')) giveMusicLink();
     if (event.target.closest('#gift-file-btn')) giveMusicFile();
     const suggestions = byId('answer-suggestions');
@@ -844,6 +881,10 @@
   document.addEventListener('keydown', event => {
     if (event.key === 'Enter' && event.target.id === 'party-code') joinParty();
     if (event.key === 'Enter' && event.target.id === 'new-name') createProfile();
+    if (event.key === 'Enter' && event.target.id === 'chat-input') {
+      event.preventDefault();
+      sendChat();
+    }
     if (event.target.id === 'answer-input') {
       const list = byId('answer-suggestions');
       const items = list ? [...list.querySelectorAll('[data-answer-suggestion]')] : [];

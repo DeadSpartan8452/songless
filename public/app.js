@@ -632,26 +632,42 @@ function retourner(buffer) {
  * forte de la longueur du plus long palier. Le tout début et la toute fin sont
  * écartés : une intro qui monte ou un final qui explose ne sont pas le refrain.
  */
-function trouverPassageFort(buffer) {
-  const canal = buffer.getChannelData(0);
+function trouverPassageFort(buffer, largeurVoulue = null) {
   const sr = buffer.sampleRate;
   const duree = buffer.duration;
 
-  const largeur = Math.min(Math.max(durations[durations.length - 1], 5), 25);
+  const largeur = largeurVoulue === null
+    ? Math.min(Math.max(durations[durations.length - 1], 5), 25)
+    : Math.min(Math.max(Number(largeurVoulue) || 5, 3), 20);
   if (duree <= largeur + 10) return 0;
 
   const parFenetre = Math.floor(sr);              // une seconde
-  const nb = Math.floor(canal.length / parFenetre);
-  const energie = new Float32Array(nb);
+  const nb = Math.floor(buffer.length / parFenetre);
+  const brute = new Float32Array(nb);
 
   for (let i = 0; i < nb; i++) {
     let somme = 0;
+    let mesures = 0;
     const debut = i * parFenetre;
-    for (let j = 0; j < parFenetre; j += 16) {
-      const v = canal[debut + j];
-      somme += v * v;
+    // Les deux canaux comptent : un refrain panoramisé ne doit plus être raté
+    // parce que sa partie la plus forte est surtout à droite.
+    for (let c = 0; c < buffer.numberOfChannels; c++) {
+      const canal = buffer.getChannelData(c);
+      for (let j = 0; j < parFenetre && debut + j < canal.length; j += 24) {
+        const v = canal[debut + j];
+        somme += v * v;
+        mesures++;
+      }
     }
-    energie[i] = somme;
+    brute[i] = mesures ? Math.sqrt(somme / mesures) : 0;
+  }
+
+  // Une pointe isolée est souvent un drop ou un bruit. Le lissage privilégie
+  // les passages forts qui tiennent plusieurs secondes, typiquement le refrain.
+  const energie = new Float32Array(nb);
+  for (let i = 0; i < nb; i++) {
+    energie[i] = (brute[Math.max(0, i - 1)] + brute[i] * 2
+      + brute[Math.min(nb - 1, i + 1)]) / 4;
   }
 
   const fenetre = Math.round(largeur);
@@ -659,16 +675,24 @@ function trouverPassageFort(buffer) {
   const dernier = Math.floor(nb * 0.9) - fenetre;
   if (dernier <= premier) return 0;
 
-  // Somme glissante : inutile de refaire l'addition à chaque décalage.
-  let courante = 0;
-  for (let i = premier; i < premier + fenetre; i++) courante += energie[i];
-
-  let meilleure = courante;
+  let meilleurScore = -Infinity;
   let meilleurDebut = premier;
-  for (let i = premier + 1; i <= dernier; i++) {
-    courante += energie[i + fenetre - 1] - energie[i - 1];
-    if (courante > meilleure) {
-      meilleure = courante;
+  for (let i = premier; i <= dernier; i++) {
+    let somme = 0;
+    let carres = 0;
+    let minimum = Infinity;
+    for (let j = i; j < i + fenetre; j++) {
+      somme += energie[j];
+      carres += energie[j] * energie[j];
+      minimum = Math.min(minimum, energie[j]);
+    }
+    const moyenne = somme / fenetre;
+    const ecart = Math.sqrt(Math.max(0, carres / fenetre - moyenne * moyenne));
+    const centre = (i + fenetre / 2) / nb;
+    const bonusPosition = 1 - Math.min(0.08, Math.abs(centre - 0.48) * 0.12);
+    const score = (moyenne - ecart * 0.2 + minimum * 0.08) * bonusPosition;
+    if (score > meilleurScore) {
+      meilleurScore = score;
       meilleurDebut = i;
     }
   }
@@ -679,7 +703,8 @@ function trouverPassageFort(buffer) {
 async function preparerPassageConnu(track) {
   const buffer = await preparerExtrait(track, true);
   if (!buffer || currentTrack !== track) return currentTrackOffset;
-  return trouverPassageFort(buffer);
+  const debutFort = trouverPassageFort(buffer, 6);
+  return Math.max(0, Math.min(buffer.duration - 5, debutFort + 0.5));
 }
 
 /**

@@ -415,6 +415,56 @@ function partyInviteUrl(base, party) {
   return `${base}/controller.html?${query}`;
 }
 
+function editDistanceLimited(left, right, limit = 2) {
+  const a = String(left || '');
+  const b = String(right || '');
+  if (Math.abs(a.length - b.length) > limit) return limit + 1;
+  let previous = Array.from({ length: b.length + 1 }, (_, index) => index);
+  for (let i = 1; i <= a.length; i++) {
+    const current = [i];
+    let rowMin = current[0];
+    for (let j = 1; j <= b.length; j++) {
+      current[j] = Math.min(
+        current[j - 1] + 1,
+        previous[j] + 1,
+        previous[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1)
+      );
+      rowMin = Math.min(rowMin, current[j]);
+    }
+    if (rowMin > limit) return limit + 1;
+    previous = current;
+  }
+  return previous[b.length];
+}
+
+function partySuggestionScore(query, primary, value, artist, originalTitle, aliases) {
+  const q = T.norm(query);
+  const main = T.norm(primary);
+  const full = T.norm(value);
+  const performer = T.norm(artist);
+  const original = T.norm(originalTitle);
+  const other = (aliases || []).map(T.norm).filter(Boolean);
+  const fields = [main, full, performer, original, ...other].filter(Boolean);
+  if (!q || !fields.length) return Infinity;
+  if (fields.includes(q)) return 0;
+  if (main.startsWith(q)) return 1;
+  if (main.split(' ').some(word => word.startsWith(q))) return 2;
+  if (full.startsWith(q)) return 3;
+  if (main.includes(q)) return 4;
+  if (performer.startsWith(q)) return 5;
+  if ([original, ...other].some(field => field.startsWith(q))) return 6;
+  if (fields.some(field => field.includes(q))) return 7;
+  if (q.length < 4) return Infinity;
+  let best = Infinity;
+  for (const field of fields) {
+    for (const candidate of [field, ...field.split(' ')]) {
+      const comparable = candidate.slice(0, q.length + 2);
+      best = Math.min(best, editDistanceLimited(q, comparable, 2));
+    }
+  }
+  return best <= 2 ? 8 + best : Infinity;
+}
+
 app.post('/api/party/create', (req, res) => {
   try {
     const hostProfile = req.body.profileId ? profileById(req.body.profileId) : null;
@@ -499,8 +549,7 @@ app.get('/api/party/:code/suggestions', (req, res) => {
   if (party.status !== 'round') return res.json({ suggestions: [] });
 
   const query = String(req.query.q || '').trim().slice(0, 80);
-  const key = T.tightKey(query);
-  if (!key) return res.json({ suggestions: [] });
+  if (!T.norm(query)) return res.json({ suggestions: [] });
 
   const answerMode = party.settings.answer;
   const metadata = store.load().tracks;
@@ -516,6 +565,8 @@ app.get('/api/party/:code/suggestions', (req, res) => {
     let primary = '';
     let secondary = '';
 
+    const aliases = Array.isArray(meta.aliases) ? meta.aliases : [];
+    const originalTitle = String(meta.originalTitle || '').trim();
     if (answerMode === 'artiste') {
       value = artist;
       primary = artist;
@@ -528,24 +579,27 @@ app.get('/api/party/:code/suggestions', (req, res) => {
     } else {
       value = artist ? `${artist} - ${title}` : title;
       primary = title;
-      secondary = artist;
+      secondary = [artist,
+        originalTitle && T.norm(originalTitle) !== T.norm(title)
+          ? `titre original : ${originalTitle}` : '']
+        .filter(Boolean).join(' · ');
     }
 
-    const searchable = T.tightKey([
-      value, title, artist, meta.originalTitle, ...(meta.aliases || []),
-    ].filter(Boolean).join(' '));
+    const priority = partySuggestionScore(
+      query, primary, value, artist, originalTitle, aliases);
     const valueKey = T.tightKey(value);
-    if (!valueKey || !searchable.includes(key) || seen.has(valueKey)) continue;
+    if (!valueKey || !Number.isFinite(priority) || seen.has(valueKey)) continue;
     seen.add(valueKey);
     results.push({
       value: value.slice(0, 200),
       primary: primary.slice(0, 200),
       secondary: secondary.slice(0, 200),
-      priority: valueKey.startsWith(key) ? 0 : 1,
+      priority,
     });
   }
 
   results.sort((a, b) => a.priority - b.priority
+    || a.primary.length - b.primary.length
     || a.primary.localeCompare(b.primary, 'fr'));
   res.set('Cache-Control', 'no-store');
   res.json({ suggestions: results.slice(0, 8).map(({ priority, ...item }) => item) });
