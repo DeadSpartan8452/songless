@@ -575,7 +575,7 @@ app.post('/api/party/:code/action', (req, res) => {
     const party = partyStore.get(req.params.code);
     if (!party) return res.status(404).json({ error: 'Partie introuvable.' });
     partyStore.playerAction(party, req.body.playerToken, req.body.action, req.body.data);
-    res.json(partyStore.publicState(party, req.body.playerToken, null));
+    res.json(partyStore.publicState(party, req.body.playerToken, req.body.hostToken));
   } catch (error) {
     res.status(400).json({ error: error.message });
   }

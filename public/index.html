@@ -301,6 +301,7 @@
             <!-- Panneau de résultat (Victoire / Défaite) -->
             <div class="result-card hidden" id="result-card">
               <div class="result-header">
+                <div class="party-result-icon hidden" id="party-result-icon" aria-hidden="true"></div>
                 <h3 id="result-title">Bravo !</h3>
                 <p id="result-subtitle">Vous avez trouvé en 1 essai.</p>
               </div>
@@ -344,6 +345,7 @@
             </div>
             <div class="party-players" id="party-players"></div>
             <div class="party-player-actions" id="party-player-actions"></div>
+            <div class="party-votes hidden" id="party-votes"></div>
             <div class="party-host-actions hidden" id="party-host-actions">
               <button class="cta-btn" id="party-round-btn">Lancer la manche</button>
               <button class="ghost-btn" id="party-reveal-btn">Révéler et compter</button>
@@ -430,6 +432,8 @@
                   <strong>Comment jouer ?</strong>
                   <span><b>Réponses simultanées :</b> tout le monde écrit sa réponse pendant l’extrait.</span>
                   <span><b>Buzzer :</b> le premier met la musique en pause et dispose de 10 s pour répondre. Une erreur pénalise seulement ce joueur pendant 3 s.</span>
+                  <span><b>Votes :</b> la majorité peut passer le morceau ou ajouter 5 s à l’extrait.</span>
+                  <span><b>Bonne réponse au buzzer :</b> résultat et passage connu automatiques, puis manche suivante après 3 s.</span>
                   <span><b>Infini :</b> les manches et le score continuent sans plafond jusqu’au bouton « Terminer ».</span>
                   <span><b>PC hôte :</b> ton profil joue aussi, sous les commandes de la partie.</span>
                 </div>

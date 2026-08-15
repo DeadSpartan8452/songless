@@ -201,7 +201,7 @@
     if (!party) return;
     byId('join-screen').classList.add('hidden');
     byId('room-screen').classList.remove('hidden');
-    pollTimer = setInterval(pollParty, 500);
+    pollTimer = setInterval(pollParty, 250);
     pollParty();
   }
 
@@ -249,10 +249,12 @@
         <div class="tutorial-rule"><span>🔴</span><p><strong>Buzze en premier.</strong><br>Quand quelqu’un buzze, les autres attendent.</p></div>
         <div class="tutorial-rule"><span>⌨️</span><p><strong>Tu as 10 secondes</strong> pour écrire ${answerLabel}. La musique reprend ensuite si personne n’a trouvé.</p></div>
         <div class="tutorial-rule"><span>⏳</span><p><strong>Mauvaise réponse :</strong> toi seul es bloqué 3 secondes. Les autres peuvent immédiatement buzzer.</p></div>
+        <div class="tutorial-rule"><span>🗳️</span><p>Vote pour <strong>passer</strong> ou ajouter <strong>5 secondes</strong> à l’extrait.</p></div>
         <div class="tutorial-rule"><span>⭐</span><p>Une bonne réponse rapporte <strong>${points} points</strong>.</p></div>`
       : `
         <div class="tutorial-rule"><span>🎧</span><p>Écoute l’extrait sur ton téléphone ou le PC, puis écris <strong>${answerLabel}</strong>.</p></div>
         <div class="tutorial-rule"><span>📨</span><p><strong>Envoie une seule réponse</strong>, puis attends la révélation de l’hôte.</p></div>
+        <div class="tutorial-rule"><span>🗳️</span><p>Vote pour <strong>passer</strong> ou ajouter <strong>5 secondes</strong> à l’extrait.</p></div>
         <div class="tutorial-rule"><span>⭐</span><p>Une réponse rapide rapporte davantage, jusqu’à <strong>${points} points</strong>.</p></div>`;
     const infiniteRule = current.infinite
       ? '<div class="tutorial-rule"><span>∞</span><p><strong>Mode infini :</strong> les manches continuent jusqu’à ce que l’hôte termine la partie.</p></div>'
@@ -319,7 +321,7 @@
 
   function syncPartyAudio(current, force = false) {
     if (!current || !party) return;
-    if (current.status !== 'round' || !current.playback) {
+    if (!['round', 'reveal'].includes(current.status) || !current.playback) {
       if (audioRoundKey) stopPartyAudio(audioUnlocked
         ? '🔊 Son prêt pour la prochaine manche.'
         : '🔇 Active le son dans les règles.');
@@ -333,14 +335,16 @@
 
     const key = `${current.code}:${current.round}`;
     const playback = current.playback;
-    const signature = `${key}:${Number(playback.startedAt) || 0}:${Number(playback.pausedAt) || 0}:${(current.buzzer || {}).solvedByProfileId || ''}`;
+    const signature = `${key}:${current.status}:${Number(playback.startedAt) || 0}:${Number(playback.pausedAt) || 0}:${Number(playback.duration) || 0}:${(current.buzzer || {}).solvedByProfileId || ''}`;
     if (!force && audioPlaybackSignature === signature) return;
     const newRound = audioRoundKey !== key;
     audioRoundKey = key;
     audioPlaybackSignature = signature;
     stopPartyAudio(playback.pausedAt
       ? '⏸️ Musique en pause pendant la réponse…'
-      : '⏱️ Synchronisation de l’extrait…');
+      : current.status === 'reveal'
+        ? '🎵 Le passage le plus connu arrive…'
+        : '⏱️ Synchronisation de l’extrait…');
     if (playback.pausedAt) return;
 
     const receivedAt = Date.now();
@@ -377,9 +381,13 @@
       if (playable <= 0) return stopPartyAudio('Extrait terminé. En attente de la révélation.');
       partyAudio.currentTime = position;
       partyAudio.play().then(() => {
-        byId('audio-sync-status').innerText = '🔊 Lecture synchronisée avec le PC.';
+        byId('audio-sync-status').innerText = current.status === 'reveal'
+          ? '🎵 Passage connu joué avec le PC.'
+          : '🔊 Lecture synchronisée avec le PC.';
         audioStopTimer = setTimeout(() => {
-          stopPartyAudio('Extrait terminé. En attente de la révélation.');
+          stopPartyAudio(current.status === 'reveal'
+            ? 'Passage connu terminé.'
+            : 'Extrait terminé. En attente de la révélation.');
         }, playable / (Number(playback.speed) || 1) * 1000);
       }).catch(() => {
         byId('audio-sync-status').innerText = '🔇 Touche « Règles » pour autoriser le son.';
@@ -409,7 +417,9 @@
         reverseSource.start(0, offset, playable);
         byId('audio-sync-status').innerText = '🔊 Lecture inversée synchronisée avec le PC.';
         audioStopTimer = setTimeout(() => {
-          stopPartyAudio('Extrait terminé. En attente de la révélation.');
+          stopPartyAudio(current.status === 'reveal'
+            ? 'Passage connu terminé.'
+            : 'Extrait terminé. En attente de la révélation.');
         }, playable / (Number(playback.speed) || 1) * 1000);
       }, wait);
     } catch (_) {
@@ -463,6 +473,7 @@
     byId('room-title').innerText = label[1];
     byId('room-subtitle').innerText = label[2];
     renderAction();
+    renderVotes();
     renderReveal();
     renderRanking();
   }
@@ -538,6 +549,27 @@
     timer.innerText = Number((state.buzzer || {}).answerSecondsRemaining) || 0;
   }
 
+  function renderVotes() {
+    const zone = byId('round-votes');
+    const me = currentPlayer();
+    const votes = state && state.votes;
+    if (!zone || !me || state.status !== 'round' || !votes) {
+      if (zone) zone.classList.add('hidden');
+      return;
+    }
+    const threshold = Number(votes.threshold) || 1;
+    zone.innerHTML = `
+      <button type="button" class="vote-btn${votes.skip.voted ? ' voted' : ''}"
+              id="vote-skip-btn"${votes.skip.passed ? ' disabled' : ''}>
+        ⏭ Passer · ${Number(votes.skip.count) || 0}/${threshold}
+      </button>
+      <button type="button" class="vote-btn${votes.more.voted ? ' voted' : ''}"
+              id="vote-more-btn"${votes.more.granted ? ' disabled' : ''}>
+        ${votes.more.granted ? '✅ +5 s ajoutées' : `⏱ +5 s · ${Number(votes.more.count) || 0}/${threshold}`}
+      </button>`;
+    zone.classList.remove('hidden');
+  }
+
   function answerBox() {
     const mode = state.settings && state.settings.answer;
     const placeholder = mode === 'artiste' ? 'Rechercher un artiste…'
@@ -602,9 +634,10 @@
       return;
     }
     const me = currentPlayer();
-    const verdict = me && me.correct
-      ? '<span class="correct">Bonne réponse !</span>'
-      : '<span class="wrong">Raté pour cette manche</span>';
+    const won = Boolean(me && me.correct);
+    const verdict = won
+      ? '<span class="round-result-icon" aria-hidden="true">🏆</span><span class="correct">Gagné !</span>'
+      : '<span class="round-result-icon" aria-hidden="true">❌</span><span class="wrong">Perdu pour cette manche</span>';
     card.innerHTML = `
       ${verdict}
       <strong>${escapeHtml(state.revealedTrack.title)}</strong>
@@ -798,6 +831,8 @@
     if (event.target.closest('#tutorial-close-btn')) closePartyTutorial();
     if (event.target.closest('#buzz-btn')) playerAction('buzz');
     if (event.target.closest('#answer-btn')) submitAnswer();
+    if (event.target.closest('#vote-skip-btn')) playerAction('vote-skip');
+    if (event.target.closest('#vote-more-btn')) playerAction('vote-more');
     if (event.target.closest('#gift-link-btn')) giveMusicLink();
     if (event.target.closest('#gift-file-btn')) giveMusicFile();
     const suggestions = byId('answer-suggestions');

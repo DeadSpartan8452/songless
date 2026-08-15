@@ -19,6 +19,11 @@
   let syncingRound = false;
   let partyRoundStarting = false;
   let hostPartyPlayTimer = null;
+  let partyAutoNextTimer = null;
+  let partyAutoNextSignature = '';
+  let partyAutoRevealRound = null;
+  let partyHighlightRound = null;
+  let partyHighlightPromise = null;
   let hostPlaybackSignature = '';
   let partyActionSignature = '';
   let partySuggestionTimer = null;
@@ -438,7 +443,7 @@
 
   function startPolling() {
     clearInterval(pollTimer);
-    pollTimer = setInterval(pollParty, 500);
+    pollTimer = setInterval(pollParty, 250);
     pollParty();
   }
 
@@ -452,7 +457,15 @@
     } else if (next.status === 'round' && next.currentTrackId) {
       syncHostPartyPlayback(next);
     }
-    if (next.status === 'reveal' && next.revealedTrack) revealPartyTrack();
+    if (next.status === 'round' && next.isHost
+        && (next.roundDecision === 'skip' || (next.buzzer || {}).solvedByProfileId)) {
+      autoRevealParty(next.roundDecision === 'skip' ? 'skip' : 'correct');
+    }
+    if (next.status === 'reveal' && next.revealedTrack) {
+      revealPartyTrack();
+      syncHostPartyPlayback(next);
+    }
+    schedulePartyAutoNext(next);
   }
 
   function openGameTab() {
@@ -503,6 +516,7 @@
   async function syncPartyRound(trackId) {
     try {
       await preparePartyTrack(trackId);
+      primePartyHighlight(currentTrack, partyState.round);
       syncHostPartyPlayback(partyState, true);
     } catch (error) {
       showPartyError(error);
@@ -510,9 +524,10 @@
   }
 
   function syncHostPartyPlayback(next, force = false) {
-    if (!next || next.status !== 'round' || !next.playback || !currentTrack) return;
+    if (!next || !['round', 'reveal'].includes(next.status)
+        || !next.playback || !currentTrack) return;
     const playback = next.playback;
-    const signature = `${next.round}:${Number(playback.startedAt) || 0}:${Number(playback.pausedAt) || 0}:${(next.buzzer || {}).solvedByProfileId || ''}`;
+    const signature = `${next.round}:${next.status}:${Number(playback.startedAt) || 0}:${Number(playback.pausedAt) || 0}:${Number(playback.duration) || 0}:${(next.buzzer || {}).solvedByProfileId || ''}`;
     if (!force && signature === hostPlaybackSignature) return;
     hostPlaybackSignature = signature;
     clearTimeout(hostPartyPlayTimer);
@@ -529,11 +544,13 @@
     const estimatedServerNow = () => serverAtReceipt + (Date.now() - receivedAt);
     const delay = Math.max(0, Number(playback.startedAt) - serverAtReceipt);
     playerStatusText.classList.remove('hidden');
-    playerStatusText.innerText = delay > 0
-      ? 'Départ synchronisé avec les téléphones…'
-      : 'Reprise synchronisée de l’extrait…';
+    playerStatusText.innerText = next.status === 'reveal'
+      ? 'Passage connu synchronisé avec les téléphones…'
+      : delay > 0
+        ? 'Départ synchronisé avec les téléphones…'
+        : 'Reprise synchronisée de l’extrait…';
     hostPartyPlayTimer = setTimeout(() => {
-      if (!partyState || partyState.status !== 'round' || partyState.round !== next.round) return;
+      if (!partyState || partyState.status !== next.status || partyState.round !== next.round) return;
       partyState.serverNow = Math.max(Number(partyState.serverNow) || 0,
         Number(playback.startedAt) || 0);
       renderPlayerActions();
@@ -541,24 +558,94 @@
       const elapsed = Math.max(0,
         (estimatedServerNow() - Number(playback.startedAt)) / 1000
         * (Number(playback.speed) || 1));
-      playAudio({
+      const sync = {
         offset: Number(playback.offset) || 0,
         duration: Number(playback.duration) || 0,
         elapsed,
+      };
+      if (next.status === 'reveal' || playback.reveal) jouerPassageResultat(sync);
+      else playAudio(sync);
+    }, delay);
+  }
+
+  function primePartyHighlight(track, round) {
+    if (!track || partyHighlightRound === round) return partyHighlightPromise;
+    partyHighlightRound = round;
+    partyHighlightPromise = preparerPassageConnu(track)
+      .catch(() => currentTrackOffset);
+    return partyHighlightPromise;
+  }
+
+  async function partyHighlightOffset(round) {
+    const fallback = Number(currentTrackOffset) || 0;
+    const promise = primePartyHighlight(currentTrack, round);
+    if (!promise) return fallback;
+    return Promise.race([
+      promise,
+      new Promise(resolve => setTimeout(() => resolve(fallback), 900)),
+    ]);
+  }
+
+  async function autoRevealParty(reason) {
+    if (!partyState || !partyState.isHost || partyState.status !== 'round') return;
+    const round = partyState.round;
+    if (partyAutoRevealRound === round) return;
+    partyAutoRevealRound = round;
+    try {
+      const highlightOffset = await partyHighlightOffset(round);
+      if (!partyState || partyState.status !== 'round' || partyState.round !== round) return;
+      await partyCommand('reveal', {
+        track: {
+          title: currentTrack.title,
+          artist: currentTrack.artist,
+          genre: currentTrack.genre,
+        },
+        highlightOffset,
+        highlightDuration: 3,
+        autoNext: true,
+        reason,
       });
+    } catch (error) {
+      partyAutoRevealRound = null;
+      showPartyError(error);
+    }
+  }
+
+  function schedulePartyAutoNext(next) {
+    if (!next || !next.isHost || next.status !== 'reveal' || !next.autoNextAt) {
+      clearTimeout(partyAutoNextTimer);
+      partyAutoNextTimer = null;
+      partyAutoNextSignature = '';
+      return;
+    }
+    const signature = `${next.round}:${next.autoNextAt}`;
+    if (signature === partyAutoNextSignature) return;
+    partyAutoNextSignature = signature;
+    clearTimeout(partyAutoNextTimer);
+    const delay = Math.max(0, Number(next.autoNextAt) - Number(next.serverNow));
+    partyAutoNextTimer = setTimeout(() => {
+      if (!partyState || partyState.status !== 'reveal' || partyState.round !== next.round) return;
+      startPartyRound();
     }, delay);
   }
 
   function revealPartyTrack() {
-    if (!currentTrack || resultCard.classList.contains('hidden') === false) return;
+    if (!currentTrack) return;
+    if (!resultCard.classList.contains('hidden')) return;
     pauseAudio();
     guessInputContainer.classList.add('hidden');
     resultCard.classList.remove('hidden');
     modeRevelation(true);
-    byId('result-title').innerText = 'Réponse révélée';
-    byId('result-subtitle').innerText = 'Les points ont été comptés sur les téléphones.';
+    const me = partyState.players.find(player => player.profileId === partyState.viewerProfileId);
+    const won = Boolean(me && me.correct);
+    const icon = byId('party-result-icon');
+    icon.innerText = won ? '🏆' : '❌';
+    icon.classList.remove('hidden');
+    byId('result-title').innerText = won ? 'Gagné !' : 'Perdu pour cette manche';
+    byId('result-subtitle').innerText = partyState.autoNextAt
+      ? 'Passage connu… prochaine manche dans 3 secondes.'
+      : 'Passage connu du morceau.';
     remplirFicheResultat();
-    audio.currentTime = 0;
     updateRevealPlayer();
   }
 
@@ -614,6 +701,31 @@
       : partyState.round > 0 ? 'Manche suivante' : 'Lancer la manche';
     byId('party-reveal-btn').disabled = partyState.status !== 'round';
     renderPlayerActions();
+    renderPartyVotes();
+  }
+
+  function renderPartyVotes() {
+    const zone = byId('party-votes');
+    const votes = partyState && partyState.votes;
+    const me = partyState && partyState.players.find(
+      player => player.profileId === partyState.viewerProfileId);
+    if (!zone || !me || partyState.status !== 'round' || !votes) {
+      if (zone) zone.classList.add('hidden');
+      return;
+    }
+    const threshold = Number(votes.threshold) || 1;
+    zone.innerHTML = `
+      <button class="party-vote${votes.skip.voted ? ' voted' : ''}"
+              id="party-vote-skip"${votes.skip.passed ? ' disabled' : ''}>
+        ⏭ Passer <strong>${Number(votes.skip.count) || 0}/${threshold}</strong>
+      </button>
+      <button class="party-vote${votes.more.voted ? ' voted' : ''}"
+              id="party-vote-more"${votes.more.granted ? ' disabled' : ''}>
+        ${votes.more.granted
+          ? '✅ 5 secondes ajoutées'
+          : `⏱ +5 s <strong>${Number(votes.more.count) || 0}/${threshold}</strong>`}
+      </button>`;
+    zone.classList.remove('hidden');
   }
 
   function partyAnswerLabel(player) {
@@ -777,7 +889,12 @@
     if (!party || !party.playerToken) return;
     const next = await window.songlessShared.api(`/api/party/${encodeURIComponent(party.code)}/action`, {
       method: 'POST',
-      body: JSON.stringify({ playerToken: party.playerToken, action, data }),
+      body: JSON.stringify({
+        playerToken: party.playerToken,
+        hostToken: party.hostToken,
+        action,
+        data,
+      }),
     });
     receivePartyState(next);
   }
@@ -808,6 +925,7 @@
     renderParty();
     try {
       const offset = await preparePartyTrack(trackId);
+      primePartyHighlight(track, partyState.round + 1);
       await partyCommand('start-round', {
         round: partyState.round + 1,
         trackId,
@@ -830,11 +948,20 @@
     }
   }
 
-  function revealParty() {
+  async function revealParty() {
     if (!currentTrack) return;
-    partyCommand('reveal', {
-      track: { title: currentTrack.title, artist: currentTrack.artist, genre: currentTrack.genre },
-    }).catch(showPartyError);
+    try {
+      const highlightOffset = await partyHighlightOffset(partyState.round);
+      await partyCommand('reveal', {
+        track: { title: currentTrack.title, artist: currentTrack.artist, genre: currentTrack.genre },
+        highlightOffset,
+        highlightDuration: 3,
+        autoNext: false,
+        reason: 'manual',
+      });
+    } catch (error) {
+      showPartyError(error);
+    }
   }
 
   function showPartyError(error) {
@@ -860,8 +987,13 @@
     const previousSettings = party && party.previousSettings;
     clearInterval(pollTimer);
     clearTimeout(hostPartyPlayTimer);
+    clearTimeout(partyAutoNextTimer);
     hostPlaybackSignature = '';
     partyActionSignature = '';
+    partyAutoNextSignature = '';
+    partyAutoRevealRound = null;
+    partyHighlightRound = null;
+    partyHighlightPromise = null;
     pauseAudio();
     pollTimer = null;
     party = null;
@@ -951,6 +1083,8 @@
       if (event.target.closest('#party-copy-internet')) copyPartyInvite('internet');
       if (event.target.closest('#party-buzz-btn')) partyPlayerAction('buzz').catch(showPartyError);
       if (event.target.closest('#party-answer-btn')) submitPartyAnswer();
+      if (event.target.closest('#party-vote-skip')) partyPlayerAction('vote-skip').catch(showPartyError);
+      if (event.target.closest('#party-vote-more')) partyPlayerAction('vote-more').catch(showPartyError);
       if (event.target.closest('#party-round-btn')) startPartyRound();
       if (event.target.closest('#party-reveal-btn')) revealParty();
       if (event.target.closest('#party-finish-btn')) {

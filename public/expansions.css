@@ -111,6 +111,29 @@
 .party-score small { color: #9f91ad; font-size: .68rem; font-weight: 600; }
 .party-player-actions, .party-host-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
 .party-player-actions input { flex: 1; min-width: 180px; }
+.party-votes {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 9px;
+  margin-top: 12px;
+}
+.party-vote {
+  min-height: 44px;
+  padding: 8px 10px;
+  border: 1px solid rgba(168, 85, 247, .3);
+  border-radius: 11px;
+  color: #f4eaff;
+  background: #1c1827;
+  font-weight: 800;
+}
+.party-vote.voted { border-color: #a855f7; background: rgba(168, 85, 247, .22); }
+.party-vote:disabled { opacity: .7; cursor: default; }
+.party-result-icon {
+  font-size: clamp(5rem, 13vw, 8rem);
+  line-height: 1;
+  margin-bottom: 8px;
+  filter: drop-shadow(0 14px 24px rgba(0, 0, 0, .25));
+}
 .buzz-button { min-height: 64px; font-size: 1.2rem; font-weight: 900; }
 .button-link { display: inline-flex; align-items: center; text-decoration: none; }
 

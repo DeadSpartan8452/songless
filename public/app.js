@@ -568,8 +568,8 @@ function oublierBuffers() {
  * Décode le morceau et en tire ce dont les options ont besoin.
  * Renvoie une promesse résolue quand c'est prêt (ou null si impossible).
  */
-function preparerExtrait(track) {
-  if (!track || !besoinDeDecoder()) return Promise.resolve(null);
+function preparerExtrait(track, force = false) {
+  if (!track || (!force && !besoinDeDecoder())) return Promise.resolve(null);
   if (bufferPourId === track.id && preparation) return preparation;
 
   initWebAudio();
@@ -675,6 +675,13 @@ function trouverPassageFort(buffer) {
   return meilleurDebut;
 }
 
+/** Prépare en arrière-plan le passage le plus reconnaissable du morceau. */
+async function preparerPassageConnu(track) {
+  const buffer = await preparerExtrait(track, true);
+  if (!buffer || currentTrack !== track) return currentTrackOffset;
+  return trouverPassageFort(buffer);
+}
+
 /**
  * Joue l'extrait à l'envers.
  *
@@ -764,6 +771,37 @@ function pauseAudio() {
   
   // Redessiner le visualiseur calme
   drawIdleWaveform();
+}
+
+/** Joue uniquement le court passage connu affiché sur l'écran de résultat. */
+function jouerPassageResultat(syncPlayback) {
+  if (!currentTrack || !syncPlayback) return;
+  const duration = Math.max(0, Number(syncPlayback.duration) || 0);
+  const elapsed = Math.min(duration, Math.max(0, Number(syncPlayback.elapsed) || 0));
+  const remaining = Math.max(0, duration - elapsed);
+  if (!remaining) return;
+
+  pauseAudio();
+  arreterApercu();
+  audio.playbackRate = 1;
+  audio.preservesPitch = false;
+  audio.currentTime = Math.max(0, Number(syncPlayback.offset) || 0) + elapsed;
+  audio.play().then(() => {
+    isPlaying = true;
+    playerStatusText.classList.add('hidden');
+    playBtn.querySelector('.icon-play').classList.add('hidden');
+    playBtn.querySelector('.icon-pause').classList.remove('hidden');
+    clearTimeout(playTimeout);
+    clearInterval(progressInterval);
+    drawActiveWaveform();
+    progressInterval = setInterval(updateRevealPlayer, 100);
+    updateRevealPlayer();
+    playTimeout = setTimeout(() => pauseAudio(), remaining * 1000);
+  }).catch(error => {
+    if (!error || error.name !== 'AbortError') {
+      console.warn('Passage de résultat impossible à lire :', error && error.message);
+    }
+  });
 }
 
 // ==========================================
@@ -1089,6 +1127,8 @@ function startNewGame(step = 0) {
 
   // Cacher le panneau de résultat et afficher la zone de saisie
   resultCard.classList.add('hidden');
+  const partyResultIcon = document.getElementById('party-result-icon');
+  if (partyResultIcon) partyResultIcon.classList.add('hidden');
   modeRevelation(false);
   guessInputContainer.classList.remove('hidden');
   guessInput.value = '';
