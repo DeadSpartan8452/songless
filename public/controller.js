@@ -209,10 +209,13 @@
   function renderRoom() {
     if (!state) return;
     byId('room-code').innerText = state.code;
+    const roundLabel = state.infinite
+      ? `MANCHE ${state.round} · INFINI`
+      : `MANCHE ${state.round} / ${state.totalRounds}`;
     const labels = {
       lobby: ['SALON', 'En attente de l’hôte…', 'Le PC lancera la première manche.'],
-      round: [`MANCHE ${state.round} / ${state.totalRounds}`, state.mode === 'buzzer' ? 'Prêt à buzzer ?' : 'Quelle est ta réponse ?', 'Écoute la musique sur le PC.'],
-      reveal: [`MANCHE ${state.round} / ${state.totalRounds}`, 'Réponse révélée', 'Regarde le résultat et le classement.'],
+      round: [roundLabel, state.mode === 'buzzer' ? 'Prêt à buzzer ?' : 'Quelle est ta réponse ?', 'Écoute la musique sur le PC.'],
+      reveal: [roundLabel, 'Réponse révélée', 'Regarde le résultat et le classement.'],
       finished: ['TERMINÉ', 'Partie terminée !', 'Voici le classement final.'],
     };
     const label = labels[state.status] || labels.lobby;

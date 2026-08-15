@@ -361,12 +361,15 @@
     if (!playlist.length) return showToast('Aucun morceau dans la sélection.', 'warn');
     const trackIds = currentSelectionIds();
     const settings = currentPartyOptions();
+    const roundChoice = byId('party-rounds').value;
     try {
       const result = await window.songlessShared.api('/api/party/create', {
         method: 'POST',
         body: JSON.stringify({
           mode: byId('party-mode').value,
-          totalRounds: Math.min(Number(byId('party-rounds').value) || 10, trackIds.length),
+          totalRounds: roundChoice === 'infinite'
+            ? 'infinite'
+            : Math.min(Number(roundChoice) || 10, trackIds.length),
           seed: currentSeed,
           settings,
         }),
@@ -502,7 +505,9 @@
       ? 'Partie terminée'
       : partyState.status === 'lobby'
         ? 'Salon'
-        : `Manche ${partyState.round} / ${partyState.totalRounds}`;
+        : partyState.infinite
+          ? `Manche ${partyState.round} · Infini`
+          : `Manche ${partyState.round} / ${partyState.totalRounds}`;
 
     const invites = byId('party-invites');
     const internetButton = byId('party-copy-internet');
@@ -520,7 +525,8 @@
 
     byId('party-host-actions').classList.toggle('hidden', !partyState.isHost);
     byId('party-round-btn').disabled = partyState.status === 'round' || partyState.status === 'finished';
-    byId('party-round-btn').innerText = partyState.round >= partyState.totalRounds
+    byId('party-round-btn').innerText = !partyState.infinite
+      && partyState.round >= partyState.totalRounds
       ? 'Terminer la partie'
       : partyState.round > 0 ? 'Manche suivante' : 'Lancer la manche';
     byId('party-reveal-btn').disabled = partyState.status !== 'round';
@@ -581,9 +587,14 @@
 
   function startPartyRound() {
     if (!partyState || !partyState.isHost) return;
-    if (partyState.round >= partyState.totalRounds) return partyCommand('finish').catch(showPartyError);
+    if (!partyState.infinite && partyState.round >= partyState.totalRounds) {
+      return partyCommand('finish').catch(showPartyError);
+    }
     const ids = party.trackIds || [];
-    const trackId = ids[partyState.round] || (playlist[partyState.round] && playlist[partyState.round].id);
+    const trackIndex = partyState.infinite && ids.length
+      ? partyState.round % ids.length
+      : partyState.round;
+    const trackId = ids[trackIndex] || (playlist[trackIndex] && playlist[trackIndex].id);
     if (!trackId) return showToast('Aucun morceau disponible pour cette manche.', 'warn');
     const track = tracks.find(item => String(item.id) === String(trackId));
     if (!track) return showToast('Le morceau de cette manche est introuvable.', 'error');

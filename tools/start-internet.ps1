@@ -1,3 +1,7 @@
+param(
+  [switch]$SkipBrowser
+)
+
 $ErrorActionPreference = 'Stop'
 
 $InstanceLock = New-Object System.Threading.Mutex(
@@ -82,13 +86,19 @@ try {
   if (-not $Pret) {
     throw 'Songless ne repond pas apres 10 secondes.'
   }
-  Start-Process $LocalUrl
+  if (-not $SkipBrowser) {
+    Start-Process $LocalUrl
+  }
   Write-Host "Adresse HTTPS : $PublicUrl" -ForegroundColor Green
   Write-Host 'Le premier lancement peut demander une validation dans le navigateur.'
   Write-Host 'Fermer cette fenetre coupe immediatement le lien Internet.'
-  & $TailscalePath funnel --https=443 3001
+  & $TailscalePath funnel --yes --bg 3001
+  if (-not $?) {
+    throw 'Le lien Internet Tailscale n''a pas pu demarrer.'
+  }
+  Wait-Process -Id $Node.Id
 } finally {
-  try { & $TailscalePath funnel --https=443 off | Out-Null } catch {}
+  try { & $TailscalePath funnel --yes --https=443 off | Out-Null } catch {}
   if ($Node -and -not $Node.HasExited) {
     Stop-Process -Id $Node.Id
   }
