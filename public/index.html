@@ -1,0 +1,838 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Songless 🐾 Blind Test Local</title>
+  <!-- Icône d'onglet. Sans ça, le navigateur réclame /favicon.ico et se prend un 404. -->
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <!-- DM Sans, servie en local (public/vendor/fonts/). Plus aucun appel à
+       fonts.googleapis.com : le jeu tourne entièrement hors ligne.
+       Playfair Display était chargée ici sans être utilisée nulle part dans le
+       CSS — supprimée. -->
+  <link rel="stylesheet" href="vendor/fonts.css">
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="session.css">
+  <link rel="stylesheet" href="features.css">
+  <link rel="stylesheet" href="expansions.css">
+  <!-- Icônes Lucide, servies en local (public/vendor/).
+       Elles venaient d'unpkg.com : hors ligne, `lucide` n'existait pas et la
+       première ligne de l'initialisation plantait, emportant tout le jeu avec
+       elle. Un blind test qui lit des MP3 du disque dur n'a rien à demander à
+       Internet. Mise à jour : voir la section « Icônes » du README. -->
+  <script src="vendor/lucide.min.js"></script>
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="logo">
+        <span class="logo-icon">🎵</span>
+        <h1>Songless <span class="subtitle">Blind Test Local</span></h1>
+      </div>
+      <nav class="nav-tabs">
+        <button class="tab-btn active" data-tab="game-tab">
+          <i data-lucide="play-circle"></i> Jouer
+        </button>
+        <button class="tab-btn" data-tab="modes-tab">
+          <i data-lucide="gamepad-2"></i> Modes
+        </button>
+        <button class="tab-btn" data-tab="library-tab">
+          <i data-lucide="music"></i> Bibliothèque
+        </button>
+        <button class="tab-btn" data-tab="stats-tab">
+          <i data-lucide="bar-chart-2"></i> Statistiques
+        </button>
+      </nav>
+
+      <div class="header-tools">
+        <!-- Profil actif : chaque joueur de la maison a ses propres stats -->
+        <button class="profile-btn" id="profile-btn" title="Changer de profil">
+          <span class="profile-emoji" id="profile-emoji">🎧</span>
+          <span class="profile-name" id="profile-name">Joueur 1</span>
+          <i data-lucide="chevron-down"></i>
+        </button>
+        <button class="icon-btn" id="phone-btn" title="Jouer depuis le téléphone">
+          <i data-lucide="smartphone"></i>
+        </button>
+      </div>
+    </header>
+
+    <!-- Bandeau lecture seule : visible seulement depuis un appareil du réseau -->
+    <div class="readonly-banner hidden" id="readonly-banner">
+      <i data-lucide="lock"></i>
+      Connecté depuis le réseau local : tu peux jouer, mais la bibliothèque ne se
+      modifie que depuis l'ordinateur qui héberge Songless.
+    </div>
+
+    <main class="app-content">
+      <!-- Section Jeu -->
+      <section id="game-tab" class="tab-content active">
+        <div class="game-wrapper">
+
+          <!-- Barre de session : seed aléatoire + filtre par genre -->
+          <div class="session-bar">
+            <div class="session-row">
+              <div class="seed-block">
+                <span class="seed-label">Seed</span>
+                <code class="seed-value" id="seed-value">········</code>
+              </div>
+              <div class="seed-actions">
+                <button class="ghost-btn" id="copy-seed-btn" title="Copier le lien de cette seed">
+                  <i data-lucide="link"></i>
+                </button>
+                <button class="ghost-btn" id="edit-seed-btn" title="Rejouer une seed précise">
+                  <i data-lucide="pencil"></i>
+                </button>
+                <button class="ghost-btn accent" id="new-seed-btn" title="Tirer une nouvelle seed au hasard">
+                  <i data-lucide="dices"></i> Nouvelle seed
+                </button>
+              </div>
+            </div>
+
+            <div class="session-row">
+              <span class="playlist-progress">
+                Morceau <strong id="playlist-position">0</strong> / <span id="playlist-total">0</span>
+                <span class="playlist-hint">dans l'ordre de cette seed</span>
+              </span>
+              <span class="session-filters">
+                <button class="ghost-btn small" id="toggle-genres-btn">
+                  <i data-lucide="sliders-horizontal"></i> Genres : <span id="genre-summary">tous</span>
+                </button>
+                <button class="ghost-btn small" id="toggle-options-btn">
+                  <i data-lucide="settings-2"></i> Options
+                </button>
+              </span>
+            </div>
+
+            <div class="genre-panel hidden" id="genre-panel">
+              <div class="genre-panel-head">
+                <button class="chip-action" id="genre-all-btn">Tout sélectionner</button>
+                <button class="chip-action" id="genre-none-btn">Tout retirer</button>
+              </div>
+              <div class="genre-chips" id="genre-chips"></div>
+
+              <!-- Décennies : ne filtre que ce qui a une année connue, et le dit. -->
+              <div class="decade-block">
+                <div class="genre-panel-head">
+                  <span class="panel-title">Décennies</span>
+                  <span class="panel-note" id="decade-note"></span>
+                  <button class="chip-action" id="decade-none-btn">Tout retirer</button>
+                </div>
+                <div class="genre-chips" id="decade-chips"></div>
+              </div>
+            </div>
+
+            <!-- Options de manche : ce qu'il faut deviner, et comment sonne l'extrait -->
+            <div class="options-panel hidden" id="options-panel">
+              <div class="option-row">
+                <span class="option-label">Deviner</span>
+                <div class="segmented" role="group" aria-label="Ce qu'il faut deviner">
+                  <button class="seg-btn active" data-answer="titre">Le titre</button>
+                  <button class="seg-btn" data-answer="artiste">L'artiste</button>
+                  <button class="seg-btn" data-answer="annee">L'année</button>
+                </div>
+                <span class="option-note" id="answer-note"></span>
+              </div>
+
+              <div class="option-row">
+                <span class="option-label">Vitesse</span>
+                <div class="segmented" role="group" aria-label="Vitesse de l'extrait">
+                  <button class="seg-btn" data-speed="0.75">×0,75</button>
+                  <button class="seg-btn active" data-speed="1">Normale</button>
+                  <button class="seg-btn" data-speed="1.25">×1,25</button>
+                  <button class="seg-btn" data-speed="1.5">×1,5</button>
+                </div>
+                <span class="option-note">La hauteur du son change aussi : c'est le piège.</span>
+              </div>
+
+              <div class="option-row">
+                <span class="option-label">Sens</span>
+                <div class="segmented" role="group" aria-label="Sens de lecture">
+                  <button class="seg-btn active" data-way="normal">À l'endroit</button>
+                  <button class="seg-btn" data-way="inverse">À l'envers</button>
+                </div>
+                <span class="option-note">À l'envers, le morceau est décodé en entier : comptez un instant de préparation.</span>
+              </div>
+
+              <div class="option-row">
+                <span class="option-label">Départ</span>
+                <div class="segmented" role="group" aria-label="Point de départ de l'extrait">
+                  <button class="seg-btn active" data-start="seed">Tiré par la seed</button>
+                  <button class="seg-btn" data-start="refrain">Le refrain</button>
+                  <button class="seg-btn" data-start="debut">Le début</button>
+                </div>
+                <span class="option-note">« Le refrain » cherche le passage le plus fort du morceau.</span>
+              </div>
+
+              <div class="option-row">
+                <span class="option-label">Paliers</span>
+                <div class="segmented" role="group" aria-label="Durées des six essais">
+                  <button class="seg-btn" data-preset="facile">Facile</button>
+                  <button class="seg-btn active" data-preset="normal">Normal</button>
+                  <button class="seg-btn" data-preset="hardcore">Hardcore</button>
+                  <button class="seg-btn" data-preset="perso">Sur mesure…</button>
+                </div>
+                <span class="option-note" id="paliers-note"></span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Carte Principale de Jeu -->
+          <div class="game-card">
+            <!-- Waveform & Lecteur Audio -->
+            <div class="player-container">
+              <div class="visualizer-wrapper">
+                <canvas id="waveform-canvas"></canvas>
+                <div class="visualizer-overlay" id="player-status-text">
+                  Cliquez sur Play pour écouter l'extrait
+                </div>
+              </div>
+
+              <!-- Contrôles du lecteur -->
+              <div class="player-controls">
+                <span class="time-display" id="time-current">0.0s</span>
+                <button class="play-btn" id="play-btn" aria-label="Jouer l'extrait">
+                  <i data-lucide="play" class="icon-play"></i>
+                  <i data-lucide="pause" class="icon-pause hidden"></i>
+                </button>
+                <span class="time-display" id="time-max">0.2s</span>
+              </div>
+
+              <p class="shortcut-hint">
+                <kbd>Espace</kbd> lancer / pause / relancer
+                &nbsp;·&nbsp;
+                <kbd>Pav. 1</kbd> passer
+                &nbsp;·&nbsp;
+                <kbd>Pav. 2</kbd> suivante
+                &nbsp;·&nbsp;
+                <kbd>Pav. 3</kbd> précédente
+              </p>
+              <p class="shortcut-hint subtle">
+                Revenir sur une chanson la reprend là où elle en était.
+                Au-delà de 2 essais consommés, ou une fois gagnée ou perdue,
+                elle passe en écoute seule.
+              </p>
+
+              <!-- Barre de progression Heardle.
+                   Une fois le morceau dévoilé, cette même barre devient le
+                   curseur de navigation : zone de l'extrait et poignée dessus. -->
+              <div class="heardle-progress-bar" id="heardle-bar">
+                <div class="progress-segment" data-seconds="0.2" style="width: 1.33%"></div>  <!-- 0.2s -->
+                <div class="progress-segment" data-seconds="0.7" style="width: 3.33%"></div>  <!-- 0.7s -->
+                <div class="progress-segment" data-seconds="2.5" style="width: 12%"></div>  <!-- 2.5s -->
+                <div class="progress-segment" data-seconds="5" style="width: 16.67%"></div> <!-- 5s -->
+                <div class="progress-segment" data-seconds="9" style="width: 26.67%"></div>   <!-- 9s -->
+                <div class="progress-segment" data-seconds="15" style="width: 40%"></div> <!-- 15s -->
+                <div class="progress-indicator" id="progress-indicator"></div>
+                <div class="extract-zone hidden" id="extract-zone"></div>
+                <input type="range" id="seek-bar" class="seek-bar"
+                       min="0" max="1000" step="1" value="0"
+                       aria-label="Position dans le morceau">
+              </div>
+
+              <!-- Compteurs et rappel de l'extrait, sous la barre -->
+              <div class="reveal-player hidden" id="reveal-player">
+                <div class="reveal-times">
+                  <span id="seek-current">0:00</span>
+                  <span id="seek-total">0:00</span>
+                </div>
+                <p class="extract-legend" id="extract-legend"></p>
+              </div>
+            </div>
+
+            <!-- Liste des essais (6 essais) -->
+            <div class="attempts-container">
+              <div class="attempt-row" data-index="0">
+                <span class="attempt-number">1</span>
+                <div class="attempt-text"><span class="placeholder">0.2 seconde disponible</span></div>
+                <span class="attempt-status"></span>
+              </div>
+              <div class="attempt-row" data-index="1">
+                <span class="attempt-number">2</span>
+                <div class="attempt-text"></div>
+                <span class="attempt-status"></span>
+              </div>
+              <div class="attempt-row" data-index="2">
+                <span class="attempt-number">3</span>
+                <div class="attempt-text"></div>
+                <span class="attempt-status"></span>
+              </div>
+              <div class="attempt-row" data-index="3">
+                <span class="attempt-number">4</span>
+                <div class="attempt-text"></div>
+                <span class="attempt-status"></span>
+              </div>
+              <div class="attempt-row" data-index="4">
+                <span class="attempt-number">5</span>
+                <div class="attempt-text"></div>
+                <span class="attempt-status"></span>
+              </div>
+              <div class="attempt-row" data-index="5">
+                <span class="attempt-number">6</span>
+                <div class="attempt-text"></div>
+                <span class="attempt-status"></span>
+              </div>
+            </div>
+
+            <!-- Zone de Saisie & Actions -->
+            <div class="input-container" id="guess-input-container">
+              <div class="search-box">
+                <i data-lucide="search" class="search-icon"></i>
+                <input type="text" id="guess-input" placeholder="Rechercher une chanson ou un artiste..." autocomplete="off">
+                <button class="clear-input-btn hidden" id="clear-input-btn"><i data-lucide="x"></i></button>
+                
+                <!-- Liste d'autocomplétion -->
+                <div class="autocomplete-suggestions hidden" id="autocomplete-list"></div>
+              </div>
+              
+              <div class="guess-actions">
+                <button class="skip-btn" id="skip-btn">
+                  Passer (+<span id="skip-seconds-next">0.5s</span>)
+                </button>
+                <button class="submit-btn" id="submit-btn">
+                  Soumettre
+                </button>
+              </div>
+            </div>
+
+            <!-- Panneau de résultat (Victoire / Défaite) -->
+            <div class="result-card hidden" id="result-card">
+              <div class="result-header">
+                <h3 id="result-title">Bravo !</h3>
+                <p id="result-subtitle">Vous avez trouvé en 1 essai.</p>
+              </div>
+              
+              <div class="song-details-card">
+                <div class="song-cover-wrapper">
+                  <img src="default-cover.svg" alt="Pochette d'album" class="result-cover" id="result-cover">
+                  <div class="cover-fallback" id="result-cover-fallback">🎵</div>
+                </div>
+                <div class="song-metadata">
+                  <h4 id="result-song-title">Titre de la chanson</h4>
+                  <p id="result-song-artist">Nom de l'artiste</p>
+                  <p class="song-original hidden" id="result-song-original"></p>
+                  <span class="genre-badge hidden" id="result-song-genre"></span>
+                </div>
+              </div>
+
+              <div class="result-actions">
+                <button class="ghost-btn" id="share-btn" title="Copier le résumé de la session">
+                  <i data-lucide="share-2"></i> Partager
+                </button>
+                <button class="cta-btn" id="next-game-btn">
+                  Nouvelle Chanson <i data-lucide="chevron-right"></i>
+                </button>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </section>
+
+      <!-- Modes de jeu, collections et multijoueur -->
+      <section id="modes-tab" class="tab-content">
+        <div class="modes-container">
+          <div class="library-header">
+            <h2>Choisir une façon de jouer</h2>
+            <p>Partie rapide, entraînement ciblé, défi reproductible ou soirée sur plusieurs téléphones.</p>
+          </div>
+
+          <div class="modes-grid">
+            <article class="mode-card">
+              <h3><i data-lucide="flag"></i> Partie avec une fin</h3>
+              <p>Choisis le nombre de morceaux. Un bilan apparaît à la fin.</p>
+              <div class="mode-row">
+                <select id="format-rounds" aria-label="Nombre de morceaux">
+                  <option value="5">Rapide · 5 morceaux</option>
+                  <option value="10" selected>Normale · 10 morceaux</option>
+                  <option value="20">Longue · 20 morceaux</option>
+                  <option value="50">Marathon · 50 morceaux</option>
+                  <option value="0">Sans fin</option>
+                </select>
+                <button class="cta-btn" id="format-start-btn">Commencer</button>
+              </div>
+              <div class="mode-status" id="format-status">Aucune partie limitée en cours.</div>
+            </article>
+
+            <article class="mode-card">
+              <h3><i data-lucide="brain"></i> Entraînement intelligent</h3>
+              <p>Priorité aux morceaux ratés, jamais joués ou oubliés depuis longtemps.</p>
+              <div class="mode-row">
+                <button class="ghost-btn accent training-btn" data-rounds="10">10 morceaux</button>
+                <button class="ghost-btn training-btn" data-rounds="20">20 morceaux</button>
+              </div>
+              <div class="mode-status" id="training-status"></div>
+            </article>
+
+            <article class="mode-card mode-card-wide">
+              <h3><i data-lucide="library"></i> Collections personnalisées</h3>
+              <p>Crée une collection avec les morceaux correspondant aux filtres actuellement choisis dans « Jouer ».</p>
+              <div class="mode-row">
+                <input id="collection-name" maxlength="60" placeholder="Ex. Soirée famille">
+                <button class="cta-btn" id="collection-create-btn">Créer avec la sélection actuelle</button>
+              </div>
+              <div class="saved-list" id="collection-list"></div>
+            </article>
+
+            <article class="mode-card mode-card-wide">
+              <h3><i data-lucide="trophy"></i> Défis enregistrés</h3>
+              <p>Conserve la seed, les filtres, les options et le nombre de manches pour rejouer exactement le même défi.</p>
+              <div class="mode-row">
+                <input id="challenge-name" maxlength="60" placeholder="Nom du défi">
+                <button class="cta-btn" id="challenge-save-btn">Enregistrer le défi actuel</button>
+              </div>
+              <div class="saved-list" id="challenge-list"></div>
+            </article>
+
+            <article class="mode-card mode-card-wide party-card">
+              <h3><i data-lucide="users"></i> Soirée multijoueur</h3>
+              <p>Chaque téléphone choisit ou crée un profil partagé, puis rejoint la même partie.</p>
+              <div class="party-setup" id="party-setup">
+                <div class="mode-row">
+                  <select id="party-mode">
+                    <option value="classic">Réponses simultanées</option>
+                    <option value="buzzer">Buzzer</option>
+                  </select>
+                  <select id="party-rounds">
+                    <option value="5">5 manches</option>
+                    <option value="10" selected>10 manches</option>
+                    <option value="20">20 manches</option>
+                  </select>
+                  <button class="cta-btn" id="party-create-btn">Créer la partie</button>
+                </div>
+                <div class="party-options" id="party-options">
+                  <label>Deviner
+                    <select id="party-answer-mode">
+                      <option value="titre">Le titre</option>
+                      <option value="artiste">L’artiste</option>
+                      <option value="annee">L’année</option>
+                    </select>
+                  </label>
+                  <label>Vitesse
+                    <select id="party-speed">
+                      <option value="0.75">×0,75</option>
+                      <option value="1">Normale</option>
+                      <option value="1.25">×1,25</option>
+                      <option value="1.5">×1,5</option>
+                    </select>
+                  </label>
+                  <label>Sens
+                    <select id="party-direction">
+                      <option value="normal">À l’endroit</option>
+                      <option value="inverse">À l’envers</option>
+                    </select>
+                  </label>
+                  <label>Départ
+                    <select id="party-start">
+                      <option value="seed">Aléatoire par seed</option>
+                      <option value="refrain">Le refrain</option>
+                      <option value="debut">Le début</option>
+                    </select>
+                  </label>
+                  <label>Extrait
+                    <select id="party-excerpt">
+                      <option value="5">5 secondes</option>
+                      <option value="10">10 secondes</option>
+                      <option value="15" selected>15 secondes</option>
+                      <option value="30">30 secondes</option>
+                      <option value="60">60 secondes</option>
+                    </select>
+                  </label>
+                  <label>Points
+                    <select id="party-points">
+                      <option value="500">500</option>
+                      <option value="1000" selected>1 000</option>
+                      <option value="1500">1 500</option>
+                      <option value="2000">2 000</option>
+                    </select>
+                  </label>
+                </div>
+                <p class="mode-status">Chaque mode mémorise ses propres options.</p>
+                <div class="party-divider hidden"><span>ou rejoindre</span></div>
+                <div class="mode-row hidden">
+                  <input id="party-code-input" maxlength="5" placeholder="CODE" autocomplete="off">
+                  <button class="ghost-btn accent" id="party-join-btn">Rejoindre</button>
+                </div>
+              </div>
+              <div class="party-room hidden" id="party-room">
+                <div class="party-head">
+                  <div>Code <strong id="party-code">—</strong></div>
+                  <div id="party-round-label">Salon</div>
+                </div>
+                <div class="party-invites hidden" id="party-invites">
+                  <button class="ghost-btn accent" id="party-copy-lan">Copier le lien même wifi</button>
+                  <button class="ghost-btn" id="party-copy-internet">Lien Internet non activé</button>
+                </div>
+                <div class="party-players" id="party-players"></div>
+                <div class="party-player-actions" id="party-player-actions"></div>
+                <div class="party-host-actions hidden" id="party-host-actions">
+                  <button class="cta-btn" id="party-round-btn">Lancer la manche</button>
+                  <button class="ghost-btn" id="party-reveal-btn">Révéler et compter</button>
+                  <button class="danger-btn-text" id="party-finish-btn">Terminer</button>
+                </div>
+              </div>
+            </article>
+
+            <article class="mode-card mode-card-wide local-only">
+              <h3><i data-lucide="archive"></i> Sauvegarde complète</h3>
+              <p>Exporte les profils, statistiques, collections, défis et réglages. Les fichiers musicaux restent séparés.</p>
+              <div class="mode-row">
+                <a class="ghost-btn accent button-link" href="/api/player/export" download>Exporter</a>
+                <label class="ghost-btn button-link" for="backup-import">Importer…</label>
+                <input class="hidden" type="file" id="backup-import" accept="application/json,.json">
+              </div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section Bibliothèque -->
+      <section id="library-tab" class="tab-content">
+        <div class="library-container">
+          <div class="library-header">
+            <h2>Gérer votre Bibliothèque Musicale</h2>
+            <p>Glissez-déposez des fichiers audio ci-dessous, ou ajoutez-les directement dans le dossier <code>musiques</code> de votre ordinateur.</p>
+          </div>
+
+          <!-- Téléchargement automatique -->
+          <div class="download-card">
+            <div class="download-head">
+              <h3><i data-lucide="download-cloud"></i> Télécharger une musique</h3>
+              <span class="tools-state" id="tools-state"></span>
+            </div>
+            <p class="download-hint">
+              Donne un titre (ou colle un lien) : le MP3 est téléchargé, renommé
+              proprement et ajouté au jeu avec son genre.
+            </p>
+
+            <div class="download-form">
+              <input type="text" id="download-query"
+                     placeholder="Ex. : Darude Sandstorm — ou une URL" autocomplete="off">
+              <select id="download-genre" aria-label="Genre">
+                <option value="">Genre : auto</option>
+              </select>
+              <button class="cta-btn" id="download-btn">
+                <i data-lucide="plus"></i> Ajouter
+              </button>
+            </div>
+
+            <details class="download-advanced">
+              <summary>Titre affiché personnalisé</summary>
+              <input type="text" id="download-title"
+                     placeholder="Nom sous lequel le morceau est vraiment connu (ex. : Polish Cow)">
+              <p class="download-hint small">
+                Utile pour les titres en alphabet non latin : c'est ce nom qu'il faudra deviner.
+              </p>
+            </details>
+
+            <div class="download-log hidden" id="download-log"></div>
+          </div>
+
+          <!-- Import d'une playlist entière -->
+          <div class="download-card">
+            <div class="download-head">
+              <h3><i data-lucide="list-plus"></i> Importer une playlist</h3>
+            </div>
+            <p class="download-hint">
+              Colle l'adresse d'une playlist YouTube : chaque titre est téléchargé,
+              renommé et trié comme un ajout à l'unité, doublons écartés.
+              Spotify et Deezer ne sont pas lisibles par yt-dlp.
+            </p>
+
+            <div class="download-form">
+              <input type="text" id="playlist-url"
+                     placeholder="https://www.youtube.com/playlist?list=..." autocomplete="off">
+              <select id="playlist-genre" aria-label="Genre imposé">
+                <option value="">Genre : auto</option>
+              </select>
+              <input type="number" id="playlist-limit" min="1" max="500" value="50"
+                     title="Nombre maximum de titres" aria-label="Nombre maximum de titres">
+              <button class="cta-btn" id="playlist-btn">
+                <i data-lucide="download"></i> Importer
+              </button>
+            </div>
+
+            <div class="playlist-progress-bar hidden" id="playlist-progress">
+              <div class="playlist-progress-fill" id="playlist-progress-fill"></div>
+              <span class="playlist-progress-text" id="playlist-progress-text"></span>
+            </div>
+            <div class="download-log hidden" id="playlist-log"></div>
+          </div>
+
+          <!-- Diagnostic -->
+          <div class="download-card">
+            <div class="download-head">
+              <h3><i data-lucide="stethoscope"></i> État de la bibliothèque</h3>
+            </div>
+            <p class="download-hint">
+              Repère ce qui s'est dégradé sans bruit : fiches incomplètes, morceaux
+              trop courts, doublons, fichiers illisibles. Rien n'est corrigé ni
+              supprimé automatiquement.
+            </p>
+
+            <div class="health-actions">
+              <button class="cta-btn" id="health-btn">
+                <i data-lucide="activity"></i> Analyser
+              </button>
+              <label class="health-deep">
+                <input type="checkbox" id="health-deep">
+                Écouter aussi les fichiers (repère les muets et les intros vides — plusieurs minutes)
+              </label>
+            </div>
+
+            <div class="health-progress hidden" id="health-progress"></div>
+            <div class="health-report hidden" id="health-report"></div>
+          </div>
+
+          <div class="library-grid">
+            <!-- Zone d'upload -->
+            <div class="upload-card">
+              <h3>Ajouter un fichier ou une archive</h3>
+              <div class="dropzone" id="dropzone">
+                <i data-lucide="upload-cloud" class="upload-icon"></i>
+                <p class="dropzone-text">Glissez un fichier audio ou un .zip ici, ou cliquez pour choisir</p>
+                <span class="dropzone-sub">
+                  MP3, WAV, M4A, OGG, FLAC — ou un <strong>.zip</strong> entier :
+                  il est décompressé, trié et débarrassé de ses doublons.
+                </span>
+                <input type="file" id="file-input" accept="audio/*,.zip,application/zip" class="hidden">
+              </div>
+              <div class="import-report hidden" id="import-report"></div>
+              <!-- Barre de progression de l'upload -->
+              <div class="upload-progress-container hidden" id="upload-progress-container">
+                <div class="upload-progress-bar" id="upload-progress-bar"></div>
+                <span class="upload-progress-text" id="upload-progress-text">Téléchargement 0%</span>
+              </div>
+            </div>
+
+            <!-- Liste des musiques actuelles -->
+            <div class="tracks-list-card">
+              <div class="tracks-list-header">
+                <h3>Musiques installées (<span id="tracks-count">0</span>)</h3>
+                <button class="refresh-btn" id="refresh-library-btn" title="Actualiser la liste">
+                  <i data-lucide="rotate-cw"></i> Actualiser
+                </button>
+              </div>
+              <div class="tracks-search-wrapper">
+                <i data-lucide="search"></i>
+                <input type="text" id="library-search" placeholder="Rechercher dans la bibliothèque...">
+                <select id="library-genre-filter" aria-label="Filtrer par genre">
+                  <option value="">Tous les genres</option>
+                </select>
+                <!-- Le drapeau needsReview existait sans moyen de lister ce qu'il
+                     marque : il fallait parcourir 1500 lignes à l'œil. -->
+                <button class="review-filter-btn" id="review-filter-btn"
+                        aria-pressed="false" title="N'afficher que les titres à renommer">
+                  <i data-lucide="triangle-alert"></i>
+                  À renommer <span id="review-count">0</span>
+                </button>
+              </div>
+              <div class="tracks-bulk-actions hidden" id="tracks-bulk-actions">
+                <label class="select-all-label">
+                  <input type="checkbox" id="select-all-tracks"> Sélectionner tout
+                </label>
+                <button class="delete-selected-btn" id="delete-selected-btn">
+                  <i data-lucide="trash-2"></i> Supprimer la sélection (<span id="selected-tracks-count">0</span>)
+                </button>
+              </div>
+              <div class="tracks-list-container" id="tracks-list-container">
+                <!-- Les musiques seront injectées en JS -->
+                <div class="empty-library">
+                  <i data-lucide="music-4"></i>
+                  <p>Aucune musique détectée. Ajoutez-en pour commencer à jouer !</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section Statistiques -->
+      <section id="stats-tab" class="tab-content">
+        <div class="stats-container">
+          <h2>Vos Statistiques 📊</h2>
+
+          <div class="stats-scope">
+            <div class="scope-switch" role="group" aria-label="Portée des statistiques">
+              <button class="scope-btn active" data-scope="all">Depuis toujours</button>
+              <button class="scope-btn" data-scope="session">Cette session</button>
+            </div>
+            <span class="scope-caption" id="stats-scope-caption"></span>
+          </div>
+
+          <div class="stats-grid">
+            <div class="stat-card">
+              <span class="stat-value" id="stats-played">0</span>
+              <span class="stat-label">Parties Jouées</span>
+              <!-- Les abandons comptent comme des défaites : on précise combien,
+                   sinon le taux de réussite paraît injustement bas. -->
+              <span class="stat-note hidden" id="stats-abandons"></span>
+            </div>
+            <div class="stat-card">
+              <span class="stat-value" id="stats-winrate">0%</span>
+              <span class="stat-label">Taux de Réussite</span>
+            </div>
+            <div class="stat-card">
+              <span class="stat-value" id="stats-streak">0</span>
+              <span class="stat-label">Série Actuelle</span>
+            </div>
+            <div class="stat-card">
+              <span class="stat-value" id="stats-max-streak">0</span>
+              <span class="stat-label">Série Max</span>
+            </div>
+          </div>
+
+          <div class="distribution-card">
+            <h3>Répartition des essais victorieux</h3>
+            <div class="distribution-chart" id="distribution-chart">
+              <!-- Injecté en JS -->
+              <div class="dist-row">
+                <span class="dist-num">1</span>
+                <div class="dist-bar-wrapper"><div class="dist-bar" style="width: 0%">0</div></div>
+              </div>
+              <div class="dist-row">
+                <span class="dist-num">2</span>
+                <div class="dist-bar-wrapper"><div class="dist-bar" style="width: 0%">0</div></div>
+              </div>
+              <div class="dist-row">
+                <span class="dist-num">3</span>
+                <div class="dist-bar-wrapper"><div class="dist-bar" style="width: 0%">0</div></div>
+              </div>
+              <div class="dist-row">
+                <span class="dist-num">4</span>
+                <div class="dist-bar-wrapper"><div class="dist-bar" style="width: 0%">0</div></div>
+              </div>
+              <div class="dist-row">
+                <span class="dist-num">5</span>
+                <div class="dist-bar-wrapper"><div class="dist-bar" style="width: 0%">0</div></div>
+              </div>
+              <div class="dist-row">
+                <span class="dist-num">6</span>
+                <div class="dist-bar-wrapper"><div class="dist-bar" style="width: 0%">0</div></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Ce que les compteurs globaux ne disent pas : sur quoi tu es bon,
+               et quels artistes te tombent dessus sans que tu les reconnaisses. -->
+          <div class="breakdown-grid">
+            <div class="distribution-card">
+              <h3>Par genre</h3>
+              <p class="card-hint">À partir de 3 manches jouées dans le genre.</p>
+              <div class="breakdown-table" id="genre-breakdown"></div>
+            </div>
+
+            <div class="distribution-card">
+              <h3>Tes bêtes noires</h3>
+              <p class="card-hint">Les artistes qui te font perdre le plus souvent.</p>
+              <div class="breakdown-table" id="artist-breakdown"></div>
+            </div>
+          </div>
+
+          <div class="distribution-card">
+            <h3>Résumé de la session</h3>
+            <p class="card-hint">
+              À copier-coller : la grille dit comment ça s'est passé, sans dévoiler les titres.
+            </p>
+            <pre class="share-preview" id="share-preview">Aucune manche terminée pour l'instant.</pre>
+            <div class="stats-actions">
+              <button class="ghost-btn" id="share-copy-btn">
+                <i data-lucide="clipboard-copy"></i> Copier le résumé
+              </button>
+              <button class="danger-btn-text" id="reset-stats-btn">
+                <i data-lucide="trash-2"></i> <span id="reset-stats-label">Réinitialiser mes statistiques</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="app-footer">
+      <p>© 2026 Songless. Développé avec amour pour Manaël. 🎵</p>
+    </footer>
+  </div>
+
+  <!-- Fiche d'édition d'un morceau -->
+  <div class="modal-overlay hidden" id="edit-modal">
+    <div class="modal-card">
+      <h3>Modifier la fiche</h3>
+      <p class="modal-file" id="edit-file-name"></p>
+
+      <label for="edit-title">Titre affiché <span class="label-hint">c'est la réponse à deviner</span></label>
+      <input type="text" id="edit-title">
+
+      <label for="edit-artist">Artiste</label>
+      <input type="text" id="edit-artist">
+
+      <label for="edit-genre">Genre</label>
+      <select id="edit-genre"></select>
+
+      <label for="edit-aliases">Autres réponses acceptées <span class="label-hint">séparées par des virgules</span></label>
+      <input type="text" id="edit-aliases" placeholder="polish cow, vache polonaise">
+
+      <div class="modal-actions">
+        <button class="ghost-btn" id="edit-cancel-btn">Annuler</button>
+        <button class="cta-btn" id="edit-save-btn">Enregistrer</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Profils -->
+  <div class="modal-overlay hidden" id="profile-modal">
+    <div class="modal-card">
+      <h3>Qui joue ?</h3>
+      <p class="modal-file">Chaque profil garde ses propres statistiques et ses propres réglages.</p>
+
+      <div class="profile-list" id="profile-list"></div>
+
+      <label for="new-profile-name">Ajouter un joueur</label>
+      <div class="profile-add">
+        <input type="text" id="new-profile-emoji" maxlength="2" value="🎧" aria-label="Emoji">
+        <input type="text" id="new-profile-name" placeholder="Prénom" maxlength="20">
+        <button class="cta-btn" id="add-profile-btn">Créer</button>
+      </div>
+
+      <div class="modal-actions">
+        <button class="ghost-btn" id="profile-close-btn">Fermer</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Paliers sur mesure -->
+  <div class="modal-overlay hidden" id="paliers-modal">
+    <div class="modal-card">
+      <h3>Durées des six essais</h3>
+      <p class="modal-file">En secondes, dans l'ordre croissant. Le 6ᵉ palier est le plus long.</p>
+      <div class="paliers-grid" id="paliers-grid"></div>
+      <p class="label-hint" id="paliers-error"></p>
+      <div class="modal-actions">
+        <button class="ghost-btn" id="paliers-cancel-btn">Annuler</button>
+        <button class="cta-btn" id="paliers-save-btn">Appliquer</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Jouer depuis le téléphone -->
+  <div class="modal-overlay hidden" id="phone-modal">
+    <div class="modal-card">
+      <h3>Jouer depuis le téléphone</h3>
+      <div id="phone-content"></div>
+      <div class="modal-actions">
+        <button class="ghost-btn" id="phone-close-btn">Fermer</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Notification Toast -->
+  <div id="toast" class="toast hidden">Message de notification</div>
+
+  <!-- Script Principal -->
+  <script src="platform.js"></script>
+  <script src="app.js"></script>
+  <script src="expansions.js"></script>
+</body>
+</html>

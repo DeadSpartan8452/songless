@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <!-- Pochette de repli : affichée tant que la vraie pochette n'est pas connue. -->
+  <rect width="200" height="200" fill="#18181b"/>
+
+  <!-- Disque -->
+  <circle cx="100" cy="100" r="62" fill="#111115" stroke="#27272a" stroke-width="2"/>
+  <circle cx="100" cy="100" r="48" fill="none" stroke="#27272a" stroke-width="1"/>
+  <circle cx="100" cy="100" r="36" fill="none" stroke="#27272a" stroke-width="1"/>
+  <circle cx="100" cy="100" r="16" fill="#a855f7" opacity="0.85"/>
+  <circle cx="100" cy="100" r="4" fill="#111115"/>
+
+  <!-- Reflet -->
+  <path d="M100 38a62 62 0 0 1 44 18" fill="none" stroke="#a855f7" stroke-width="2"
+        stroke-linecap="round" opacity="0.5"/>
+</svg>

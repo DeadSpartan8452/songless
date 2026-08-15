@@ -1,0 +1,285 @@
+{
+  "_comment": "Titres connus sous un autre nom que leur titre d'origine. 'match' = formes rencontrées dans les noms de fichiers (comparaison souple, sans accents ni ponctuation). 'title' = ce qui s'affiche et se tape dans le jeu. Ajoute tes propres entrées ici, le format est libre.",
+  "overrides": [
+    {
+      "match": ["gdzie jest bialy wegorz", "bialy wegorz", "polish cow"],
+      "title": "Polish Cow",
+      "originalTitle": "Gdzie jest biały węgorz?",
+      "aliases": ["polish cow", "vache polonaise", "la vache polonaise", "gdzie jest bialy wegorz"],
+      "genre": "Meme / Internet"
+    },
+    {
+      "match": ["ievan polkka", "levan polkka"],
+      "title": "Ievan Polkka (Leek Spin)",
+      "originalTitle": "Ievan Polkka",
+      "aliases": ["leek spin", "leekspin", "poireau", "miku poireau"],
+      "genre": "Meme / Internet"
+    },
+    {
+      "match": ["trololo", "ya ochen rad ved ya nakonets vozvrashchayus domoy", "i am glad because im finally returning back home"],
+      "title": "Trololo",
+      "originalTitle": "Я очень рад, ведь я, наконец, возвращаюсь домой",
+      "aliases": ["trololo", "trolololo", "eduard khil", "russian rickroll"],
+      "genre": "Meme / Internet"
+    },
+    {
+      "match": ["korobeiniki", "korobejniki", "tetris theme"],
+      "title": "Korobeiniki (thème de Tetris)",
+      "originalTitle": "Коробейники",
+      "aliases": ["tetris", "theme de tetris", "musique de tetris", "korobeiniki"],
+      "genre": "Jeu vidéo"
+    },
+    {
+      "match": ["dragostea din tei", "numa numa"],
+      "title": "Numa Numa (Dragostea Din Tei)",
+      "originalTitle": "Dragostea Din Tei",
+      "aliases": ["numa numa", "dragostea din tei", "maia hi", "o zone"],
+      "genre": "Pop"
+    },
+    {
+      "match": ["gangnam style"],
+      "title": "Gangnam Style",
+      "originalTitle": "강남스타일",
+      "aliases": ["gangnam style", "psy"],
+      "genre": "Pop"
+    },
+    {
+      "match": ["yi jian mei", "xue hua piao piao"],
+      "title": "Xue Hua Piao Piao (Yi Jian Mei)",
+      "originalTitle": "一剪梅",
+      "aliases": ["xue hua piao piao", "yi jian mei", "chinese meme song"],
+      "genre": "Meme / Internet"
+    },
+    {
+      "match": ["zankoku na tenshi no these", "zankoku na tenshi no teze", "cruel angel thesis"],
+      "title": "A Cruel Angel's Thesis (Evangelion)",
+      "originalTitle": "残酷な天使のテーゼ",
+      "aliases": ["cruel angel thesis", "evangelion opening", "evangelion"],
+      "genre": "Anime / J-Music"
+    },
+    {
+      "match": ["renai circulation", "renai saakyureeshon"],
+      "title": "Renai Circulation",
+      "originalTitle": "恋愛サーキュレーション",
+      "aliases": ["renai circulation", "bakemonogatari opening"],
+      "genre": "Anime / J-Music"
+    },
+    {
+      "match": ["bad apple"],
+      "title": "Bad Apple!!",
+      "originalTitle": "Bad Apple!!",
+      "aliases": ["bad apple", "touhou bad apple"],
+      "genre": "Anime / J-Music"
+    },
+    {
+      "match": ["caramelldansen", "caramell dansen", "caramella girls"],
+      "title": "Caramelldansen",
+      "originalTitle": "Caramelldansen",
+      "aliases": ["caramelldansen", "caramel dansen"],
+      "genre": "Meme / Internet"
+    },
+    {
+      "match": ["2 phut hon", "hai phut hon"],
+      "title": "2 Phút Hơn (Vietnamese TikTok Song)",
+      "originalTitle": "2 Phút Hơn",
+      "aliases": ["2 phut hon", "2 minutes hon", "vietnamese tiktok song"],
+      "genre": "Électro / EDM"
+    },
+    {
+      "match": ["kalinka"],
+      "title": "Kalinka",
+      "originalTitle": "Калинка",
+      "aliases": ["kalinka", "kalinka malinka"],
+      "genre": "Traditionnel"
+    },
+    {
+      "match": ["katyusha", "katiousha"],
+      "title": "Katyusha",
+      "originalTitle": "Катюша",
+      "aliases": ["katyusha", "katioucha"],
+      "genre": "Traditionnel"
+    },
+    {
+      "match": ["bella ciao"],
+      "title": "Bella Ciao",
+      "originalTitle": "Bella Ciao",
+      "aliases": ["bella ciao", "casa de papel"],
+      "genre": "Traditionnel"
+    },
+    {
+      "match": ["pyyala", "piyala", "aigel"],
+      "title": "Pyyala (Slovo Patsana)",
+      "originalTitle": "Пыяла",
+      "aliases": ["pyyala", "piyala", "aigel", "slovo patsana"],
+      "genre": "Électro / EDM"
+    },
+    {
+      "match": ["koko koko euro spoko", "koko euro spoko"],
+      "title": "Koko Euro Spoko",
+      "originalTitle": "Koko Koko Euro Spoko",
+      "aliases": ["koko euro spoko", "koko koko"],
+      "genre": "Meme / Internet"
+    },
+    {
+      "match": ["dame tu cosita"],
+      "title": "Dame Tu Cosita (l'alien vert)",
+      "originalTitle": "Dame Tu Cosita",
+      "aliases": ["dame tu cosita", "alien vert", "green alien"],
+      "genre": "Meme / Internet"
+    },
+    {
+      "match": ["chacarron"],
+      "title": "Chacarrón Macarrón",
+      "originalTitle": "Chacarrón Macarrón",
+      "aliases": ["chacarron", "chacarron macarron"],
+      "genre": "Meme / Internet"
+    },
+    {
+      "match": ["moskau"],
+      "title": "Moskau",
+      "originalTitle": "Moskau",
+      "aliases": ["moskau", "moscou"],
+      "genre": "Meme / Internet"
+    },
+    {
+      "match": ["rasputin"],
+      "title": "Rasputin",
+      "originalTitle": "Rasputin",
+      "aliases": ["rasputin", "raspoutine"],
+      "genre": "Pop"
+    },
+    {
+      "match": ["nyan cat"],
+      "title": "Nyan Cat",
+      "originalTitle": "Nyan Cat",
+      "aliases": ["nyan cat", "pop tart cat", "chat arc en ciel"],
+      "genre": "Meme / Internet"
+    },
+    {
+      "match": ["hare hare yukai"],
+      "title": "Hare Hare Yukai (Haruhi)",
+      "originalTitle": "ハレ晴レユカイ",
+      "aliases": ["hare hare yukai", "haruhi"],
+      "genre": "Anime / J-Music"
+    },
+    {
+      "match": ["ai se eu te pego", "nossa nossa"],
+      "title": "Ai Se Eu Te Pego",
+      "originalTitle": "Ai Se Eu Te Pego",
+      "aliases": ["ai se eu te pego", "nossa nossa", "michel telo"],
+      "genre": "Latino"
+    },
+    {
+      "match": ["schnappi das kleine krokodil", "schnappi"],
+      "title": "Schnappi le petit crocodile",
+      "originalTitle": "Schnappi, das kleine Krokodil",
+      "aliases": ["schnappi", "petit crocodile"],
+      "genre": "Meme / Internet"
+    },
+    {
+      "match": ["du hast"],
+      "title": "Du Hast",
+      "originalTitle": "Du Hast",
+      "aliases": ["du hast", "rammstein"],
+      "genre": "Metal"
+    },
+    {
+      "match": ["sandstorm"],
+      "title": "Sandstorm",
+      "originalTitle": "Sandstorm",
+      "aliases": ["sandstorm", "darude"],
+      "genre": "Électro / EDM"
+    },
+    {
+      "match": ["never gonna give you up"],
+      "title": "Never Gonna Give You Up (Rickroll)",
+      "originalTitle": "Never Gonna Give You Up",
+      "aliases": ["rickroll", "rick roll", "never gonna give you up", "rick astley"],
+      "genre": "Pop"
+    },
+    {
+      "match": ["megalovania"],
+      "title": "Megalovania (Undertale)",
+      "originalTitle": "MEGALOVANIA",
+      "aliases": ["megalovania", "sans", "undertale"],
+      "genre": "Jeu vidéo"
+    },
+    {
+      "match": ["mii channel", "wii shop channel"],
+      "title": "Mii Channel Theme (Wii)",
+      "originalTitle": "Mii Channel",
+      "aliases": ["mii channel", "musique wii", "theme wii"],
+      "genre": "Jeu vidéo"
+    },
+    {
+      "match": ["ppap", "pen pineapple apple pen"],
+      "title": "PPAP (Pen-Pineapple-Apple-Pen)",
+      "originalTitle": "PPAP",
+      "aliases": ["ppap", "pen pineapple apple pen", "pikotaro"],
+      "genre": "Meme / Internet"
+    },
+    {
+      "match": ["kukla koldunya", "kukla kolduna"],
+      "title": "Kukla Koldunya",
+      "originalTitle": "Кукла колдуна",
+      "aliases": ["kukla koldunya", "korol i shut"],
+      "genre": "Rock"
+    },
+    {
+      "match": ["sto lat"],
+      "title": "Sto Lat (joyeux anniversaire polonais)",
+      "originalTitle": "Sto lat",
+      "aliases": ["sto lat", "anniversaire polonais"],
+      "genre": "Traditionnel"
+    },
+    {
+      "match": ["kaczuchy"],
+      "title": "La Danse des Canards (version polonaise)",
+      "originalTitle": "Kaczuchy",
+      "aliases": ["kaczuchy", "danse des canards"],
+      "genre": "Meme / Internet"
+    },
+    {
+      "match": ["trava u doma"],
+      "title": "Trava U Doma (l'herbe près de la maison)",
+      "originalTitle": "Трава у дома",
+      "aliases": ["trava u doma", "zemlyane"],
+      "genre": "Rock"
+    },
+    {
+      "match": ["basta boi", "basshunter boten anna"],
+      "title": "Basta Boi",
+      "originalTitle": "Basta Boi",
+      "aliases": ["basta boi", "alfons"],
+      "genre": "Électro / EDM"
+    },
+    {
+      "match": ["macarena"],
+      "title": "Macarena",
+      "originalTitle": "Macarena",
+      "aliases": ["macarena", "la macarena"],
+      "genre": "Latino"
+    },
+    {
+      "match": ["dorime", "ameno"],
+      "title": "Ameno (Dorime)",
+      "originalTitle": "Ameno",
+      "aliases": ["ameno", "dorime", "era ameno"],
+      "genre": "Meme / Internet"
+    },
+    {
+      "match": ["sokkin sokkin", "hey hey hey wii"],
+      "title": "Hey Hey Hey",
+      "originalTitle": "Hey Hey Hey",
+      "aliases": ["hey hey hey"],
+      "genre": "Meme / Internet"
+    },
+    {
+      "match": ["astronomia", "coffin dance"],
+      "title": "Astronomia (Coffin Dance)",
+      "originalTitle": "Astronomia",
+      "aliases": ["coffin dance", "astronomia", "danse des cercueils", "porteurs de cercueil"],
+      "genre": "Meme / Internet"
+    }
+  ]
+}

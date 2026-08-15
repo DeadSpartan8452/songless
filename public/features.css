@@ -1,0 +1,634 @@
+/* ==========================================================================
+   Ajouts d'interface : profils, options de manche, décennies, diagnostic,
+   import de playlist, résumé partageable, mode téléphone.
+
+   Fichier séparé de style.css pour que la feuille d'origine reste lisible :
+   tout ce qui suit est venu après, et se retire d'un bloc si besoin.
+   ========================================================================== */
+
+/* ---------------------------------------------------------------- en-tête */
+
+.header-tools {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.profile-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(39, 39, 42, 0.6);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 600;
+  font-size: 0.9rem;
+  padding: 8px 14px;
+  border-radius: 25px;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.profile-btn:hover {
+  border-color: var(--accent);
+  transform: translateY(-1px);
+}
+
+.profile-btn svg {
+  width: 14px;
+  height: 14px;
+  color: var(--text-muted);
+}
+
+.profile-emoji {
+  font-size: 1.1rem;
+}
+
+.icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  background: rgba(39, 39, 42, 0.6);
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  color: var(--text);
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.icon-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  transform: translateY(-1px);
+}
+
+.icon-btn svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* Bandeau des appareils du réseau : informatif, jamais alarmant. */
+.readonly-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  margin-top: 16px;
+  padding: 10px 16px;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: 10px;
+  background: rgba(168, 85, 247, 0.08);
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.readonly-banner svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  color: var(--accent);
+}
+
+/* En lecture seule, ce qui écrirait sur le disque disparaît de l'interface
+   plutôt que d'échouer sous le doigt du joueur. */
+body.lecture-seule:not(.ajout-distance) .upload-card,
+body.lecture-seule:not(.ajout-distance) .download-card {
+  display: none !important;
+}
+
+body.lecture-seule .tracks-bulk-actions,
+body.lecture-seule .delete-track-btn,
+body.lecture-seule .edit-track-btn,
+body.lecture-seule #refresh-library-btn {
+  display: none !important;
+}
+
+/* ---------------------------------------------------------------- options */
+
+.session-filters {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.options-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 12px;
+  padding-top: 14px;
+  border-top: 1px dashed var(--border);
+}
+
+.option-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.option-label {
+  min-width: 68px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+}
+
+.option-note {
+  flex: 1 1 200px;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.segmented {
+  display: inline-flex;
+  padding: 3px;
+  gap: 2px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+}
+
+.seg-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.82rem;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 16px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: var(--transition);
+}
+
+.seg-btn:hover {
+  color: var(--text);
+}
+
+.seg-btn.active {
+  background: var(--cta);
+  color: #fff;
+}
+
+/* ---------------------------------------------------------------- décennies */
+
+.decade-block {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--border);
+}
+
+.panel-title {
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+}
+
+.panel-note {
+  flex: 1;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+/* ---------------------------------------------------------------- statistiques */
+
+.breakdown-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+.card-hint {
+  margin: -6px 0 14px 0;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.breakdown-table {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.breakdown-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.85rem;
+}
+
+.breakdown-name {
+  flex: 0 0 38%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text);
+}
+
+.breakdown-bar-wrapper {
+  flex: 1;
+  height: 8px;
+  background: var(--grey);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.breakdown-bar {
+  height: 100%;
+  border-radius: 4px;
+  background: linear-gradient(90deg, var(--cta), var(--accent));
+}
+
+.breakdown-value {
+  flex: 0 0 78px;
+  text-align: right;
+  font-weight: 700;
+}
+
+.breakdown-count {
+  font-weight: 400;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+}
+
+.empty-note {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.share-preview {
+  margin: 12px 0;
+  padding: 14px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font-family: monospace;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: var(--text);
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+/* ---------------------------------------------------------------- profils */
+
+.profile-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 16px 0;
+}
+
+.profile-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.profile-pick {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 14px;
+  color: var(--text);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.profile-pick:hover {
+  border-color: var(--accent);
+}
+
+.profile-row.active .profile-pick {
+  border-color: var(--cta);
+  background: rgba(124, 58, 237, 0.12);
+}
+
+.profile-row-name {
+  flex: 1;
+  text-align: left;
+  font-weight: 600;
+}
+
+.profile-row-stats {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.profile-del,
+.profile-edit {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-muted);
+  padding: 8px;
+  cursor: pointer;
+  display: flex;
+  transition: var(--transition);
+}
+
+.profile-edit:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.profile-del:hover {
+  color: var(--red);
+  border-color: var(--red);
+}
+
+.profile-del svg,
+.profile-edit svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Ligne en cours de renommage : les mêmes gabarits que la ligne normale,
+   pour que la liste ne saute pas quand on passe de l'une à l'autre. */
+.profile-rename {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.profile-rename .rename-emoji {
+  flex: 0 0 58px;
+  text-align: center;
+}
+
+.profile-rename .rename-name {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.profile-rename .cta-btn,
+.profile-rename .ghost-btn {
+  flex: 0 0 auto;
+  width: auto;
+  height: 42px;
+  padding: 0 14px;
+  display: flex;
+  align-items: center;
+}
+
+.profile-rename svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Les rangées d'inputs de cette modale luttent contre deux règles générales :
+   `.modal-card input[type="text"] { width: 100% }` et `.cta-btn { width: 100% }`.
+   On fixe donc la taille par `flex-basis`, qui l'emporte sur `width` dans une
+   boîte flexible, plutôt que d'empiler les sélecteurs. */
+.profile-add {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.profile-add #new-profile-emoji {
+  flex: 0 0 58px;
+  text-align: center;
+}
+
+.profile-add #new-profile-name {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.profile-add .cta-btn {
+  flex: 0 0 auto;
+  width: auto;
+  padding: 0 20px;
+}
+
+/* ---------------------------------------------------------------- paliers */
+
+.paliers-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin: 16px 0;
+}
+
+.palier-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.palier-field span {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+/* ---------------------------------------------------------------- téléphone */
+
+.qr-wrapper {
+  display: flex;
+  justify-content: center;
+  margin: 16px 0;
+  padding: 14px;
+  background: #fff;
+  border-radius: 12px;
+}
+
+.qr-wrapper img {
+  width: 200px;
+  height: 200px;
+  image-rendering: pixelated;
+}
+
+/* ---------------------------------------------------------------- playlist */
+
+.download-form #playlist-limit {
+  width: 80px;
+}
+
+.playlist-progress-bar {
+  position: relative;
+  height: 22px;
+  margin-top: 12px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  overflow: hidden;
+}
+
+.playlist-progress-fill {
+  height: 100%;
+  width: 0;
+  background: linear-gradient(90deg, var(--cta), var(--accent));
+  transition: width 0.3s ease;
+}
+
+.playlist-progress-text {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+/* ---------------------------------------------------------------- diagnostic */
+
+.health-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.health-deep {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.health-progress {
+  margin-top: 12px;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.health-report {
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.health-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding: 12px 14px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.health-summary strong {
+  color: var(--text);
+  font-size: 1rem;
+}
+
+.health-group {
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 14px;
+  background: var(--bg);
+}
+
+.health-group summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.health-group-name {
+  flex: 1;
+}
+
+.health-count {
+  background: var(--grey);
+  border-radius: 12px;
+  padding: 2px 10px;
+  font-size: 0.78rem;
+}
+
+.health-group.sev-bloquant { border-left-color: var(--red); }
+.health-group.sev-genant { border-left-color: #f59e0b; }
+.health-group.sev-cosmetique { border-left-color: var(--text-muted); }
+
+.sev-bloquant strong { color: var(--red); }
+.sev-genant strong { color: #f59e0b; }
+
+.health-line {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 0;
+  border-top: 1px solid var(--border);
+  font-size: 0.82rem;
+}
+
+.health-title {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.health-detail,
+.health-more {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+}
+
+.health-more {
+  padding: 8px 0 0 0;
+}
+
+.health-action {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--border);
+  font-size: 0.78rem;
+  color: var(--accent);
+}
+
+/* ---------------------------------------------------------------- mobile */
+
+@media (max-width: 600px) {
+  .header-tools {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .option-row {
+    align-items: flex-start;
+  }
+
+  .segmented {
+    flex-wrap: wrap;
+  }
+
+  .breakdown-name {
+    flex-basis: 32%;
+  }
+
+  .paliers-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}

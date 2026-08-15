@@ -1,0 +1,936 @@
+/* ==========================================
+   Songless — seed de session, filtre par genre,
+   téléchargement automatique et fiche d'édition.
+   Complète style.css, mêmes variables de palette.
+   ========================================== */
+
+/* ---------- Barre de session : seed & genres ---------- */
+.session-bar {
+  width: 100%;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 18px;
+  margin-bottom: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.session-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.seed-block {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.seed-label {
+  font-size: 0.7rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  font-weight: 700;
+}
+
+.seed-value {
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--accent);
+  background: rgba(168, 85, 247, 0.1);
+  border: 1px solid rgba(168, 85, 247, 0.28);
+  border-radius: 8px;
+  padding: 4px 10px;
+}
+
+.seed-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ghost-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: transparent;
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 7px 12px;
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.ghost-btn:hover {
+  color: var(--text);
+  border-color: var(--accent);
+  background: rgba(168, 85, 247, 0.08);
+}
+
+.ghost-btn.accent {
+  color: var(--text);
+  border-color: rgba(168, 85, 247, 0.4);
+}
+
+.ghost-btn.accent:hover {
+  background: var(--cta);
+  border-color: var(--cta);
+}
+
+.ghost-btn.small {
+  padding: 5px 10px;
+  font-size: 0.8rem;
+}
+
+.ghost-btn i {
+  width: 15px;
+  height: 15px;
+}
+
+.ghost-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.playlist-progress {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.playlist-progress strong {
+  color: var(--text);
+  font-size: 1rem;
+}
+
+.playlist-hint {
+  opacity: 0.65;
+  margin-left: 4px;
+}
+
+/* ---------- Panneau des genres ---------- */
+.genre-panel {
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.genre-panel-head {
+  display: flex;
+  gap: 14px;
+}
+
+.chip-action {
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-family: inherit;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.chip-action:hover {
+  color: var(--text);
+}
+
+.genre-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.genre-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--bg2);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-family: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.genre-chip:hover {
+  color: var(--text);
+  border-color: var(--accent);
+}
+
+.genre-chip.active {
+  background: rgba(168, 85, 247, 0.16);
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+.chip-count {
+  font-size: 0.7rem;
+  opacity: 0.65;
+  background: rgba(255, 255, 255, 0.07);
+  border-radius: 999px;
+  padding: 1px 6px;
+}
+
+.genre-chip.active .chip-count {
+  background: rgba(168, 85, 247, 0.28);
+  opacity: 0.9;
+}
+
+/* ---------- Badges & titres d'origine ---------- */
+.genre-badge {
+  display: inline-block;
+  background: rgba(168, 85, 247, 0.14);
+  border: 1px solid rgba(168, 85, 247, 0.3);
+  color: var(--accent);
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  margin-top: 8px;
+  white-space: nowrap;
+}
+
+.genre-badge.small {
+  font-size: 0.66rem;
+  padding: 2px 8px;
+  margin: 0;
+  flex-shrink: 0;
+}
+
+.song-original {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  font-style: italic;
+  margin-top: 3px;
+}
+
+.autocomplete-original {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  font-style: italic;
+  margin-left: 6px;
+  font-weight: 400;
+}
+
+/* ---------- Téléchargement automatique ---------- */
+.download-card {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 22px;
+  margin-bottom: 22px;
+}
+
+.download-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+}
+
+.download-head h3 {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 1.05rem;
+}
+
+.download-head i {
+  width: 18px;
+  height: 18px;
+  color: var(--accent);
+}
+
+.tools-state {
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.tools-state .ok { color: var(--green); }
+.tools-state .ko { color: var(--red); }
+
+.download-hint {
+  color: var(--text-muted);
+  font-size: 0.86rem;
+  line-height: 1.5;
+  margin-bottom: 14px;
+}
+
+.download-hint.small {
+  font-size: 0.78rem;
+  margin: 8px 0 0 0;
+}
+
+.download-form {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.download-form input[type="text"] {
+  flex: 1 1 260px;
+}
+
+.download-card input[type="text"],
+.download-card select,
+.modal-card input[type="text"],
+.modal-card select,
+.tracks-search-wrapper select {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 0.9rem;
+  padding: 11px 13px;
+  transition: var(--transition);
+}
+
+.download-card input[type="text"]:focus,
+.download-card select:focus,
+.modal-card input[type="text"]:focus,
+.modal-card select:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(168, 85, 247, 0.14);
+}
+
+.download-advanced {
+  margin-top: 14px;
+}
+
+.download-advanced summary {
+  cursor: pointer;
+  color: var(--accent);
+  font-size: 0.82rem;
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+
+.download-advanced input[type="text"] {
+  width: 100%;
+}
+
+.download-log {
+  margin-top: 16px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 14px;
+  max-height: 190px;
+  overflow-y: auto;
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  font-size: 0.78rem;
+  line-height: 1.7;
+  color: var(--text-muted);
+}
+
+.download-line.ok { color: var(--green); font-weight: 600; }
+.download-line.ko { color: var(--red); font-weight: 600; }
+.download-line.warn { color: #f59e0b; }
+
+/* Le tri côté serveur n'a pas d'avancement chiffré : une barre qui défile vaut
+   mieux qu'une barre pleine et immobile, qu'on prend pour un blocage. */
+.upload-progress-bar.indetermine {
+  background: linear-gradient(90deg,
+    var(--bg2) 0%, var(--cta) 35%, var(--accent) 50%, var(--cta) 65%, var(--bg2) 100%);
+  background-size: 220% 100%;
+  animation: defile 1.4s linear infinite;
+}
+
+@keyframes defile {
+  from { background-position: 120% 0; }
+  to   { background-position: -120% 0; }
+}
+
+/* ---------- Bibliothèque : filtre, drapeaux, édition ---------- */
+/* 800 px pour la page entière convenaient au jeu, pas à la liste : chaque
+   titre y était tronqué au tiers. L'onglet Bibliothèque prend donc la largeur
+   de l'écran, les autres gardent leur colonne centrée. */
+.app-container:has(#library-tab.active) {
+  max-width: min(1240px, calc(100vw - 40px));
+}
+
+@media (min-width: 768px) {
+  .library-grid {
+    grid-template-columns: minmax(260px, 340px) 1fr;
+  }
+}
+
+/* Le champ de recherche et le filtre de genre sont sur la même ligne : sans
+   flex ici, le select passait sous le champ et la loupe se retrouvait entre
+   les deux. */
+.tracks-search-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.tracks-search-wrapper #library-search {
+  flex: 1 1 200px;
+  width: auto;
+}
+
+.tracks-search-wrapper svg {
+  top: 19px;               /* moitié de la hauteur du champ, pas du bloc */
+  transform: none;
+}
+
+.tracks-search-wrapper select {
+  flex-shrink: 0;
+  max-width: 190px;
+}
+
+/* Une ligne de la liste ne doit jamais déborder de sa carte : seul le bloc
+   titre/artiste se comprime, tout le reste garde sa taille. Sans min-width:0
+   un enfant flex refuse de descendre sous la largeur de son contenu, et c'est
+   la ligne entière qui dépasse de l'écran. */
+.tracks-list-card,
+.tracks-list-container {
+  min-width: 0;
+  overflow-x: hidden;
+}
+
+.track-item {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.track-select-checkbox,
+.track-item-cover,
+.preview-track-btn,
+.edit-track-btn,
+.delete-track-btn {
+  flex-shrink: 0;
+}
+
+.track-item-details {
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: hidden;
+}
+
+/* Le badge de genre peut être long (« Musique de film / Jeu vidéo ») :
+   on le laisse se réduire plutôt que pousser la ligne hors du cadre. */
+.genre-badge.small {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 9rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Sous 520 px, le badge mange toute la place utile : on le masque, le genre
+   reste consultable par le crayon et par le filtre au-dessus. */
+@media (max-width: 520px) {
+  .genre-badge.small { display: none; }
+  .track-item { gap: 8px; padding: 10px 8px; }
+}
+
+.track-item-original {
+  font-style: italic;
+  opacity: 0.7;
+  margin-left: 6px;
+}
+
+.track-flag {
+  color: #f59e0b;
+  font-size: 0.85em;
+}
+
+/* ---------- Filtre « à renommer » ---------- */
+.review-filter-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg2);
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.review-filter-btn:hover {
+  color: #f59e0b;
+  border-color: #f59e0b;
+}
+
+.review-filter-btn.active {
+  color: #f59e0b;
+  border-color: #f59e0b;
+  background: rgba(245, 158, 11, 0.14);
+}
+
+/* `.tracks-search-wrapper svg` colle en absolu l'icône loupe du champ de
+   recherche — et attraperait au passage celle de ce bouton. On la remet dans
+   le flux. */
+.tracks-search-wrapper .review-filter-btn svg {
+  position: static;
+  top: auto;
+  left: auto;
+  transform: none;
+  color: inherit;
+  width: 14px;
+  height: 14px;
+}
+
+.review-filter-btn span {
+  font-variant-numeric: tabular-nums;
+  opacity: 0.8;
+}
+
+/* ---------- Écoute d'un morceau depuis la bibliothèque ---------- */
+
+/* La ligne devient le repère de position : barre fine collée en bas, elle
+   n'occupe aucune place tant que rien ne joue. */
+.track-item {
+  position: relative;
+  overflow: hidden;
+}
+
+.preview-progress {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  background: transparent;
+  pointer-events: none;
+}
+
+.preview-progress span {
+  display: block;
+  width: 0;
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.2s linear;
+}
+
+.preview-time {
+  flex-shrink: 0;
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+@media (max-width: 620px) {
+  .preview-time { display: none; }
+}
+
+.preview-track-btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  cursor: pointer;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: var(--transition);
+}
+
+.preview-track-btn:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: rgba(168, 85, 247, 0.12);
+}
+
+.preview-track-btn svg {
+  width: 15px;
+  height: 15px;
+}
+
+/* Ligne en cours d'écoute : liseré violet pour la repérer dans la liste. */
+.track-item.playing {
+  border-color: var(--accent);
+  background: rgba(168, 85, 247, 0.06);
+}
+
+.track-item.playing .preview-track-btn {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: rgba(168, 85, 247, 0.16);
+}
+
+.edit-track-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 8px;
+  display: flex;
+  transition: var(--transition);
+}
+
+.edit-track-btn:hover {
+  color: var(--accent);
+  background: rgba(168, 85, 247, 0.12);
+}
+
+.edit-track-btn i {
+  width: 16px;
+  height: 16px;
+}
+
+/* ---------- Fiche d'édition (modale) ---------- */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  z-index: 200;
+}
+
+.modal-overlay.hidden {
+  display: none;
+}
+
+.modal-card {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 26px;
+  width: 100%;
+  max-width: 460px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 88vh;
+  overflow-y: auto;
+}
+
+.modal-card h3 {
+  margin-bottom: 2px;
+}
+
+.modal-file {
+  font-size: 0.74rem;
+  color: var(--text-muted);
+  font-family: ui-monospace, Consolas, monospace;
+  word-break: break-all;
+  margin-bottom: 12px;
+}
+
+.modal-card label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  margin-top: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.label-hint {
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 400;
+  opacity: 0.7;
+}
+
+.modal-card input[type="text"],
+.modal-card select {
+  width: 100%;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 22px;
+}
+
+@media (max-width: 600px) {
+  .session-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .seed-actions {
+    justify-content: space-between;
+  }
+
+  .download-form input[type="text"] {
+    flex-basis: 100%;
+  }
+
+  .tracks-search-wrapper select {
+    max-width: none;
+  }
+}
+
+/* ---------- Rappel des raccourcis clavier ---------- */
+.shortcut-hint {
+  text-align: center;
+  font-size: 0.74rem;
+  color: var(--text-muted);
+  opacity: 0.75;
+  margin-top: 10px;
+}
+
+/* Rappel de la règle anti-triche : présent, mais en retrait. */
+.shortcut-hint.subtle {
+  font-size: 0.68rem;
+  opacity: 0.5;
+  margin-top: 4px;
+  max-width: 46ch;
+  margin-left: auto;
+  margin-right: auto;
+  line-height: 1.4;
+}
+
+.shortcut-hint kbd {
+  display: inline-block;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-bottom-width: 2px;
+  border-radius: 5px;
+  padding: 1px 6px;
+  margin: 0 1px;
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  font-size: 0.72rem;
+  color: var(--text);
+}
+
+/* ---------- Portée des statistiques ---------- */
+.stats-scope {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-bottom: 22px;
+}
+
+.scope-switch {
+  display: inline-flex;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 3px;
+  gap: 3px;
+}
+
+.scope-btn {
+  background: transparent;
+  border: none;
+  border-radius: 999px;
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  padding: 7px 16px;
+  cursor: pointer;
+  transition: var(--transition);
+  white-space: nowrap;
+}
+
+.scope-btn:hover {
+  color: var(--text);
+}
+
+.scope-btn.active {
+  background: var(--cta);
+  color: #fff;
+  box-shadow: 0 2px 10px rgba(124, 58, 237, 0.35);
+}
+
+.scope-caption {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  opacity: 0.8;
+}
+
+@media (max-width: 600px) {
+  .stats-scope { flex-direction: column; align-items: flex-start; }
+  .scope-switch { width: 100%; }
+  .scope-btn { flex: 1; text-align: center; }
+}
+
+/* ---------- Lecteur du morceau dévoilé ---------- */
+.reveal-player {
+  margin: 18px 0 4px;
+}
+
+/* La barre du haut sert deux fois : jauge des paliers pendant la manche, puis
+   curseur de navigation une fois le morceau dévoilé. Pas de seconde barre. */
+.heardle-progress-bar.reveal {
+  overflow: visible;          /* sinon la poignée, plus haute, serait rognée */
+}
+
+.heardle-progress-bar.reveal .progress-segment {
+  opacity: 0.35;              /* les paliers ne veulent plus rien dire ici */
+}
+
+.heardle-progress-bar.reveal .progress-indicator {
+  border-radius: 7px 0 0 7px;
+}
+
+/* Portion du morceau qui a servi d'extrait pendant la manche */
+.extract-zone {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  border-radius: 4px;
+  background: linear-gradient(90deg, var(--accent), #ec4899);
+  box-shadow: 0 0 10px rgba(168, 85, 247, 0.55);
+  opacity: 0.85;
+  pointer-events: none;
+}
+
+.extract-legend {
+  margin-top: 6px;
+  text-align: center;
+  font-size: 0.74rem;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* Posée par-dessus la barre violette : invisible tant que la manche dure. */
+.seek-bar {
+  -webkit-appearance: none;
+  appearance: none;
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 100%;
+  height: 22px;
+  background: transparent;
+  outline: none;
+  cursor: pointer;
+  margin: 0;
+  display: none;
+}
+
+.heardle-progress-bar.reveal .seek-bar {
+  display: block;
+}
+
+.seek-bar::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid var(--card-bg);
+  box-shadow: 0 0 0 1px var(--accent), 0 2px 8px rgba(168, 85, 247, 0.5);
+  transition: transform 0.15s;
+}
+
+.seek-bar::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+}
+
+.seek-bar::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid var(--card-bg);
+  cursor: pointer;
+}
+
+.seek-bar::-moz-range-track {
+  height: 6px;
+  border-radius: 999px;
+  background: transparent;
+}
+
+.seek-bar:focus-visible {
+  box-shadow: 0 0 0 3px rgba(168, 85, 247, 0.25);
+}
+
+.reveal-player {
+  margin-top: 10px;
+}
+
+.reveal-times {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 7px;
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  font-size: 0.76rem;
+  color: var(--text-muted);
+}
+
+/* ---------- Rapport d'import ---------- */
+.import-report {
+  margin-top: 16px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 14px;
+  max-height: 260px;
+  overflow-y: auto;
+  font-size: 0.79rem;
+  line-height: 1.7;
+}
+
+.report-head {
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.report-line {
+  color: var(--text-muted);
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  font-size: 0.75rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.report-line.ok { color: var(--green); }
+.report-line.dup { color: var(--text-muted); opacity: 0.75; }
+.report-line.ko { color: var(--red); }
+.report-line.warn { color: #f59e0b; white-space: normal; }
+.report-dim { opacity: 0.65; font-weight: 400; }
+
+.report-genre {
+  color: var(--accent);
+  opacity: 0.85;
+}

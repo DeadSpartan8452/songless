@@ -1,0 +1,10 @@
+node_modules/
+.cache/
+musiques/
+metadata.json
+metadata-backups/
+songless-data.json
+*.log
+.DS_Store
+Thumbs.db
+REPRISE-CODEX.md

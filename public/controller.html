@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0d0d12">
+  <title>Songless — Télécommande</title>
+  <link rel="icon" href="favicon.svg">
+  <link rel="stylesheet" href="vendor/fonts.css">
+  <link rel="stylesheet" href="controller.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><span aria-hidden="true">🎵</span> Songless</div>
+    <span class="controller-label">Télécommande</span>
+  </header>
+
+  <main>
+    <section id="connection-error" class="error-card hidden" role="alert"></section>
+
+    <section id="join-screen" class="screen hidden">
+      <button id="profile-change-btn" class="profile-chip" type="button"></button>
+      <div class="card join-card">
+        <p class="eyebrow">REJOINDRE LA SOIRÉE</p>
+        <h1>Entre le code affiché sur le PC</h1>
+        <input id="party-code" class="code-input" maxlength="5"
+               autocomplete="one-time-code" autocapitalize="characters"
+               inputmode="text" aria-label="Code de partie" placeholder="ABCDE">
+        <button id="join-btn" class="primary-btn" type="button">Rejoindre</button>
+      </div>
+      <p class="privacy-note">Ce téléphone commande le jeu et peut offrir une musique. Les réglages restent sur le PC.</p>
+    </section>
+
+    <section id="room-screen" class="screen hidden">
+      <div class="room-head">
+        <div><span class="eyebrow">CODE</span><strong id="room-code">—</strong></div>
+        <button id="leave-btn" class="text-btn" type="button">Quitter</button>
+      </div>
+
+      <div class="card status-card">
+        <p id="room-status" class="eyebrow">SALON</p>
+        <h1 id="room-title">En attente de l’hôte…</h1>
+        <p id="room-subtitle">La musique et les réponses apparaissent sur le PC.</p>
+        <div id="player-action" class="player-action"></div>
+        <div id="reveal-card" class="reveal-card hidden"></div>
+      </div>
+
+      <div class="card ranking-card">
+        <h2>Classement</h2>
+        <div id="ranking"></div>
+      </div>
+    </section>
+
+    <section id="music-gift" class="card music-gift hidden">
+      <p class="eyebrow">AJOUTER UNE MUSIQUE</p>
+      <h2>Donne une musique à Songless</h2>
+      <p class="gift-copy">Recherche un titre, colle une URL, ou choisis un fichier audio sur ce téléphone.</p>
+      <div class="gift-form">
+        <input id="gift-query" type="text" autocomplete="off"
+               placeholder="Titre, artiste ou URL" aria-label="Titre, artiste ou URL">
+        <button id="gift-link-btn" class="primary-btn" type="button">Rechercher / ajouter</button>
+      </div>
+      <div class="divider"><span>ou un fichier</span></div>
+      <input id="gift-file" class="file-input" type="file" accept="audio/*,.mp3,.m4a,.wav,.ogg,.flac,.aac">
+      <button id="gift-file-btn" class="secondary-btn" type="button">Envoyer le fichier</button>
+      <p id="gift-status" class="gift-status" aria-live="polite"></p>
+    </section>
+  </main>
+
+  <div id="profile-gate" class="gate hidden" role="dialog" aria-modal="true" aria-labelledby="profile-title">
+    <div class="gate-sheet">
+      <p class="eyebrow">AVANT DE JOUER</p>
+      <h1 id="profile-title">Qui joue sur ce téléphone ?</h1>
+      <p class="gate-copy">Choisis ton profil Songless ou crée-en un.</p>
+      <div id="profile-list" class="profile-list"></div>
+      <button id="confirm-profile-btn" class="primary-btn confirm-profile-btn" type="button" disabled>
+        Valider ce profil
+      </button>
+      <div class="divider"><span>Nouveau profil</span></div>
+      <div class="create-profile">
+        <input id="new-emoji" maxlength="4" value="🎧" aria-label="Emoji du profil">
+        <input id="new-name" maxlength="20" placeholder="Prénom ou pseudo" aria-label="Nom du profil">
+        <button id="create-profile-btn" class="primary-btn" type="button">Créer</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast hidden" role="status"></div>
+  <script src="controller.js"></script>
+</body>
+</html>
