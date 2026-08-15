@@ -358,6 +358,7 @@
   }
 
   async function createParty() {
+    if (!profilActif) return showToast('Choisis d’abord ton profil : le PC joue aussi.', 'warn');
     if (!playlist.length) return showToast('Aucun morceau dans la sélection.', 'warn');
     const trackIds = currentSelectionIds();
     const settings = currentPartyOptions();
@@ -367,6 +368,7 @@
         method: 'POST',
         body: JSON.stringify({
           mode: byId('party-mode').value,
+          profileId: profilActif.id,
           totalRounds: roundChoice === 'infinite'
             ? 'infinite'
             : Math.min(Number(roundChoice) || 10, trackIds.length),
@@ -376,7 +378,7 @@
       });
       party = {
         code: result.state.code,
-        playerToken: null,
+        playerToken: result.playerToken,
         hostToken: result.hostToken,
         trackIds,
         previousSettings: clone(reglages),
@@ -542,7 +544,9 @@
   }
 
   function partyAnswerLabel(player) {
-    if (player.buzzPosition) return `Buzzer n°${player.buzzPosition}${player.answer ? ` · ${escapeHtml(String(player.answer))}` : ''}`;
+    if (player.correct === true) return `Bonne réponse${player.answer ? ` · ${escapeHtml(String(player.answer))}` : ''}`;
+    if (player.wrongAttempts) return `${Number(player.wrongAttempts)} tentative${Number(player.wrongAttempts) > 1 ? 's' : ''} ratée${Number(player.wrongAttempts) > 1 ? 's' : ''}`;
+    if (player.buzzPosition) return `Buzzer n°${player.buzzPosition}`;
     if (player.answer) return escapeHtml(String(player.answer));
     if (player.correct === true) return 'Bonne réponse';
     if (player.correct === false) return 'Raté';
@@ -552,6 +556,7 @@
   function renderPlayerActions() {
     const zone = byId('party-player-actions');
     const me = partyState.players.find(player => player.profileId === partyState.viewerProfileId);
+    const buzzer = partyState.buzzer || {};
     if (!me) {
       zone.innerHTML = partyState.isHost && partyState.status === 'finished'
         ? '<button class="ghost-btn" id="party-leave-btn">Nouvelle soirée</button>'
@@ -562,16 +567,32 @@
       zone.innerHTML = '<button class="ghost-btn" id="party-leave-btn">Quitter le salon</button>';
       return;
     }
-    if (me.answer !== null) {
-      zone.innerHTML = '<div class="mode-status">Réponse envoyée. En attente de la révélation.</div>';
-      return;
-    }
-    if (partyState.mode === 'buzzer' && !me.buzzPosition) {
+    if (partyState.mode === 'buzzer') {
+      const active = partyState.players.find(player => player.profileId === buzzer.activeProfileId);
+      if (buzzer.solvedByProfileId) {
+        zone.innerHTML = `<div class="mode-status">${buzzer.solvedByProfileId === me.profileId ? 'Bonne réponse !' : 'Bonne réponse trouvée.'} Tu peux révéler le morceau.</div>`;
+        return;
+      }
+      if (buzzer.activeProfileId) {
+        if (buzzer.activeProfileId !== me.profileId) {
+          zone.innerHTML = `<div class="mode-status">${escapeHtml(active ? active.nom : 'Un joueur')} répond · ${Number(buzzer.answerSecondsRemaining) || 0} s</div>`;
+          return;
+        }
+        zone.innerHTML = `
+          <div class="mode-status">Tu as ${Number(buzzer.answerSecondsRemaining) || 0} s pour répondre.</div>
+          <input id="party-answer-input" maxlength="200" placeholder="Ta réponse">
+          <button class="cta-btn" id="party-answer-btn">Envoyer</button>`;
+        return;
+      }
+      if (me.buzzerBlockedSeconds) {
+        zone.innerHTML = `<div class="mode-status">Mauvaise réponse : ta pénalité dure encore ${Number(me.buzzerBlockedSeconds)} s. Les autres peuvent buzzer.</div>`;
+        return;
+      }
       zone.innerHTML = '<button class="cta-btn buzz-button" id="party-buzz-btn">BUZZER</button>';
       return;
     }
-    if (partyState.mode === 'buzzer' && me.buzzPosition !== 1) {
-      zone.innerHTML = '<div class="mode-status">Un autre joueur a buzzé avant toi.</div>';
+    if (me.answer !== null) {
+      zone.innerHTML = '<div class="mode-status">Réponse envoyée. En attente de la révélation.</div>';
       return;
     }
     zone.innerHTML = `
@@ -591,6 +612,22 @@
       }),
     });
     receivePartyState(next);
+  }
+
+  async function partyPlayerAction(action, data = {}) {
+    if (!party || !party.playerToken) return;
+    const next = await window.songlessShared.api(`/api/party/${encodeURIComponent(party.code)}/action`, {
+      method: 'POST',
+      body: JSON.stringify({ playerToken: party.playerToken, action, data }),
+    });
+    receivePartyState(next);
+  }
+
+  function submitPartyAnswer() {
+    const input = byId('party-answer-input');
+    const answer = input && input.value.trim();
+    if (!answer) return showToast('Écris une réponse.', 'warn');
+    partyPlayerAction('answer', { answer }).catch(showPartyError);
   }
 
   function startPartyRound() {
@@ -726,6 +763,8 @@
     byId('party-room').addEventListener('click', event => {
       if (event.target.closest('#party-copy-lan')) copyPartyInvite('lan');
       if (event.target.closest('#party-copy-internet')) copyPartyInvite('internet');
+      if (event.target.closest('#party-buzz-btn')) partyPlayerAction('buzz').catch(showPartyError);
+      if (event.target.closest('#party-answer-btn')) submitPartyAnswer();
       if (event.target.closest('#party-round-btn')) startPartyRound();
       if (event.target.closest('#party-reveal-btn')) revealParty();
       if (event.target.closest('#party-finish-btn')) {
@@ -733,6 +772,9 @@
         else partyCommand('finish').catch(showPartyError);
       }
       if (event.target.closest('#party-leave-btn')) leaveParty();
+    });
+    byId('party-room').addEventListener('keydown', event => {
+      if (event.key === 'Enter' && event.target.id === 'party-answer-input') submitPartyAnswer();
     });
     byId('backup-import').addEventListener('change', event => {
       importBackup(event.target.files && event.target.files[0]);

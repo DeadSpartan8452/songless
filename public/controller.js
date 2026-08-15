@@ -28,11 +28,9 @@
     writeSession('songless_invited_party', invitedCode);
     writeSession('songless_invite', invite);
   }
-  if (params.has('pair') || params.has('party') || params.has('invite')) {
+  if (params.has('pair')) {
     const cleanUrl = new URL(location.href);
     cleanUrl.searchParams.delete('pair');
-    cleanUrl.searchParams.delete('party');
-    cleanUrl.searchParams.delete('invite');
     history.replaceState(null, '', `${cleanUrl.pathname}${cleanUrl.search}${cleanUrl.hash}`);
   }
 
@@ -81,7 +79,11 @@
   async function initialize() {
     try {
       const context = await api('/api/context');
-      if (!context.paired) throw new Error('Appairage absent : rescane le QR code affiché sur le PC.');
+      if (!context.paired) {
+        throw new Error(invitedCode || invite
+          ? 'Invitation invalide ou expirée : demande un nouveau lien à l’hôte.'
+          : 'Appairage absent : rescane le QR code affiché sur le PC.');
+      }
       const result = await api('/api/controller/profiles');
       profiles = Array.isArray(result.profiles) ? result.profiles : [];
       renderProfiles();
@@ -234,21 +236,39 @@
   function renderAction() {
     const zone = byId('player-action');
     const me = currentPlayer();
-    const signature = `${state.status}:${state.round}:${state.mode}:${me ? me.answer : ''}:${me ? me.buzzPosition : ''}`;
+    const buzzer = state.buzzer || {};
+    const signature = `${state.status}:${state.round}:${state.mode}:${me ? me.answer : ''}:${me ? me.lastAnswer : ''}:${me ? me.buzzPosition : ''}:${me ? me.buzzerBlockedSeconds : 0}:${buzzer.activeProfileId || ''}:${buzzer.answerSecondsRemaining || 0}:${buzzer.solvedByProfileId || ''}`;
     if (signature === actionSignature) return;
     actionSignature = signature;
     zone.innerHTML = '';
     if (!me || state.status !== 'round') return;
-    if (me.answer !== null) {
-      zone.innerHTML = '<div class="wait-note">Réponse envoyée. Attends la révélation du PC.</div>';
-      return;
-    }
-    if (state.mode === 'buzzer' && !me.buzzPosition) {
+    if (state.mode === 'buzzer') {
+      const active = state.players.find(item => item.profileId === buzzer.activeProfileId);
+      if (buzzer.solvedByProfileId) {
+        zone.innerHTML = `<div class="wait-note">${buzzer.solvedByProfileId === me.profileId ? 'Bonne réponse !' : 'Bonne réponse trouvée. Attends la révélation du PC.'}</div>`;
+        return;
+      }
+      if (buzzer.activeProfileId) {
+        if (buzzer.activeProfileId !== me.profileId) {
+          zone.innerHTML = `<div class="wait-note">${escapeHtml(active ? active.nom : 'Un joueur')} répond · ${Number(buzzer.answerSecondsRemaining) || 0} s</div>`;
+          return;
+        }
+        zone.innerHTML = `
+          <div class="wait-note">Tu as ${Number(buzzer.answerSecondsRemaining) || 0} s pour répondre.</div>
+          <input id="answer-input" class="answer-input" maxlength="200" placeholder="Ta réponse" autocomplete="off">
+          <button id="answer-btn" class="primary-btn" type="button">Envoyer</button>`;
+        setTimeout(() => byId('answer-input') && byId('answer-input').focus(), 30);
+        return;
+      }
+      if (me.buzzerBlockedSeconds) {
+        zone.innerHTML = `<div class="wait-note">Mauvaise réponse : ta pénalité dure encore ${Number(me.buzzerBlockedSeconds)} s. Les autres peuvent buzzer.</div>`;
+        return;
+      }
       zone.innerHTML = '<button id="buzz-btn" class="buzz-btn" type="button">BUZZER</button>';
       return;
     }
-    if (state.mode === 'buzzer' && me.buzzPosition !== 1) {
-      zone.innerHTML = `<div class="wait-note">Buzzer n°${me.buzzPosition}. Un autre joueur répond.</div>`;
+    if (me.answer !== null) {
+      zone.innerHTML = '<div class="wait-note">Réponse envoyée. Attends la révélation du PC.</div>';
       return;
     }
     zone.innerHTML = `

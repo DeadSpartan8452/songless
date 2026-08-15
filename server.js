@@ -386,20 +386,31 @@ function partyInviteUrl(base, party) {
 
 app.post('/api/party/create', (req, res) => {
   try {
+    const hostProfile = req.body.profileId ? profileById(req.body.profileId) : null;
+    if (req.body.profileId && !hostProfile) {
+      return res.status(400).json({ error: 'Profil hôte introuvable.' });
+    }
     const created = partyStore.create({
       mode: req.body.mode,
       totalRounds: req.body.totalRounds,
       seed: req.body.seed,
       settings: req.body.settings,
     });
+    const hostPlayer = hostProfile ? partyStore.join(created.party.code, hostProfile).player : null;
+    if (hostPlayer) hostPlayer.host = true;
     res.status(201).json({
       code: created.party.code,
       hostToken: created.hostToken,
+      playerToken: hostPlayer ? hostPlayer.token : null,
       inviteUrls: {
         lan: partyInviteUrl(urlLan(), created.party),
         internet: partyInviteUrl(PUBLIC_URL, created.party),
       },
-      state: partyStore.publicState(created.party, null, created.hostToken),
+      state: partyStore.publicState(
+        created.party,
+        hostPlayer ? hostPlayer.token : null,
+        created.hostToken
+      ),
     });
   } catch (error) {
     res.status(400).json({ error: error.message });

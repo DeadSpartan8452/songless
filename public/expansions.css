@@ -69,6 +69,18 @@
   gap: 10px;
   margin-top: 14px;
 }
+.party-tutorial {
+  display: grid;
+  gap: 5px;
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid rgba(168, 85, 247, .28);
+  border-radius: 10px;
+  background: rgba(28, 24, 39, .72);
+  color: #c4b5d4;
+  font-size: .82rem;
+}
+.party-tutorial strong, .party-tutorial b { color: #f4eaff; }
 .party-options label { display: grid; gap: 5px; color: #b9adb0; font-size: .8rem; font-weight: 800; }
 .party-options select { width: 100%; }
 .party-divider::before, .party-divider::after { content: ''; flex: 1; height: 1px; background: #e5dfd7; }
