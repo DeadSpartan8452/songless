@@ -3862,10 +3862,36 @@ function handleDownloadEvent(block) {
 
   if (eventMatch[1] === 'progress') {
     logDownload(data.message);
+  } else if (eventMatch[1] === 'list' && data.compilation) {
+    logDownload(`Compilation détectée : ${data.total} chapitres à rechercher séparément.`);
+    if (data.tronquee) {
+      logDownload(`Import limité aux ${data.limite} premiers morceaux sur cet appareil.`, 'warn');
+    }
+  } else if (eventMatch[1] === 'item') {
+    if (data.etat === 'en-cours') {
+      logDownload(`${data.index}/${data.total} · recherche de « ${data.titre} »`);
+    } else if (data.etat === 'ajoute') {
+      logDownload(`✓ ${data.titre}${data.genre ? `  [${data.genre}]` : ''}`, 'ok');
+    } else if (data.etat === 'doublon') {
+      logDownload(`= déjà présent : ${data.titre}`);
+    } else if (data.etat === 'erreur') {
+      logDownload(`✗ ${data.titre} : ${data.erreur}`, 'ko');
+    }
   } else if (eventMatch[1] === 'error') {
     logDownload(data.error, 'ko');
     showToast('Téléchargement échoué.', 'error');
   } else if (eventMatch[1] === 'done') {
+    if (data.compilation) {
+      const added = (data.ajoutes || []).length;
+      const duplicates = (data.doublons || []).length;
+      const errors = (data.erreurs || []).length;
+      logDownload(`Terminé : ${added} ajouté${added > 1 ? 's' : ''}, ${duplicates} déjà présent${duplicates > 1 ? 's' : ''}, ${errors} en échec.`, added ? 'ok' : '');
+      showToast(added ? `${added} morceau${added > 1 ? 'x' : ''} ajouté${added > 1 ? 's' : ''}.` : 'Aucun nouveau morceau ajouté.', added ? 'ok' : 'info');
+      downloadQuery.value = '';
+      downloadTitle.value = '';
+      loadLibrary();
+      return;
+    }
     const t = data.track || {};
     if (t.alreadyPresent) {
       logDownload('Ce morceau est déjà dans la bibliothèque.', 'ok');

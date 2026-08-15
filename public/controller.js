@@ -359,6 +359,16 @@
           const json = (raw.match(/^data:\s*(.+)$/m) || [])[1];
           const data = json ? JSON.parse(json) : {};
           if (event === 'progress' && data.message) setGiftStatus(data.message);
+          if (event === 'list' && data.compilation) {
+            setGiftStatus(`Compilation détectée : ${data.total} morceaux à rechercher…`);
+          }
+          if (event === 'item') {
+            const prefix = `${Number(data.index) || 0}/${Number(data.total) || 0}`;
+            if (data.etat === 'en-cours') setGiftStatus(`${prefix} · recherche de ${data.titre}…`);
+            if (data.etat === 'ajoute') setGiftStatus(`${prefix} · ${data.titre} ajouté.`);
+            if (data.etat === 'doublon') setGiftStatus(`${prefix} · ${data.titre} était déjà présent.`);
+            if (data.etat === 'erreur') setGiftStatus(`${prefix} · ${data.titre} ignoré.`);
+          }
           if (event === 'error') throw new Error(data.error || 'Ajout impossible.');
           if (event === 'done') result = data;
         }
@@ -366,7 +376,14 @@
       }
       if (!result) throw new Error('Songless n’a pas confirmé l’ajout.');
       byId('gift-query').value = '';
-      setGiftStatus('Musique ajoutée à Songless.', 'success');
+      if (result.compilation) {
+        const added = (result.ajoutes || []).length;
+        const duplicates = (result.doublons || []).length;
+        const errors = (result.erreurs || []).length;
+        setGiftStatus(`${added} ajouté${added > 1 ? 's' : ''}, ${duplicates} déjà présent${duplicates > 1 ? 's' : ''}, ${errors} ignoré${errors > 1 ? 's' : ''}.`, added ? 'success' : '');
+      } else {
+        setGiftStatus('Musique ajoutée à Songless.', 'success');
+      }
     } catch (error) {
       setGiftStatus(error.message, 'error');
     } finally {

@@ -921,11 +921,75 @@ app.post('/api/download', async (req, res) => {
   const send = ouvrirFlux(res);
 
   try {
+    const value = String(query).trim();
+    const isUrl = /^https?:\/\//i.test(value);
+    const chapterLimit = req.songlessRemote ? 10 : 100;
+    const media = isUrl ? await downloader.inspectMediaUrl(value, {
+      limite: chapterLimit,
+      onLog: (message) => send('progress', { message }),
+    }) : null;
+
+    if (media && media.isCompilation) {
+      if (!media.canSplit || media.entries.length < 2) {
+        throw new Error('Compilation détectée, mais ses morceaux ne sont pas listés en chapitres. Songless refuse de télécharger toute la vidéo comme un seul titre.');
+      }
+
+      send('list', {
+        titre: media.title,
+        total: media.entries.length,
+        tronquee: media.truncated,
+        compilation: true,
+        limite: chapterLimit,
+      });
+
+      const bilan = { ajoutes: [], doublons: [], erreurs: [] };
+      for (let index = 0; index < media.entries.length; index++) {
+        const item = media.entries[index];
+        send('item', {
+          index: index + 1,
+          total: media.entries.length,
+          titre: item.title,
+          etat: 'en-cours',
+        });
+        try {
+          const entry = await downloader.downloadTrack(item.query, {
+            genre: genre || null,
+            onLog: (message) => send('progress', {
+              message,
+              index: index + 1,
+              total: media.entries.length,
+            }),
+          });
+          if (entry.alreadyPresent) {
+            bilan.doublons.push({ titre: entry.title || item.title });
+            send('item', { index: index + 1, total: media.entries.length,
+              titre: entry.title || item.title, etat: 'doublon' });
+          } else {
+            bilan.ajoutes.push({ titre: entry.title, artiste: entry.artist, genre: entry.genre });
+            send('item', { index: index + 1, total: media.entries.length,
+              titre: entry.title, etat: 'ajoute', genre: entry.genre });
+          }
+        } catch (error) {
+          bilan.erreurs.push({ titre: item.title, erreur: error.message });
+          send('item', { index: index + 1, total: media.entries.length,
+            titre: item.title, etat: 'erreur', erreur: error.message });
+        }
+      }
+
+      send('done', {
+        ...bilan,
+        compilation: true,
+        tronquee: media.truncated,
+      });
+      return;
+    }
+
     const entry = await downloader.downloadTrack(String(query).trim(), {
       genre: genre || null,
       title: title || null,
       artist: artist || null,
       force: !!force,
+      prefetchedInfo: media ? media.info : null,
       onLog: (message) => send('progress', { message }),
     });
     send('done', { track: entry });
