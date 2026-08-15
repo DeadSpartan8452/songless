@@ -17,6 +17,14 @@
   let pollTimer = null;
   let toastTimer = null;
   let actionSignature = '';
+  const tutorialSeen = new Set();
+  const partyAudio = byId('party-audio');
+  let audioUnlocked = false;
+  let audioRoundKey = '';
+  let audioStartTimer = null;
+  let audioStopTimer = null;
+  let reverseAudioContext = null;
+  let reverseSource = null;
 
   // Nettoie l'ancienne association créée par les versions précédentes.
   try { localStorage.removeItem('songless_controller_profile'); } catch (_) {}
@@ -188,7 +196,7 @@
     if (!party) return;
     byId('join-screen').classList.add('hidden');
     byId('room-screen').classList.remove('hidden');
-    pollTimer = setInterval(pollParty, 1000);
+    pollTimer = setInterval(pollParty, 500);
     pollParty();
   }
 
@@ -207,6 +215,7 @@
     state = next;
     renderRoom();
     maybeShowPartyTutorial(next);
+    syncPartyAudio(next);
   }
 
   function tutorialStorageKey(current) {
@@ -216,8 +225,8 @@
 
   function maybeShowPartyTutorial(current) {
     const key = tutorialStorageKey(current);
-    if (!key || readSession(key)) return;
-    writeSession(key, '1');
+    if (!key || tutorialSeen.has(key)) return;
+    tutorialSeen.add(key);
     showPartyTutorial(current);
   }
 
@@ -231,12 +240,13 @@
     const points = Number((current.settings || {}).points) || 1000;
     const modeRules = current.mode === 'buzzer'
       ? `
+        <div class="tutorial-rule"><span>🎧</span><p>Le son démarre <strong>en même temps</strong> sur ton téléphone et le PC.</p></div>
         <div class="tutorial-rule"><span>🔴</span><p><strong>Buzze en premier.</strong><br>Quand quelqu’un buzze, les autres attendent.</p></div>
         <div class="tutorial-rule"><span>⌨️</span><p><strong>Tu as 5 secondes</strong> pour écrire ${answerLabel}.</p></div>
         <div class="tutorial-rule"><span>⏳</span><p><strong>Mauvaise réponse :</strong> toi seul es bloqué 3 secondes. Les autres peuvent immédiatement buzzer.</p></div>
         <div class="tutorial-rule"><span>⭐</span><p>Une bonne réponse rapporte <strong>${points} points</strong>.</p></div>`
       : `
-        <div class="tutorial-rule"><span>🎧</span><p>Écoute l’extrait sur le PC, puis écris <strong>${answerLabel}</strong> sur ton téléphone.</p></div>
+        <div class="tutorial-rule"><span>🎧</span><p>Écoute l’extrait sur ton téléphone ou le PC, puis écris <strong>${answerLabel}</strong>.</p></div>
         <div class="tutorial-rule"><span>📨</span><p><strong>Envoie une seule réponse</strong>, puis attends la révélation de l’hôte.</p></div>
         <div class="tutorial-rule"><span>⭐</span><p>Une réponse rapide rapporte davantage, jusqu’à <strong>${points} points</strong>.</p></div>`;
     const infiniteRule = current.infinite
@@ -251,6 +261,157 @@
 
   function closePartyTutorial() {
     byId('tutorial-gate').classList.add('hidden');
+    unlockPartyAudio();
+  }
+
+  async function unlockPartyAudio() {
+    if (audioUnlocked) return syncPartyAudio(state, true);
+    try {
+      partyAudio.volume = 1;
+      partyAudio.src = '/silence.wav';
+      await partyAudio.play();
+      if (!reverseAudioContext) {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (AudioContextClass) reverseAudioContext = new AudioContextClass();
+      }
+      if (reverseAudioContext && reverseAudioContext.state === 'suspended') {
+        await reverseAudioContext.resume();
+      }
+      audioUnlocked = true;
+      byId('audio-sync-status').innerText = '🔊 Son synchronisé activé.';
+      syncPartyAudio(state, true);
+    } catch (_) {
+      byId('audio-sync-status').innerText = '🔇 Son bloqué : touche « Règles », puis active-le à nouveau.';
+    }
+  }
+
+  function partyAudioUrl(current) {
+    const query = new URLSearchParams({
+      playerToken: party.playerToken,
+      round: String(current.round),
+    });
+    return `/api/party/${encodeURIComponent(party.code)}/audio?${query}`;
+  }
+
+  function stopPartyAudio(message = '') {
+    clearTimeout(audioStartTimer);
+    clearTimeout(audioStopTimer);
+    partyAudio.pause();
+    if (reverseSource) {
+      try { reverseSource.stop(); } catch (_) {}
+      reverseSource = null;
+    }
+    if (message) byId('audio-sync-status').innerText = message;
+  }
+
+  function markPhoneRoundStarted(playback) {
+    if (!state) return;
+    state.serverNow = Math.max(Number(state.serverNow) || 0,
+      Number(playback.startedAt) || 0);
+    actionSignature = '';
+    renderAction();
+  }
+
+  function syncPartyAudio(current, force = false) {
+    if (!current || !party) return;
+    if (current.status !== 'round' || !current.playback) {
+      if (audioRoundKey) stopPartyAudio(audioUnlocked
+        ? '🔊 Son prêt pour la prochaine manche.'
+        : '🔇 Active le son dans les règles.');
+      audioRoundKey = '';
+      return;
+    }
+
+    const key = `${current.code}:${current.round}`;
+    if (!force && audioRoundKey === key) return;
+    audioRoundKey = key;
+    stopPartyAudio('⏱️ Chargement de l’extrait synchronisé…');
+    const playback = current.playback;
+    const receivedAt = Date.now();
+    const serverAtReceipt = Number(current.serverNow) || receivedAt;
+    const estimatedServerNow = () => serverAtReceipt + (Date.now() - receivedAt);
+    const elapsedMusic = () => Math.max(0,
+      (estimatedServerNow() - Number(playback.startedAt)) / 1000 * Number(playback.speed || 1));
+    const delay = Math.max(0, Number(playback.startedAt) - serverAtReceipt);
+    const url = partyAudioUrl(current);
+
+    if (playback.direction === 'inverse') {
+      prepareReversePartyAudio(url, playback, elapsedMusic, delay, key, receivedAt);
+      return;
+    }
+
+    partyAudio.src = url;
+    partyAudio.playbackRate = Number(playback.speed) || 1;
+    partyAudio.preservesPitch = false;
+    partyAudio.load();
+    const start = () => {
+      if (!audioUnlocked || audioRoundKey !== key) return;
+      const elapsed = elapsedMusic();
+      const remaining = Number(playback.duration) - elapsed;
+      if (remaining <= 0) return stopPartyAudio('Extrait terminé. En attente de la révélation.');
+      if (partyAudio.readyState < 2) {
+        partyAudio.addEventListener('canplay', start, { once: true });
+        return;
+      }
+      markPhoneRoundStarted(playback);
+      const position = (Number(playback.offset) || 0) + elapsed;
+      const playable = Math.min(remaining, Math.max(0, partyAudio.duration - position));
+      if (playable <= 0) return stopPartyAudio('Extrait terminé. En attente de la révélation.');
+      partyAudio.currentTime = position;
+      partyAudio.play().then(() => {
+        byId('audio-sync-status').innerText = '🔊 Lecture synchronisée avec le PC.';
+        audioStopTimer = setTimeout(() => {
+          stopPartyAudio('Extrait terminé. En attente de la révélation.');
+        }, playable / (Number(playback.speed) || 1) * 1000);
+      }).catch(() => {
+        byId('audio-sync-status').innerText = '🔇 Touche « Règles » pour autoriser le son.';
+      });
+    };
+    audioStartTimer = setTimeout(start, delay);
+  }
+
+  async function prepareReversePartyAudio(url, playback, elapsedMusic, delay, key, receivedAt) {
+    try {
+      if (!reverseAudioContext) {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContextClass) throw new Error('Audio inversé non supporté');
+        reverseAudioContext = new AudioContextClass();
+      }
+      const response = await fetch(url);
+      if (!response.ok) throw new Error(`Audio ${response.status}`);
+      const decoded = await reverseAudioContext.decodeAudioData(await response.arrayBuffer());
+      const reversed = reverseAudioContext.createBuffer(
+        decoded.numberOfChannels, decoded.length, decoded.sampleRate);
+      for (let channel = 0; channel < decoded.numberOfChannels; channel++) {
+        const source = decoded.getChannelData(channel);
+        const target = reversed.getChannelData(channel);
+        for (let left = 0, right = source.length - 1; left < source.length; left++, right--) {
+          target[left] = source[right];
+        }
+      }
+      const wait = Math.max(0, delay - (Date.now() - receivedAt));
+      audioStartTimer = setTimeout(() => {
+        if (!audioUnlocked || audioRoundKey !== key) return;
+        const elapsed = elapsedMusic();
+        const remaining = Number(playback.duration) - elapsed;
+        if (remaining <= 0) return stopPartyAudio('Extrait terminé. En attente de la révélation.');
+        markPhoneRoundStarted(playback);
+        reverseSource = reverseAudioContext.createBufferSource();
+        reverseSource.buffer = reversed;
+        reverseSource.playbackRate.value = Number(playback.speed) || 1;
+        reverseSource.connect(reverseAudioContext.destination);
+        const offset = Math.max(0, reversed.duration - (Number(playback.offset) || 0) + elapsed);
+        const playable = Math.min(remaining, Math.max(0, reversed.duration - offset));
+        if (playable <= 0) return stopPartyAudio('Extrait terminé. En attente de la révélation.');
+        reverseSource.start(0, offset, playable);
+        byId('audio-sync-status').innerText = '🔊 Lecture inversée synchronisée avec le PC.';
+        audioStopTimer = setTimeout(() => {
+          stopPartyAudio('Extrait terminé. En attente de la révélation.');
+        }, playable / (Number(playback.speed) || 1) * 1000);
+      }, wait);
+    } catch (_) {
+      byId('audio-sync-status').innerText = 'Impossible de préparer l’extrait inversé sur ce téléphone.';
+    }
   }
 
   function renderRoom() {
@@ -261,7 +422,7 @@
       : `MANCHE ${state.round} / ${state.totalRounds}`;
     const labels = {
       lobby: ['SALON', 'En attente de l’hôte…', 'Le PC lancera la première manche.'],
-      round: [roundLabel, state.mode === 'buzzer' ? 'Prêt à buzzer ?' : 'Quelle est ta réponse ?', 'Écoute la musique sur le PC.'],
+      round: [roundLabel, state.mode === 'buzzer' ? 'Prêt à buzzer ?' : 'Quelle est ta réponse ?', 'Le son joue ici et sur le PC au même moment.'],
       reveal: [roundLabel, 'Réponse révélée', 'Regarde le résultat et le classement.'],
       finished: ['TERMINÉ', 'Partie terminée !', 'Voici le classement final.'],
     };
@@ -282,11 +443,18 @@
     const zone = byId('player-action');
     const me = currentPlayer();
     const buzzer = state.buzzer || {};
-    const signature = `${state.status}:${state.round}:${state.mode}:${me ? me.answer : ''}:${me ? me.lastAnswer : ''}:${me ? me.buzzPosition : ''}:${me ? me.buzzerBlockedSeconds : 0}:${buzzer.activeProfileId || ''}:${buzzer.answerSecondsRemaining || 0}:${buzzer.solvedByProfileId || ''}`;
+    const startsIn = state.playback
+      ? Math.max(0, Math.ceil((Number(state.playback.startedAt) - Number(state.serverNow)) / 1000)) : 0;
+    const signature = `${state.status}:${state.round}:${state.mode}:${startsIn}:${me ? me.answer : ''}:${me ? me.lastAnswer : ''}:${me ? me.buzzPosition : ''}:${me ? me.buzzerBlockedSeconds : 0}:${buzzer.activeProfileId || ''}:${buzzer.answerSecondsRemaining || 0}:${buzzer.solvedByProfileId || ''}`;
     if (signature === actionSignature) return;
     actionSignature = signature;
     zone.innerHTML = '';
     if (!me || state.status !== 'round') return;
+    if (state.playback && Number(state.serverNow) < Number(state.playback.startedAt)) {
+      const seconds = Math.max(1, Math.ceil((state.playback.startedAt - state.serverNow) / 1000));
+      zone.innerHTML = `<div class="wait-note">Prépare-toi… départ dans ${seconds} s.</div>`;
+      return;
+    }
     if (state.mode === 'buzzer') {
       const active = state.players.find(item => item.profileId === buzzer.activeProfileId);
       if (buzzer.solvedByProfileId) {
@@ -481,6 +649,8 @@
     party = null;
     state = null;
     actionSignature = '';
+    audioRoundKey = '';
+    stopPartyAudio('🔊 Son prêt pour une autre partie.');
     writeJson(PARTY_KEY, null);
     byId('room-screen').classList.add('hidden');
     byId('join-screen').classList.remove('hidden');

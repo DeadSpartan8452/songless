@@ -17,6 +17,8 @@
   let partyState = null;
   let pollTimer = null;
   let syncingRound = false;
+  let partyRoundStarting = false;
+  let hostPartyPlayTimer = null;
   let listSaveQueue = Promise.resolve();
   let partyOptions = readLocal(STORAGE_PARTY_OPTIONS, {});
 
@@ -388,6 +390,7 @@
       saveParty();
       receivePartyState(result.state);
       startPolling();
+      openGameTab();
     } catch (error) {
       showToast(error.message, 'error');
     }
@@ -407,6 +410,7 @@
       saveParty();
       receivePartyState(result.state);
       startPolling();
+      openGameTab();
     } catch (error) {
       showToast(error.message, 'error');
     }
@@ -446,6 +450,11 @@
     if (next.status === 'reveal' && next.revealedTrack) revealPartyTrack();
   }
 
+  function openGameTab() {
+    const button = document.querySelector('.tab-btn[data-tab="game-tab"]');
+    if (button && !button.classList.contains('active')) button.click();
+  }
+
   function syncPartyGlobalStats(players) {
     if (typeof profils === 'undefined' || !Array.isArray(players)) return;
     let changed = false;
@@ -461,7 +470,7 @@
     if (modal && !modal.classList.contains('hidden')) renderProfileList();
   }
 
-  function syncPartyRound(trackId) {
+  async function preparePartyTrack(trackId) {
     const source = (party && party.trackIds && party.trackIds.length) ? party.trackIds : null;
     selectedKind = 'party';
     selectedTrackIds = source;
@@ -475,10 +484,41 @@
     }
     playlistIndex = index;
     applyPartySettings(partyState.settings);
-    syncingRound = true;
-    startNewGame();
-    guessInputContainer.classList.add('hidden');
-    syncingRound = false;
+    if (partyState.status !== 'round'
+        || !currentTrack || String(currentTrack.id) !== String(trackId)) {
+      syncingRound = true;
+      startNewGame();
+      guessInputContainer.classList.add('hidden');
+      syncingRound = false;
+    }
+    await preparerExtrait(currentTrack);
+    return currentTrackOffset;
+  }
+
+  async function syncPartyRound(trackId) {
+    try {
+      await preparePartyTrack(trackId);
+      scheduleHostPartyPlayback(partyState);
+    } catch (error) {
+      showPartyError(error);
+    }
+  }
+
+  function scheduleHostPartyPlayback(next) {
+    clearTimeout(hostPartyPlayTimer);
+    if (!next || next.status !== 'round' || !next.playback || !currentTrack) return;
+    const playback = next.playback;
+    const delay = Math.max(0, Number(playback.startedAt) - Number(next.serverNow));
+    playerStatusText.classList.remove('hidden');
+    playerStatusText.innerText = 'Départ synchronisé avec les téléphones…';
+    hostPartyPlayTimer = setTimeout(() => {
+      if (!partyState || partyState.status !== 'round' || partyState.round !== next.round) return;
+      partyState.serverNow = Math.max(Number(partyState.serverNow) || 0,
+        Number(playback.startedAt) || 0);
+      renderPlayerActions();
+      currentTrackOffset = Number(playback.offset) || 0;
+      playAudio();
+    }, delay);
   }
 
   function revealPartyTrack() {
@@ -495,6 +535,10 @@
   }
 
   function renderParty() {
+    const appContainer = document.querySelector('.app-container');
+    if (appContainer) appContainer.classList.toggle('party-active', Boolean(party && partyState));
+    const runningNote = byId('party-running-note');
+    if (runningNote) runningNote.classList.toggle('hidden', !(party && partyState));
     if (!party || !partyState) {
       byId('party-setup').classList.remove('hidden');
       byId('party-room').classList.add('hidden');
@@ -534,7 +578,8 @@
       </div>`).join('');
 
     byId('party-host-actions').classList.toggle('hidden', !partyState.isHost);
-    byId('party-round-btn').disabled = partyState.status === 'round' || partyState.status === 'finished';
+    byId('party-round-btn').disabled = partyRoundStarting
+      || partyState.status === 'round' || partyState.status === 'finished';
     byId('party-round-btn').innerText = !partyState.infinite
       && partyState.round >= partyState.totalRounds
       ? 'Terminer la partie'
@@ -565,6 +610,13 @@
     }
     if (partyState.status !== 'round') {
       zone.innerHTML = '<button class="ghost-btn" id="party-leave-btn">Quitter le salon</button>';
+      return;
+    }
+    if (partyState.playback
+        && Number(partyState.serverNow) < Number(partyState.playback.startedAt)) {
+      const seconds = Math.max(1, Math.ceil(
+        (partyState.playback.startedAt - partyState.serverNow) / 1000));
+      zone.innerHTML = `<div class="mode-status">Prépare-toi… départ synchronisé dans ${seconds} s.</div>`;
       return;
     }
     if (partyState.mode === 'buzzer') {
@@ -630,7 +682,7 @@
     partyPlayerAction('answer', { answer }).catch(showPartyError);
   }
 
-  function startPartyRound() {
+  async function startPartyRound() {
     if (!partyState || !partyState.isHost) return;
     if (!partyState.infinite && partyState.round >= partyState.totalRounds) {
       return partyCommand('finish').catch(showPartyError);
@@ -643,19 +695,30 @@
     if (!trackId) return showToast('Aucun morceau disponible pour cette manche.', 'warn');
     const track = tracks.find(item => String(item.id) === String(trackId));
     if (!track) return showToast('Le morceau de cette manche est introuvable.', 'error');
-    partyCommand('start-round', {
-      round: partyState.round + 1,
-      trackId,
-      answer: {
-        mode: partyState.settings && partyState.settings.answer
-          ? partyState.settings.answer : reglages.reponse,
-        title: track.title,
-        originalTitle: track.originalTitle,
-        artist: track.artist,
-        year: track.year,
-        aliases: track.aliases || [],
-      },
-    }).catch(showPartyError);
+    partyRoundStarting = true;
+    renderParty();
+    try {
+      const offset = await preparePartyTrack(trackId);
+      await partyCommand('start-round', {
+        round: partyState.round + 1,
+        trackId,
+        playback: { offset },
+        answer: {
+          mode: partyState.settings && partyState.settings.answer
+            ? partyState.settings.answer : reglages.reponse,
+          title: track.title,
+          originalTitle: track.originalTitle,
+          artist: track.artist,
+          year: track.year,
+          aliases: track.aliases || [],
+        },
+      });
+    } catch (error) {
+      showPartyError(error);
+    } finally {
+      partyRoundStarting = false;
+      renderParty();
+    }
   }
 
   function revealParty() {
@@ -687,6 +750,8 @@
   function leaveParty() {
     const previousSettings = party && party.previousSettings;
     clearInterval(pollTimer);
+    clearTimeout(hostPartyPlayTimer);
+    pauseAudio();
     pollTimer = null;
     party = null;
     partyState = null;
@@ -827,7 +892,13 @@
     return true;
   }
 
-  window.songlessExpansions = { filterPlaylist, onRoundStart, onRoundEnd, beforeAdvance };
+  function shouldStayInGame() {
+    return Boolean(party && partyState && partyState.status === 'round');
+  }
+
+  window.songlessExpansions = {
+    filterPlaylist, onRoundStart, onRoundEnd, beforeAdvance, shouldStayInGame,
+  };
 
   document.addEventListener('DOMContentLoaded', () => {
     bindEvents();

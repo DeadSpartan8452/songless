@@ -219,6 +219,16 @@ app.use((req, res, next) => {
     if (req.method === 'GET' || req.method === 'POST') return next();
   }
 
+  // Le son d'une manche n'est accessible qu'avec le jeton aléatoire remis au
+  // joueur après son entrée dans cette partie. Une balise <audio> ne sait pas
+  // envoyer nos en-têtes personnalisés, le jeton passe donc dans l'URL du flux.
+  const partyAudio = req.path.match(/^\/api\/party\/([^/]+)\/audio$/);
+  if (req.method === 'GET' && partyAudio) {
+    const party = partyStore.get(decodeURIComponent(partyAudio[1]));
+    if (party && partyStore.findPlayer(party, req.query.playerToken)) return next();
+    return res.status(403).json({ error: 'Accès audio réservé aux joueurs de cette partie.' });
+  }
+
   // Seule exception d'écriture accordée aux téléphones : offrir un morceau
   // à la bibliothèque, par fichier ou par recherche/URL.
   if (req.path === '/api/upload' || req.path === '/api/download') {
@@ -254,6 +264,27 @@ app.get(['/', '/index.html'], (req, res, next) => {
 });
 
 app.use(express.static(PUBLIC_DIR));
+
+// Court silence utilisé par le bouton du tutoriel mobile pour autoriser le
+// son. iOS et Android exigent une première lecture déclenchée par un geste.
+app.get('/silence.wav', (req, res) => {
+  const samples = 800;
+  const dataSize = samples * 2;
+  const wav = Buffer.alloc(44 + dataSize);
+  wav.write('RIFF', 0);
+  wav.writeUInt32LE(36 + dataSize, 4);
+  wav.write('WAVEfmt ', 8);
+  wav.writeUInt32LE(16, 16);
+  wav.writeUInt16LE(1, 20);
+  wav.writeUInt16LE(1, 22);
+  wav.writeUInt32LE(8000, 24);
+  wav.writeUInt32LE(16000, 28);
+  wav.writeUInt16LE(2, 32);
+  wav.writeUInt16LE(16, 34);
+  wav.write('data', 36);
+  wav.writeUInt32LE(dataSize, 40);
+  res.type('audio/wav').set('Cache-Control', 'public, max-age=86400').send(wav);
+});
 
 /**
  * Route: contexte de la page.
@@ -437,6 +468,26 @@ app.get('/api/party/:code', (req, res) => {
   if (!party) return res.status(404).json({ error: 'Partie introuvable.' });
   res.set('Cache-Control', 'no-store');
   res.json(partyStore.publicState(party, req.query.playerToken, req.query.hostToken));
+});
+
+app.get('/api/party/:code/audio', (req, res) => {
+  try {
+    const party = partyStore.get(req.params.code);
+    const player = party && partyStore.findPlayer(party, req.query.playerToken);
+    if (!party || !player) {
+      return res.status(403).json({ error: 'Accès audio réservé aux joueurs de cette partie.' });
+    }
+    if (Number(req.query.round) !== party.round || !party.currentTrackId) {
+      return res.status(409).json({ error: 'Cette manche n’est plus active.' });
+    }
+    const morceau = resoudreMorceau(party.currentTrackId);
+    if (!morceau) return res.status(404).json({ error: 'Morceau introuvable.' });
+    res.set('Cache-Control', 'private, no-store');
+    streamAudio(req, res, morceau);
+  } catch (error) {
+    console.error('Erreur audio multijoueur:', error.message);
+    res.status(500).json({ error: 'Impossible de transmettre le son de la manche.' });
+  }
 });
 
 app.post('/api/party/:code/command', (req, res) => {
@@ -649,56 +700,58 @@ app.get('/api/genres', (req, res) => {
   }
 });
 
-// Route: Stream audio
-app.get('/api/tracks/:id/audio', async (req, res) => {
+function streamAudio(req, res, morceau) {
+  const { fileName, filePath } = morceau;
+  if (!fs.existsSync(filePath)) {
+    return res.status(404).json({ error: 'Fichier introuvable' });
+  }
+
+  const stat = fs.statSync(filePath);
+  const fileSize = stat.size;
+  const range = req.headers.range;
+  const mimeTypes = {
+    '.mp3': 'audio/mpeg',
+    '.wav': 'audio/wav',
+    '.ogg': 'audio/ogg',
+    '.m4a': 'audio/mp4',
+    '.mp4': 'audio/mp4',
+    '.aac': 'audio/aac',
+    '.flac': 'audio/flac',
+    '.opus': 'audio/opus',
+  };
+  const contentType = mimeTypes[path.extname(fileName).toLowerCase()] || 'audio/mpeg';
+
+  if (range) {
+    const parts = range.replace(/bytes=/, '').split('-');
+    const start = parseInt(parts[0], 10);
+    const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+    if (!Number.isFinite(start) || start < 0 || end < start || end >= fileSize) {
+      res.set('Content-Range', `bytes */${fileSize}`);
+      return res.sendStatus(416);
+    }
+    res.writeHead(206, {
+      'Content-Range': `bytes ${start}-${end}/${fileSize}`,
+      'Accept-Ranges': 'bytes',
+      'Content-Length': (end - start) + 1,
+      'Content-Type': contentType,
+    });
+    return fs.createReadStream(filePath, { start, end }).pipe(res);
+  }
+
+  res.writeHead(200, {
+    'Accept-Ranges': 'bytes',
+    'Content-Length': fileSize,
+    'Content-Type': contentType,
+  });
+  fs.createReadStream(filePath).pipe(res);
+}
+
+// Route: Stream audio local du PC
+app.get('/api/tracks/:id/audio', (req, res) => {
   try {
     const morceau = resoudreMorceau(req.params.id);
     if (!morceau) return res.status(400).json({ error: 'Identifiant invalide' });
-    const { fileName, filePath } = morceau;
-
-    if (!fs.existsSync(filePath)) {
-      return res.status(404).json({ error: 'Fichier introuvable' });
-    }
-
-    // Gestion du stream avec support du Range pour permettre de naviguer dans l'audio (requis par safari/ios et utile pour chrome)
-    const stat = fs.statSync(filePath);
-    const fileSize = stat.size;
-    const range = req.headers.range;
-
-    const mimeTypes = {
-      '.mp3': 'audio/mpeg',
-      '.wav': 'audio/wav',
-      '.ogg': 'audio/ogg',
-      '.m4a': 'audio/mp4',
-      '.aac': 'audio/aac',
-      '.flac': 'audio/flac',
-      '.opus': 'audio/opus'
-    };
-    const ext = path.extname(fileName).toLowerCase();
-    const contentType = mimeTypes[ext] || 'audio/mpeg';
-
-    if (range) {
-      const parts = range.replace(/bytes=/, "").split("-");
-      const start = parseInt(parts[0], 10);
-      const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
-      const chunksize = (end - start) + 1;
-      const file = fs.createReadStream(filePath, { start, end });
-      const head = {
-        'Content-Range': `bytes ${start}-${end}/${fileSize}`,
-        'Accept-Ranges': 'bytes',
-        'Content-Length': chunksize,
-        'Content-Type': contentType,
-      };
-      res.writeHead(206, head);
-      file.pipe(res);
-    } else {
-      const head = {
-        'Content-Length': fileSize,
-        'Content-Type': contentType,
-      };
-      res.writeHead(200, head);
-      fs.createReadStream(filePath).pipe(res);
-    }
+    streamAudio(req, res, morceau);
   } catch (error) {
     console.error('Erreur streaming audio:', error);
     res.status(500).json({ error: 'Erreur lors de la lecture du fichier audio' });

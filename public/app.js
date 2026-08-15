@@ -229,6 +229,12 @@ function initNavigation() {
   tabs.forEach(tab => {
     tab.addEventListener('click', () => {
       const targetTab = tab.getAttribute('data-tab');
+      if (targetTab !== 'game-tab' && window.songlessExpansions
+          && window.songlessExpansions.shouldStayInGame
+          && window.songlessExpansions.shouldStayInGame()) {
+        showToast('Termine ou révèle la manche avant de quitter l’écran multijoueur.', 'warn');
+        return;
+      }
       
       // Activer le bouton de l'onglet
       tabs.forEach(t => t.classList.remove('active'));

@@ -114,6 +114,39 @@
 .buzz-button { min-height: 64px; font-size: 1.2rem; font-weight: 900; }
 .button-link { display: inline-flex; align-items: center; text-decoration: none; }
 
+/* La préparation reste dans Modes, mais la partie elle-même vit dans Jouer. */
+.game-party-layout { width: 100%; display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; align-items: start; }
+.app-container.party-active { max-width: 1280px; }
+.app-container.party-active .game-party-layout {
+  grid-template-columns: minmax(0, 820px) minmax(310px, 390px);
+}
+.party-game-panel {
+  position: sticky;
+  top: 16px;
+  min-width: 0;
+  padding: 18px;
+  border: 1px solid rgba(168, 85, 247, .38);
+  border-radius: 16px;
+  background: linear-gradient(180deg, #17131f, #100e16);
+  box-shadow: 0 14px 38px rgba(0, 0, 0, .25);
+}
+.party-game-panel .party-head { color: #f4eaff; }
+.party-game-panel .party-player { grid-template-columns: 1fr auto; }
+.party-game-panel .party-answer { grid-column: 1 / -1; }
+.party-game-panel .party-player-actions { display: grid; }
+.party-game-panel .party-player-actions input { width: 100%; min-width: 0; }
+.party-game-panel .buzz-button {
+  justify-self: center;
+  width: 160px;
+  min-height: 160px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 28%, #ff95a4, #e32949 58%, #8e1028);
+  box-shadow: 0 10px 0 #710d20, 0 20px 40px rgba(227, 41, 73, .32);
+  font-size: 1.45rem;
+}
+.party-game-panel .buzz-button:active { transform: translateY(6px); box-shadow: 0 4px 0 #710d20; }
+.party-game-panel .party-host-actions > * { flex: 1 1 130px; }
+
 .session-finished {
   margin-top: 14px;
   padding: 14px;
@@ -132,4 +165,9 @@ body.lecture-seule .local-only { display: none !important; }
   .party-player { grid-template-columns: 1fr auto; }
   .party-answer { grid-column: 1 / -1; }
   .party-options { grid-template-columns: 1fr 1fr; }
+}
+
+@media (max-width: 1080px) {
+  .app-container.party-active .game-party-layout { grid-template-columns: 1fr; }
+  .party-game-panel { position: static; order: -1; }
 }

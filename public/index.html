@@ -179,6 +179,7 @@
             </div>
           </div>
 
+          <div class="game-party-layout" id="game-party-layout">
           <!-- Carte Principale de Jeu -->
           <div class="game-card">
             <!-- Waveform & Lecteur Audio -->
@@ -328,6 +329,28 @@
             </div>
 
           </div>
+
+          <!-- En multijoueur, le PC joue ici tout en gardant les commandes. -->
+          <aside class="party-room party-game-panel hidden" id="party-room">
+            <div class="party-head">
+              <div>Code <strong id="party-code">—</strong></div>
+              <div id="party-round-label">Salon</div>
+            </div>
+            <div class="party-invites hidden" id="party-invites">
+              <button class="ghost-btn accent" id="party-copy-lan">Copier le lien même wifi</button>
+              <button class="ghost-btn" id="party-copy-internet">Lien Internet non activé</button>
+              <a class="party-join-link hidden" id="party-internet-link"
+                 target="_blank" rel="noopener noreferrer"></a>
+            </div>
+            <div class="party-players" id="party-players"></div>
+            <div class="party-player-actions" id="party-player-actions"></div>
+            <div class="party-host-actions hidden" id="party-host-actions">
+              <button class="cta-btn" id="party-round-btn">Lancer la manche</button>
+              <button class="ghost-btn" id="party-reveal-btn">Révéler et compter</button>
+              <button class="danger-btn-text" id="party-finish-btn">Terminer</button>
+            </div>
+          </aside>
+          </div>
         </div>
       </section>
 
@@ -464,24 +487,8 @@
                   <button class="ghost-btn accent" id="party-join-btn">Rejoindre</button>
                 </div>
               </div>
-              <div class="party-room hidden" id="party-room">
-                <div class="party-head">
-                  <div>Code <strong id="party-code">—</strong></div>
-                  <div id="party-round-label">Salon</div>
-                </div>
-                <div class="party-invites hidden" id="party-invites">
-                  <button class="ghost-btn accent" id="party-copy-lan">Copier le lien même wifi</button>
-                  <button class="ghost-btn" id="party-copy-internet">Lien Internet non activé</button>
-                  <a class="party-join-link hidden" id="party-internet-link"
-                    target="_blank" rel="noopener noreferrer"></a>
-                </div>
-                <div class="party-players" id="party-players"></div>
-                <div class="party-player-actions" id="party-player-actions"></div>
-                <div class="party-host-actions hidden" id="party-host-actions">
-                  <button class="cta-btn" id="party-round-btn">Lancer la manche</button>
-                  <button class="ghost-btn" id="party-reveal-btn">Révéler et compter</button>
-                  <button class="danger-btn-text" id="party-finish-btn">Terminer</button>
-                </div>
+              <div class="mode-status hidden" id="party-running-note">
+                La soirée est ouverte dans l’onglet Jouer.
               </div>
             </article>
 
