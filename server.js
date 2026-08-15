@@ -490,6 +490,67 @@ app.get('/api/party/:code/audio', (req, res) => {
   }
 });
 
+app.get('/api/party/:code/suggestions', (req, res) => {
+  const party = partyStore.get(req.params.code);
+  const player = party && partyStore.findPlayer(party, req.query.playerToken);
+  if (!party || !player) {
+    return res.status(403).json({ error: 'Suggestions réservées aux joueurs de cette partie.' });
+  }
+  if (party.status !== 'round') return res.json({ suggestions: [] });
+
+  const query = String(req.query.q || '').trim().slice(0, 80);
+  const key = T.tightKey(query);
+  if (!key) return res.json({ suggestions: [] });
+
+  const answerMode = party.settings.answer;
+  const metadata = store.load().tracks;
+  const results = [];
+  const seen = new Set();
+  for (const fileName of listAudioFiles()) {
+    const meta = metadata[fileName] || {};
+    const fallback = T.fromFilename(fileName);
+    const title = String(meta.title || fallback.title || '').trim();
+    const artist = String(meta.artist || fallback.artist || '').trim();
+    const year = Number(meta.year) || null;
+    let value = '';
+    let primary = '';
+    let secondary = '';
+
+    if (answerMode === 'artiste') {
+      value = artist;
+      primary = artist;
+      secondary = 'Artiste';
+    } else if (answerMode === 'annee') {
+      if (!year) continue;
+      value = String(year);
+      primary = value;
+      secondary = 'Année';
+    } else {
+      value = artist ? `${artist} - ${title}` : title;
+      primary = title;
+      secondary = artist;
+    }
+
+    const searchable = T.tightKey([
+      value, title, artist, meta.originalTitle, ...(meta.aliases || []),
+    ].filter(Boolean).join(' '));
+    const valueKey = T.tightKey(value);
+    if (!valueKey || !searchable.includes(key) || seen.has(valueKey)) continue;
+    seen.add(valueKey);
+    results.push({
+      value: value.slice(0, 200),
+      primary: primary.slice(0, 200),
+      secondary: secondary.slice(0, 200),
+      priority: valueKey.startsWith(key) ? 0 : 1,
+    });
+  }
+
+  results.sort((a, b) => a.priority - b.priority
+    || a.primary.localeCompare(b.primary, 'fr'));
+  res.set('Cache-Control', 'no-store');
+  res.json({ suggestions: results.slice(0, 8).map(({ priority, ...item }) => item) });
+});
+
 app.post('/api/party/:code/command', (req, res) => {
   try {
     const party = partyStore.get(req.params.code);

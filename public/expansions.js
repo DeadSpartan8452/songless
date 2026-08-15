@@ -19,6 +19,9 @@
   let syncingRound = false;
   let partyRoundStarting = false;
   let hostPartyPlayTimer = null;
+  let hostPlaybackSignature = '';
+  let partyActionSignature = '';
+  let partySuggestionTimer = null;
   let listSaveQueue = Promise.resolve();
   let partyOptions = readLocal(STORAGE_PARTY_OPTIONS, {});
 
@@ -435,7 +438,7 @@
 
   function startPolling() {
     clearInterval(pollTimer);
-    pollTimer = setInterval(pollParty, 1000);
+    pollTimer = setInterval(pollParty, 500);
     pollParty();
   }
 
@@ -446,6 +449,8 @@
     renderParty();
     if (next.status === 'round' && next.currentTrackId && next.currentTrackId !== previousTrack) {
       syncPartyRound(next.currentTrackId);
+    } else if (next.status === 'round' && next.currentTrackId) {
+      syncHostPartyPlayback(next);
     }
     if (next.status === 'reveal' && next.revealedTrack) revealPartyTrack();
   }
@@ -498,26 +503,49 @@
   async function syncPartyRound(trackId) {
     try {
       await preparePartyTrack(trackId);
-      scheduleHostPartyPlayback(partyState);
+      syncHostPartyPlayback(partyState, true);
     } catch (error) {
       showPartyError(error);
     }
   }
 
-  function scheduleHostPartyPlayback(next) {
-    clearTimeout(hostPartyPlayTimer);
+  function syncHostPartyPlayback(next, force = false) {
     if (!next || next.status !== 'round' || !next.playback || !currentTrack) return;
     const playback = next.playback;
-    const delay = Math.max(0, Number(playback.startedAt) - Number(next.serverNow));
+    const signature = `${next.round}:${Number(playback.startedAt) || 0}:${Number(playback.pausedAt) || 0}:${(next.buzzer || {}).solvedByProfileId || ''}`;
+    if (!force && signature === hostPlaybackSignature) return;
+    hostPlaybackSignature = signature;
+    clearTimeout(hostPartyPlayTimer);
+
+    if (playback.pausedAt) {
+      pauseAudio();
+      playerStatusText.classList.remove('hidden');
+      playerStatusText.innerText = 'Musique en pause pendant la réponse…';
+      return;
+    }
+
+    const receivedAt = Date.now();
+    const serverAtReceipt = Number(next.serverNow) || receivedAt;
+    const estimatedServerNow = () => serverAtReceipt + (Date.now() - receivedAt);
+    const delay = Math.max(0, Number(playback.startedAt) - serverAtReceipt);
     playerStatusText.classList.remove('hidden');
-    playerStatusText.innerText = 'Départ synchronisé avec les téléphones…';
+    playerStatusText.innerText = delay > 0
+      ? 'Départ synchronisé avec les téléphones…'
+      : 'Reprise synchronisée de l’extrait…';
     hostPartyPlayTimer = setTimeout(() => {
       if (!partyState || partyState.status !== 'round' || partyState.round !== next.round) return;
       partyState.serverNow = Math.max(Number(partyState.serverNow) || 0,
         Number(playback.startedAt) || 0);
       renderPlayerActions();
       currentTrackOffset = Number(playback.offset) || 0;
-      playAudio();
+      const elapsed = Math.max(0,
+        (estimatedServerNow() - Number(playback.startedAt)) / 1000
+        * (Number(playback.speed) || 1));
+      playAudio({
+        offset: Number(playback.offset) || 0,
+        duration: Number(playback.duration) || 0,
+        elapsed,
+      });
     }, delay);
   }
 
@@ -602,6 +630,15 @@
     const zone = byId('party-player-actions');
     const me = partyState.players.find(player => player.profileId === partyState.viewerProfileId);
     const buzzer = partyState.buzzer || {};
+    const waitingForStart = partyState.playback
+      && Number(partyState.serverNow) < Number(partyState.playback.startedAt);
+    const signature = `${partyState.status}:${partyState.round}:${partyState.mode}:${waitingForStart ? 'wait' : 'go'}:${me ? me.answer : ''}:${me ? me.lastAnswer : ''}:${me ? me.buzzerBlockedSeconds : 0}:${buzzer.activeProfileId || ''}:${buzzer.solvedByProfileId || ''}:${buzzer.solvedByProfileId && Number(buzzer.answerSecondsRemaining) > 0 ? 'paused' : 'played'}`;
+    if (signature === partyActionSignature) {
+      updatePartyActionTimer();
+      return;
+    }
+    partyActionSignature = signature;
+
     if (!me) {
       zone.innerHTML = partyState.isHost && partyState.status === 'finished'
         ? '<button class="ghost-btn" id="party-leave-btn">Nouvelle soirée</button>'
@@ -612,28 +649,29 @@
       zone.innerHTML = '<button class="ghost-btn" id="party-leave-btn">Quitter le salon</button>';
       return;
     }
-    if (partyState.playback
-        && Number(partyState.serverNow) < Number(partyState.playback.startedAt)) {
-      const seconds = Math.max(1, Math.ceil(
-        (partyState.playback.startedAt - partyState.serverNow) / 1000));
-      zone.innerHTML = `<div class="mode-status">Prépare-toi… départ synchronisé dans ${seconds} s.</div>`;
+    if (waitingForStart) {
+      zone.innerHTML = '<div class="mode-status">Prépare-toi… départ synchronisé dans <span id="party-action-timer">—</span> s.</div>';
+      updatePartyActionTimer();
       return;
     }
     if (partyState.mode === 'buzzer') {
       const active = partyState.players.find(player => player.profileId === buzzer.activeProfileId);
       if (buzzer.solvedByProfileId) {
-        zone.innerHTML = `<div class="mode-status">${buzzer.solvedByProfileId === me.profileId ? 'Bonne réponse !' : 'Bonne réponse trouvée.'} Tu peux révéler le morceau.</div>`;
+        const resume = Number(buzzer.answerSecondsRemaining) > 0
+          ? ' Musique dans <span id="party-action-timer">—</span> s.' : '';
+        zone.innerHTML = `<div class="mode-status">${buzzer.solvedByProfileId === me.profileId ? 'Bonne réponse !' : 'Bonne réponse trouvée.'}${resume} Tu peux révéler le morceau.</div>`;
+        updatePartyActionTimer();
         return;
       }
       if (buzzer.activeProfileId) {
         if (buzzer.activeProfileId !== me.profileId) {
-          zone.innerHTML = `<div class="mode-status">${escapeHtml(active ? active.nom : 'Un joueur')} répond · ${Number(buzzer.answerSecondsRemaining) || 0} s</div>`;
+          zone.innerHTML = `<div class="mode-status">${escapeHtml(active ? active.nom : 'Un joueur')} répond · <span id="party-action-timer">—</span> s</div>`;
+          updatePartyActionTimer();
           return;
         }
-        zone.innerHTML = `
-          <div class="mode-status">Tu as ${Number(buzzer.answerSecondsRemaining) || 0} s pour répondre.</div>
-          <input id="party-answer-input" maxlength="200" placeholder="Ta réponse">
-          <button class="cta-btn" id="party-answer-btn">Envoyer</button>`;
+        zone.innerHTML = `<div class="mode-status">Tu as <span id="party-action-timer">—</span> s pour répondre.</div>${partyAnswerBox()}`;
+        updatePartyActionTimer();
+        setTimeout(() => byId('party-answer-input') && byId('party-answer-input').focus(), 20);
         return;
       }
       if (me.buzzerBlockedSeconds) {
@@ -647,9 +685,78 @@
       zone.innerHTML = '<div class="mode-status">Réponse envoyée. En attente de la révélation.</div>';
       return;
     }
-    zone.innerHTML = `
-      <input id="party-answer-input" maxlength="200" placeholder="Ta réponse">
-      <button class="cta-btn" id="party-answer-btn">Envoyer</button>`;
+    zone.innerHTML = partyAnswerBox();
+    setTimeout(() => byId('party-answer-input') && byId('party-answer-input').focus(), 20);
+  }
+
+  function updatePartyActionTimer() {
+    const timer = byId('party-action-timer');
+    if (!timer || !partyState) return;
+    if (partyState.playback
+        && Number(partyState.serverNow) < Number(partyState.playback.startedAt)) {
+      timer.innerText = Math.max(1, Math.ceil(
+        (partyState.playback.startedAt - partyState.serverNow) / 1000));
+      return;
+    }
+    timer.innerText = Number((partyState.buzzer || {}).answerSecondsRemaining) || 0;
+  }
+
+  function partyAnswerBox() {
+    const mode = partyState.settings && partyState.settings.answer;
+    const placeholder = mode === 'artiste' ? 'Rechercher un artiste…'
+      : mode === 'annee' ? 'Donner une année…' : 'Rechercher une chanson…';
+    const inputMode = mode === 'annee' ? ' inputmode="numeric"' : '';
+    return `
+      <div class="party-answer-block">
+        <div class="party-search-box">
+          <span class="party-search-icon" aria-hidden="true">⌕</span>
+          <input id="party-answer-input" maxlength="200" placeholder="${placeholder}"
+                 autocomplete="off"${inputMode}>
+          <div class="party-suggestions hidden" id="party-answer-suggestions"></div>
+        </div>
+        <button class="cta-btn" id="party-answer-btn">Envoyer</button>
+      </div>`;
+  }
+
+  function schedulePartySuggestions() {
+    clearTimeout(partySuggestionTimer);
+    const input = byId('party-answer-input');
+    const list = byId('party-answer-suggestions');
+    if (!input || !list) return;
+    const query = input.value.trim();
+    if (!query) {
+      list.classList.add('hidden');
+      list.innerHTML = '';
+      return;
+    }
+    partySuggestionTimer = setTimeout(async () => {
+      try {
+        const params = new URLSearchParams({
+          playerToken: party.playerToken,
+          q: query,
+        });
+        const result = await window.songlessShared.api(
+          `/api/party/${encodeURIComponent(party.code)}/suggestions?${params}`);
+        if (!byId('party-answer-input') || byId('party-answer-input').value.trim() !== query) return;
+        renderPartySuggestions(result.suggestions || []);
+      } catch (_) {
+        list.classList.add('hidden');
+      }
+    }, 120);
+  }
+
+  function renderPartySuggestions(suggestions) {
+    const list = byId('party-answer-suggestions');
+    if (!list) return;
+    list.innerHTML = suggestions.length
+      ? suggestions.map((item, index) => `
+          <button type="button" class="party-suggestion${index === 0 ? ' active' : ''}"
+                  data-party-suggestion="${escapeHtml(String(item.value || ''))}">
+            <strong>${escapeHtml(String(item.primary || item.value || ''))}</strong>
+            <small>${escapeHtml(String(item.secondary || ''))}</small>
+          </button>`).join('')
+      : '<div class="party-suggestion-empty">Aucune suggestion</div>';
+    list.classList.remove('hidden');
   }
 
   async function partyCommand(action, data = {}) {
@@ -679,6 +786,8 @@
     const input = byId('party-answer-input');
     const answer = input && input.value.trim();
     if (!answer) return showToast('Écris une réponse.', 'warn');
+    const suggestions = byId('party-answer-suggestions');
+    if (suggestions) suggestions.classList.add('hidden');
     partyPlayerAction('answer', { answer }).catch(showPartyError);
   }
 
@@ -751,6 +860,8 @@
     const previousSettings = party && party.previousSettings;
     clearInterval(pollTimer);
     clearTimeout(hostPartyPlayTimer);
+    hostPlaybackSignature = '';
+    partyActionSignature = '';
     pauseAudio();
     pollTimer = null;
     party = null;
@@ -826,6 +937,16 @@
       event.target.value = event.target.value.toUpperCase().replace(/[^A-Z2-9]/g, '').slice(0, 5);
     });
     byId('party-room').addEventListener('click', event => {
+      const suggestion = event.target.closest('[data-party-suggestion]');
+      if (suggestion) {
+        const input = byId('party-answer-input');
+        if (input) {
+          input.value = suggestion.getAttribute('data-party-suggestion') || '';
+          byId('party-answer-suggestions').classList.add('hidden');
+          input.focus();
+        }
+        return;
+      }
       if (event.target.closest('#party-copy-lan')) copyPartyInvite('lan');
       if (event.target.closest('#party-copy-internet')) copyPartyInvite('internet');
       if (event.target.closest('#party-buzz-btn')) partyPlayerAction('buzz').catch(showPartyError);
@@ -838,8 +959,33 @@
       }
       if (event.target.closest('#party-leave-btn')) leaveParty();
     });
+    byId('party-room').addEventListener('input', event => {
+      if (event.target.id === 'party-answer-input') schedulePartySuggestions();
+    });
     byId('party-room').addEventListener('keydown', event => {
-      if (event.key === 'Enter' && event.target.id === 'party-answer-input') submitPartyAnswer();
+      if (event.target.id !== 'party-answer-input') return;
+      const list = byId('party-answer-suggestions');
+      const items = list ? [...list.querySelectorAll('[data-party-suggestion]')] : [];
+      let active = items.findIndex(item => item.classList.contains('active'));
+      if ((event.key === 'ArrowDown' || event.key === 'ArrowUp') && items.length) {
+        event.preventDefault();
+        if (active >= 0) items[active].classList.remove('active');
+        active = event.key === 'ArrowDown'
+          ? (active + 1) % items.length
+          : (active - 1 + items.length) % items.length;
+        items[active].classList.add('active');
+        items[active].scrollIntoView({ block: 'nearest' });
+      } else if (event.key === 'Enter') {
+        event.preventDefault();
+        if (active >= 0 && list && !list.classList.contains('hidden')) {
+          event.target.value = items[active].getAttribute('data-party-suggestion') || '';
+          list.classList.add('hidden');
+        } else {
+          submitPartyAnswer();
+        }
+      } else if (event.key === 'Escape' && list) {
+        list.classList.add('hidden');
+      }
     });
     byId('backup-import').addEventListener('change', event => {
       importBackup(event.target.files && event.target.files[0]);
@@ -896,8 +1042,13 @@
     return Boolean(party && partyState && partyState.status === 'round');
   }
 
+  function blocksManualPlayback() {
+    return Boolean(party && partyState && partyState.status === 'round');
+  }
+
   window.songlessExpansions = {
-    filterPlaylist, onRoundStart, onRoundEnd, beforeAdvance, shouldStayInGame,
+    filterPlaylist, onRoundStart, onRoundEnd, beforeAdvance,
+    shouldStayInGame, blocksManualPlayback,
   };
 
   document.addEventListener('DOMContentLoaded', () => {

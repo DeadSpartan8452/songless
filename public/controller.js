@@ -21,10 +21,15 @@
   const partyAudio = byId('party-audio');
   let audioUnlocked = false;
   let audioRoundKey = '';
+  let audioPlaybackSignature = '';
   let audioStartTimer = null;
   let audioStopTimer = null;
   let reverseAudioContext = null;
   let reverseSource = null;
+  let reverseBuffer = null;
+  let reverseBufferKey = '';
+  let reverseBufferPromise = null;
+  let answerSuggestionTimer = null;
 
   // Nettoie l'ancienne association créée par les versions précédentes.
   try { localStorage.removeItem('songless_controller_profile'); } catch (_) {}
@@ -242,7 +247,7 @@
       ? `
         <div class="tutorial-rule"><span>🎧</span><p>Le son démarre <strong>en même temps</strong> sur ton téléphone et le PC.</p></div>
         <div class="tutorial-rule"><span>🔴</span><p><strong>Buzze en premier.</strong><br>Quand quelqu’un buzze, les autres attendent.</p></div>
-        <div class="tutorial-rule"><span>⌨️</span><p><strong>Tu as 5 secondes</strong> pour écrire ${answerLabel}.</p></div>
+        <div class="tutorial-rule"><span>⌨️</span><p><strong>Tu as 10 secondes</strong> pour écrire ${answerLabel}. La musique reprend ensuite si personne n’a trouvé.</p></div>
         <div class="tutorial-rule"><span>⏳</span><p><strong>Mauvaise réponse :</strong> toi seul es bloqué 3 secondes. Les autres peuvent immédiatement buzzer.</p></div>
         <div class="tutorial-rule"><span>⭐</span><p>Une bonne réponse rapporte <strong>${points} points</strong>.</p></div>`
       : `
@@ -319,14 +324,25 @@
         ? '🔊 Son prêt pour la prochaine manche.'
         : '🔇 Active le son dans les règles.');
       audioRoundKey = '';
+      audioPlaybackSignature = '';
+      reverseBuffer = null;
+      reverseBufferKey = '';
+      reverseBufferPromise = null;
       return;
     }
 
     const key = `${current.code}:${current.round}`;
-    if (!force && audioRoundKey === key) return;
-    audioRoundKey = key;
-    stopPartyAudio('⏱️ Chargement de l’extrait synchronisé…');
     const playback = current.playback;
+    const signature = `${key}:${Number(playback.startedAt) || 0}:${Number(playback.pausedAt) || 0}:${(current.buzzer || {}).solvedByProfileId || ''}`;
+    if (!force && audioPlaybackSignature === signature) return;
+    const newRound = audioRoundKey !== key;
+    audioRoundKey = key;
+    audioPlaybackSignature = signature;
+    stopPartyAudio(playback.pausedAt
+      ? '⏸️ Musique en pause pendant la réponse…'
+      : '⏱️ Synchronisation de l’extrait…');
+    if (playback.pausedAt) return;
+
     const receivedAt = Date.now();
     const serverAtReceipt = Number(current.serverNow) || receivedAt;
     const estimatedServerNow = () => serverAtReceipt + (Date.now() - receivedAt);
@@ -336,16 +352,18 @@
     const url = partyAudioUrl(current);
 
     if (playback.direction === 'inverse') {
-      prepareReversePartyAudio(url, playback, elapsedMusic, delay, key, receivedAt);
+      prepareReversePartyAudio(url, playback, elapsedMusic, delay, key, receivedAt, signature);
       return;
     }
 
-    partyAudio.src = url;
+    if (newRound || !partyAudio.src.includes(`/api/party/${encodeURIComponent(party.code)}/audio`)) {
+      partyAudio.src = url;
+      partyAudio.load();
+    }
     partyAudio.playbackRate = Number(playback.speed) || 1;
     partyAudio.preservesPitch = false;
-    partyAudio.load();
     const start = () => {
-      if (!audioUnlocked || audioRoundKey !== key) return;
+      if (!audioUnlocked || audioRoundKey !== key || audioPlaybackSignature !== signature) return;
       const elapsed = elapsedMusic();
       const remaining = Number(playback.duration) - elapsed;
       if (remaining <= 0) return stopPartyAudio('Extrait terminé. En attente de la révélation.');
@@ -370,28 +388,13 @@
     audioStartTimer = setTimeout(start, delay);
   }
 
-  async function prepareReversePartyAudio(url, playback, elapsedMusic, delay, key, receivedAt) {
+  async function prepareReversePartyAudio(url, playback, elapsedMusic, delay, key, receivedAt, signature) {
     try {
-      if (!reverseAudioContext) {
-        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-        if (!AudioContextClass) throw new Error('Audio inversé non supporté');
-        reverseAudioContext = new AudioContextClass();
-      }
-      const response = await fetch(url);
-      if (!response.ok) throw new Error(`Audio ${response.status}`);
-      const decoded = await reverseAudioContext.decodeAudioData(await response.arrayBuffer());
-      const reversed = reverseAudioContext.createBuffer(
-        decoded.numberOfChannels, decoded.length, decoded.sampleRate);
-      for (let channel = 0; channel < decoded.numberOfChannels; channel++) {
-        const source = decoded.getChannelData(channel);
-        const target = reversed.getChannelData(channel);
-        for (let left = 0, right = source.length - 1; left < source.length; left++, right--) {
-          target[left] = source[right];
-        }
-      }
+      const reversed = await getReversePartyBuffer(url, key);
+      if (audioPlaybackSignature !== signature) return;
       const wait = Math.max(0, delay - (Date.now() - receivedAt));
       audioStartTimer = setTimeout(() => {
-        if (!audioUnlocked || audioRoundKey !== key) return;
+        if (!audioUnlocked || audioRoundKey !== key || audioPlaybackSignature !== signature) return;
         const elapsed = elapsedMusic();
         const remaining = Number(playback.duration) - elapsed;
         if (remaining <= 0) return stopPartyAudio('Extrait terminé. En attente de la révélation.');
@@ -412,6 +415,35 @@
     } catch (_) {
       byId('audio-sync-status').innerText = 'Impossible de préparer l’extrait inversé sur ce téléphone.';
     }
+  }
+
+  function getReversePartyBuffer(url, key) {
+    if (reverseBufferKey === key && reverseBuffer) return Promise.resolve(reverseBuffer);
+    if (reverseBufferKey === key && reverseBufferPromise) return reverseBufferPromise;
+    reverseBufferKey = key;
+    reverseBuffer = null;
+    reverseBufferPromise = (async () => {
+      if (!reverseAudioContext) {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContextClass) throw new Error('Audio inversé non supporté');
+        reverseAudioContext = new AudioContextClass();
+      }
+      const response = await fetch(url);
+      if (!response.ok) throw new Error(`Audio ${response.status}`);
+      const decoded = await reverseAudioContext.decodeAudioData(await response.arrayBuffer());
+      const reversed = reverseAudioContext.createBuffer(
+        decoded.numberOfChannels, decoded.length, decoded.sampleRate);
+      for (let channel = 0; channel < decoded.numberOfChannels; channel++) {
+        const source = decoded.getChannelData(channel);
+        const target = reversed.getChannelData(channel);
+        for (let left = 0, right = source.length - 1; left < source.length; left++, right--) {
+          target[left] = source[right];
+        }
+      }
+      if (reverseBufferKey === key) reverseBuffer = reversed;
+      return reversed;
+    })();
+    return reverseBufferPromise;
   }
 
   function renderRoom() {
@@ -445,31 +477,38 @@
     const buzzer = state.buzzer || {};
     const startsIn = state.playback
       ? Math.max(0, Math.ceil((Number(state.playback.startedAt) - Number(state.serverNow)) / 1000)) : 0;
-    const signature = `${state.status}:${state.round}:${state.mode}:${startsIn}:${me ? me.answer : ''}:${me ? me.lastAnswer : ''}:${me ? me.buzzPosition : ''}:${me ? me.buzzerBlockedSeconds : 0}:${buzzer.activeProfileId || ''}:${buzzer.answerSecondsRemaining || 0}:${buzzer.solvedByProfileId || ''}`;
-    if (signature === actionSignature) return;
+    const signature = `${state.status}:${state.round}:${state.mode}:${startsIn > 0 ? 'wait' : 'go'}:${me ? me.answer : ''}:${me ? me.lastAnswer : ''}:${me ? me.buzzPosition : ''}:${me ? me.buzzerBlockedSeconds : 0}:${buzzer.activeProfileId || ''}:${buzzer.solvedByProfileId || ''}:${buzzer.solvedByProfileId && Number(buzzer.answerSecondsRemaining) > 0 ? 'paused' : 'played'}`;
+    if (signature === actionSignature) {
+      updateActionTimer();
+      return;
+    }
     actionSignature = signature;
     zone.innerHTML = '';
     if (!me || state.status !== 'round') return;
     if (state.playback && Number(state.serverNow) < Number(state.playback.startedAt)) {
-      const seconds = Math.max(1, Math.ceil((state.playback.startedAt - state.serverNow) / 1000));
-      zone.innerHTML = `<div class="wait-note">Prépare-toi… départ dans ${seconds} s.</div>`;
+      zone.innerHTML = '<div class="wait-note">Prépare-toi… départ dans <span id="action-timer">—</span> s.</div>';
+      updateActionTimer();
       return;
     }
     if (state.mode === 'buzzer') {
       const active = state.players.find(item => item.profileId === buzzer.activeProfileId);
       if (buzzer.solvedByProfileId) {
-        zone.innerHTML = `<div class="wait-note">${buzzer.solvedByProfileId === me.profileId ? 'Bonne réponse !' : 'Bonne réponse trouvée. Attends la révélation du PC.'}</div>`;
+        const resume = Number(buzzer.answerSecondsRemaining) > 0
+          ? ' La musique reprend dans <span id="action-timer">—</span> s.' : '';
+        zone.innerHTML = `<div class="wait-note">${buzzer.solvedByProfileId === me.profileId ? 'Bonne réponse !' : 'Bonne réponse trouvée.'}${resume}</div>`;
+        updateActionTimer();
         return;
       }
       if (buzzer.activeProfileId) {
         if (buzzer.activeProfileId !== me.profileId) {
-          zone.innerHTML = `<div class="wait-note">${escapeHtml(active ? active.nom : 'Un joueur')} répond · ${Number(buzzer.answerSecondsRemaining) || 0} s</div>`;
+          zone.innerHTML = `<div class="wait-note">${escapeHtml(active ? active.nom : 'Un joueur')} répond · <span id="action-timer">—</span> s</div>`;
+          updateActionTimer();
           return;
         }
         zone.innerHTML = `
-          <div class="wait-note">Tu as ${Number(buzzer.answerSecondsRemaining) || 0} s pour répondre.</div>
-          <input id="answer-input" class="answer-input" maxlength="200" placeholder="Ta réponse" autocomplete="off">
-          <button id="answer-btn" class="primary-btn" type="button">Envoyer</button>`;
+          <div class="wait-note">Tu as <span id="action-timer">—</span> s pour répondre.</div>
+          ${answerBox()}`;
+        updateActionTimer();
         setTimeout(() => byId('answer-input') && byId('answer-input').focus(), 30);
         return;
       }
@@ -484,10 +523,75 @@
       zone.innerHTML = '<div class="wait-note">Réponse envoyée. Attends la révélation du PC.</div>';
       return;
     }
-    zone.innerHTML = `
-      <input id="answer-input" class="answer-input" maxlength="200" placeholder="Ta réponse" autocomplete="off">
-      <button id="answer-btn" class="primary-btn" type="button">Envoyer</button>`;
+    zone.innerHTML = answerBox();
     setTimeout(() => byId('answer-input') && byId('answer-input').focus(), 30);
+  }
+
+  function updateActionTimer() {
+    const timer = byId('action-timer');
+    if (!timer || !state) return;
+    if (state.playback && Number(state.serverNow) < Number(state.playback.startedAt)) {
+      timer.innerText = Math.max(1, Math.ceil(
+        (state.playback.startedAt - state.serverNow) / 1000));
+      return;
+    }
+    timer.innerText = Number((state.buzzer || {}).answerSecondsRemaining) || 0;
+  }
+
+  function answerBox() {
+    const mode = state.settings && state.settings.answer;
+    const placeholder = mode === 'artiste' ? 'Rechercher un artiste…'
+      : mode === 'annee' ? 'Donner une année…' : 'Rechercher une chanson…';
+    const inputMode = mode === 'annee' ? ' inputmode="numeric"' : '';
+    return `
+      <div class="answer-block">
+        <div class="answer-search">
+          <span class="answer-search-icon" aria-hidden="true">⌕</span>
+          <input id="answer-input" class="answer-input" maxlength="200"
+                 placeholder="${placeholder}" autocomplete="off"${inputMode}>
+          <div id="answer-suggestions" class="answer-suggestions hidden"></div>
+        </div>
+        <button id="answer-btn" class="primary-btn" type="button">Envoyer</button>
+      </div>`;
+  }
+
+  function scheduleAnswerSuggestions() {
+    clearTimeout(answerSuggestionTimer);
+    const input = byId('answer-input');
+    const list = byId('answer-suggestions');
+    if (!input || !list) return;
+    const query = input.value.trim();
+    if (!query) {
+      list.classList.add('hidden');
+      list.innerHTML = '';
+      return;
+    }
+    answerSuggestionTimer = setTimeout(async () => {
+      try {
+        const params = new URLSearchParams({ playerToken: party.playerToken, q: query });
+        const result = await api(
+          `/api/party/${encodeURIComponent(party.code)}/suggestions?${params}`);
+        const currentInput = byId('answer-input');
+        if (!currentInput || currentInput.value.trim() !== query) return;
+        renderAnswerSuggestions(result.suggestions || []);
+      } catch (_) {
+        list.classList.add('hidden');
+      }
+    }, 120);
+  }
+
+  function renderAnswerSuggestions(suggestions) {
+    const list = byId('answer-suggestions');
+    if (!list) return;
+    list.innerHTML = suggestions.length
+      ? suggestions.map((item, index) => `
+          <button type="button" class="answer-suggestion${index === 0 ? ' active' : ''}"
+                  data-answer-suggestion="${escapeHtml(item.value)}">
+            <strong>${escapeHtml(item.primary || item.value)}</strong>
+            <small>${escapeHtml(item.secondary || '')}</small>
+          </button>`).join('')
+      : '<div class="answer-suggestion-empty">Aucune suggestion</div>';
+    list.classList.remove('hidden');
   }
 
   function renderReveal() {
@@ -640,6 +744,8 @@
     const input = byId('answer-input');
     const answer = input && input.value.trim();
     if (!answer) return toast('Écris une réponse.');
+    const suggestions = byId('answer-suggestions');
+    if (suggestions) suggestions.classList.add('hidden');
     playerAction('answer', { answer });
   }
 
@@ -650,6 +756,10 @@
     state = null;
     actionSignature = '';
     audioRoundKey = '';
+    audioPlaybackSignature = '';
+    reverseBuffer = null;
+    reverseBufferKey = '';
+    reverseBufferPromise = null;
     stopPartyAudio('🔊 Son prêt pour une autre partie.');
     writeJson(PARTY_KEY, null);
     byId('room-screen').classList.add('hidden');
@@ -658,6 +768,16 @@
   }
 
   document.addEventListener('click', event => {
+    const answerSuggestion = event.target.closest('[data-answer-suggestion]');
+    if (answerSuggestion) {
+      const input = byId('answer-input');
+      if (input) {
+        input.value = answerSuggestion.getAttribute('data-answer-suggestion') || '';
+        byId('answer-suggestions').classList.add('hidden');
+        input.focus();
+      }
+      return;
+    }
     const pick = event.target.closest('[data-profile]');
     if (pick) {
       const found = profiles.find(item => item.id === pick.getAttribute('data-profile'));
@@ -680,17 +800,48 @@
     if (event.target.closest('#answer-btn')) submitAnswer();
     if (event.target.closest('#gift-link-btn')) giveMusicLink();
     if (event.target.closest('#gift-file-btn')) giveMusicFile();
+    const suggestions = byId('answer-suggestions');
+    if (suggestions && !event.target.closest('.answer-search')) {
+      suggestions.classList.add('hidden');
+    }
   });
 
   document.addEventListener('keydown', event => {
     if (event.key === 'Enter' && event.target.id === 'party-code') joinParty();
     if (event.key === 'Enter' && event.target.id === 'new-name') createProfile();
-    if (event.key === 'Enter' && event.target.id === 'answer-input') submitAnswer();
+    if (event.target.id === 'answer-input') {
+      const list = byId('answer-suggestions');
+      const items = list ? [...list.querySelectorAll('[data-answer-suggestion]')] : [];
+      let active = items.findIndex(item => item.classList.contains('active'));
+      if ((event.key === 'ArrowDown' || event.key === 'ArrowUp') && items.length) {
+        event.preventDefault();
+        if (active >= 0) items[active].classList.remove('active');
+        active = event.key === 'ArrowDown'
+          ? (active + 1) % items.length
+          : (active - 1 + items.length) % items.length;
+        items[active].classList.add('active');
+        items[active].scrollIntoView({ block: 'nearest' });
+      } else if (event.key === 'Enter') {
+        event.preventDefault();
+        if (active >= 0 && list && !list.classList.contains('hidden')) {
+          event.target.value = items[active].getAttribute('data-answer-suggestion') || '';
+          list.classList.add('hidden');
+        } else {
+          submitAnswer();
+        }
+      } else if (event.key === 'Escape' && list) {
+        list.classList.add('hidden');
+      }
+    }
     if (event.key === 'Enter' && event.target.id === 'gift-query') giveMusicLink();
   });
 
   byId('party-code').addEventListener('input', event => {
     event.target.value = event.target.value.toUpperCase().replace(/[^A-Z2-9]/g, '').slice(0, 5);
+  });
+
+  document.addEventListener('input', event => {
+    if (event.target.id === 'answer-input') scheduleAnswerSuggestions();
   });
 
   byId('profile-gate').addEventListener('click', event => {

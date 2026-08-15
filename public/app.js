@@ -378,7 +378,7 @@ function setupAudioForTrack(track) {
   updatePlayerUI(0);
 }
 
-function playAudio() {
+function playAudio(syncPlayback = null) {
   if (!currentTrack) return;
 
   // Une seule source à la fois : l'aperçu de la bibliothèque se tait.
@@ -395,7 +395,7 @@ function playAudio() {
   // sait pas faire, on passe par le tampon décodé. Une fois le morceau dévoilé,
   // on réécoute normalement — c'est le moment de le reconnaître, pas de jouer.
   if (!isGameFinished && reglages.sens === 'inverse') {
-    jouerAlEnvers();
+    jouerAlEnvers(syncPlayback);
     return;
   }
 
@@ -408,7 +408,7 @@ function playAudio() {
     playerStatusText.classList.remove('hidden');
     playerStatusText.innerText = 'Repérage du refrain…';
     preparerExtrait(track).then(() => {
-      if (currentTrack === track && !isPlaying) playAudio();
+      if (currentTrack === track && !isPlaying) playAudio(syncPlayback);
     });
     return;
   }
@@ -430,8 +430,11 @@ function playAudio() {
   audio.webkitPreservesPitch = false;
 
   if (!isGameFinished) {
-    // En jeu : toujours repartir du début de l'extrait
-    audio.currentTime = currentTrackOffset;
+    // Une manche normale repart du début. En multijoueur synchronisé, on se
+    // replace dans l'unique écoute en retirant les éventuelles pauses buzzer.
+    const elapsed = syncPlayback ? Math.max(0, Number(syncPlayback.elapsed) || 0) : 0;
+    const offset = syncPlayback ? Number(syncPlayback.offset) || 0 : currentTrackOffset;
+    audio.currentTime = offset + elapsed;
   } else if (victoryAutoPlay) {
     // Première lecture après révélation : on démarre au point de l'extrait
     audio.currentTime = currentTrackOffset;
@@ -461,19 +464,29 @@ function playAudio() {
       // En jeu : la lecture est bornée au palier de l'essai en cours.
       // Le palier compte des secondes de musique, pas des secondes d'horloge :
       // à ×1,5 on entend la même chose, en un tiers de temps de moins.
-      const maxPlayDuration = durations[currentAttempt];
+      const maxPlayDuration = syncPlayback
+        ? Math.max(0, Number(syncPlayback.duration) || 0)
+        : durations[currentAttempt];
+      const initialElapsed = syncPlayback
+        ? Math.min(maxPlayDuration, Math.max(0, Number(syncPlayback.elapsed) || 0)) : 0;
+      const remainingDuration = Math.max(0, maxPlayDuration - initialElapsed);
+      if (remainingDuration <= 0) {
+        pauseAudio();
+        updatePlayerUI(maxPlayDuration, maxPlayDuration);
+        return;
+      }
       timeMax.innerText = `${maxPlayDuration.toFixed(1)}s`;
 
       const startTime = Date.now();
       progressInterval = setInterval(() => {
-        const elapsed = ((Date.now() - startTime) / 1000) * vitesse;
+        const elapsed = initialElapsed + ((Date.now() - startTime) / 1000) * vitesse;
         updatePlayerUI(elapsed, maxPlayDuration);
       }, 30);
 
       playTimeout = setTimeout(() => {
         pauseAudio();
         updatePlayerUI(0, maxPlayDuration);
-      }, (maxPlayDuration / vitesse) * 1000);
+      }, (remainingDuration / vitesse) * 1000);
     })
     .catch(err => {
       // Déplacer le curseur pendant la lecture interrompt la promesse play() :
@@ -668,7 +681,7 @@ function trouverPassageFort(buffer) {
  * On part du point de l'extrait et on remonte le morceau : les paliers
  * successifs découvrent donc ce qui précède, à rebours.
  */
-async function jouerAlEnvers() {
+async function jouerAlEnvers(syncPlayback = null) {
   const track = currentTrack;
 
   isPlaying = true;
@@ -693,13 +706,23 @@ async function jouerAlEnvers() {
   clearInterval(progressInterval);
   if (animationFrameId) cancelAnimationFrame(animationFrameId);
 
-  const palier = durations[currentAttempt];
+  const palier = syncPlayback
+    ? Math.max(0, Number(syncPlayback.duration) || 0)
+    : durations[currentAttempt];
+  const initialElapsed = syncPlayback
+    ? Math.min(palier, Math.max(0, Number(syncPlayback.elapsed) || 0)) : 0;
   const vitesse = reglages.vitesse;
   const duree = bufferInverse.duration;
 
   // Position du point d'extrait dans le tampon retourné.
-  const depart = Math.max(0, Math.min(duree - 0.05, duree - currentTrackOffset));
-  const longueur = Math.min(palier, duree - depart);
+  const offset = syncPlayback ? Number(syncPlayback.offset) || 0 : currentTrackOffset;
+  const depart = Math.max(0, Math.min(duree - 0.05, duree - offset + initialElapsed));
+  const longueur = Math.min(Math.max(0, palier - initialElapsed), duree - depart);
+  if (longueur <= 0) {
+    pauseAudio();
+    updatePlayerUI(palier, palier);
+    return;
+  }
 
   sourceTampon = audioContext.createBufferSource();
   sourceTampon.buffer = bufferInverse;
@@ -709,7 +732,7 @@ async function jouerAlEnvers() {
   timeMax.innerText = `${palier.toFixed(1)}s`;
   const debutHorloge = Date.now();
   progressInterval = setInterval(() => {
-    const elapsed = ((Date.now() - debutHorloge) / 1000) * vitesse;
+    const elapsed = initialElapsed + ((Date.now() - debutHorloge) / 1000) * vitesse;
     updatePlayerUI(elapsed, palier);
   }, 30);
 
@@ -899,6 +922,11 @@ function isTypingSpace(target) {
  */
 function togglePlayback() {
   if (!currentTrack) return;
+  if (window.songlessExpansions && window.songlessExpansions.blocksManualPlayback
+      && window.songlessExpansions.blocksManualPlayback()) {
+    showToast('Une seule écoute par manche multijoueur.', 'warn');
+    return;
+  }
   if (isPlaying) pauseAudio();
   else playAudio();
 }
