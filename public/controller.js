@@ -255,12 +255,12 @@
         <div class="tutorial-rule"><span>🔴</span><p><strong>Buzze en premier.</strong><br>Quand quelqu’un buzze, les autres attendent.</p></div>
         <div class="tutorial-rule"><span>⌨️</span><p><strong>Tu as 10 secondes</strong> pour écrire ${answerLabel}. La musique reprend ensuite si personne n’a trouvé.</p></div>
         <div class="tutorial-rule"><span>⏳</span><p><strong>Mauvaise réponse :</strong> toi seul es bloqué 3 secondes. À partir de la 3ᵉ erreur, tu perds aussi 10 % des points de la manche.</p></div>
-        <div class="tutorial-rule"><span>🗳️</span><p>Vote pour <strong>passer</strong> ou ajouter <strong>5 secondes</strong> à l’extrait.</p></div>
+        <div class="tutorial-rule"><span>🗳️</span><p>Vote pour <strong>passer</strong> le morceau.</p></div>
         <div class="tutorial-rule"><span>⭐</span><p>Une bonne réponse rapporte <strong>${points} points</strong>.</p></div>`
       : `
         <div class="tutorial-rule"><span>🎧</span><p>Écoute l’extrait sur ton téléphone ou le PC, puis écris <strong>${answerLabel}</strong>.</p></div>
         <div class="tutorial-rule"><span>📨</span><p><strong>Envoie une seule réponse</strong>, puis attends la révélation de l’hôte.</p></div>
-        <div class="tutorial-rule"><span>🗳️</span><p>Vote pour <strong>passer</strong> ou ajouter <strong>5 secondes</strong> à l’extrait.</p></div>
+        <div class="tutorial-rule"><span>🗳️</span><p>Vote pour <strong>passer</strong> le morceau.</p></div>
         <div class="tutorial-rule"><span>⭐</span><p>Une réponse rapide rapporte davantage, jusqu’à <strong>${points} points</strong>.</p></div>`;
     const infiniteRule = current.infinite
       ? '<div class="tutorial-rule"><span>∞</span><p><strong>Mode infini :</strong> les manches continuent jusqu’à ce que l’hôte termine la partie.</p></div>'
@@ -839,7 +839,7 @@
     const zone = byId('round-votes');
     const me = currentPlayer();
     const votes = state && state.votes;
-    if (!zone || !me || state.status !== 'round' || !votes) {
+    if (!zone || !me || state.status !== 'round' || !votes || !votes.skip) {
       if (zone) zone.classList.add('hidden');
       return;
     }
@@ -847,11 +847,7 @@
     zone.innerHTML = `
       <button type="button" class="vote-btn${votes.skip.voted ? ' voted' : ''}"
               id="vote-skip-btn"${votes.skip.passed ? ' disabled' : ''}>
-        ⏭ Passer · ${Number(votes.skip.count) || 0}/${threshold}
-      </button>
-      <button type="button" class="vote-btn${votes.more.voted ? ' voted' : ''}"
-              id="vote-more-btn"${votes.more.granted ? ' disabled' : ''}>
-        ${votes.more.granted ? '✅ +5 s ajoutées' : `⏱ +5 s · ${Number(votes.more.count) || 0}/${threshold}`}
+        ⏭ Passer le morceau · ${Number(votes.skip.count) || 0}/${threshold}
       </button>`;
     zone.classList.remove('hidden');
   }
@@ -927,6 +923,13 @@
     }
     const me = currentPlayer();
     const won = Boolean(me && me.correct);
+    if (won && window.songlessTrophies) {
+      window.songlessTrophies.unlock('party_win_round');
+      if (state.mode === 'buzzer') window.songlessTrophies.unlock('party_buzz_win');
+      if (state.mode === 'royale') window.songlessTrophies.unlock('battle_royale_round');
+      if (state.mode === 'duel') window.songlessTrophies.unlock('battle_duel_round');
+      if (me.attempts && me.attempts.length === 1) window.songlessTrophies.unlock('speed_first');
+    }
     const verdict = won
       ? '<span class="round-result-icon" aria-hidden="true">🏆</span><span class="correct">Gagné !</span>'
       : '<span class="round-result-icon" aria-hidden="true">❌</span><span class="wrong">Perdu pour cette manche</span>';
@@ -946,6 +949,14 @@
     if (state.status === 'finished') {
       const myRank = sorted.findIndex(item => item.profileId === state.viewerProfileId) + 1;
       const medal = myRank === 1 ? '🥇 1er' : myRank === 2 ? '🥈 2e' : myRank === 3 ? '🥉 3e' : `${myRank}e`;
+      if (myRank === 1 && window.songlessTrophies) {
+        window.songlessTrophies.unlock('party_first_place');
+        if (state.mode === 'royale') window.songlessTrophies.unlock('battle_royale_win');
+        if (state.mode === 'duel') window.songlessTrophies.unlock('battle_duel_win');
+      }
+      if (sorted.length >= 4 && window.songlessTrophies) {
+        window.songlessTrophies.unlock('party_full_house');
+      }
       let badgesHtml = '';
       if (me && me.accolades) {
         if (me.accolades.lightningWins > 0) badgesHtml += `<span class="controller-badge">⚡ L'Éclair (${me.accolades.lightningWins}x à 0,2s)</span>`;
@@ -1186,7 +1197,6 @@
     if (event.target.closest('#answer-btn')) submitAnswer();
     if (event.target.closest('#skip-btn')) playerAction('skip');
     if (event.target.closest('#vote-skip-btn')) playerAction('vote-skip');
-    if (event.target.closest('#vote-more-btn')) playerAction('vote-more');
     if (event.target.closest('#chat-send-btn')) sendChat();
     if (event.target.closest('#gift-link-btn')) giveMusicLink();
     if (event.target.closest('#gift-file-btn')) giveMusicFile();

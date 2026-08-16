@@ -1602,7 +1602,7 @@
     const votes = partyState && partyState.votes;
     const me = partyState && partyState.players.find(
       player => player.profileId === partyState.viewerProfileId);
-    if (!zone || !me || partyState.status !== 'round' || !votes) {
+    if (!zone || !me || partyState.status !== 'round' || !votes || !votes.skip) {
       if (zone) zone.classList.add('hidden');
       return;
     }
@@ -1610,13 +1610,7 @@
     zone.innerHTML = `
       <button class="party-vote${votes.skip.voted ? ' voted' : ''}"
               id="party-vote-skip"${votes.skip.passed ? ' disabled' : ''}>
-        ⏭ Passer <strong>${Number(votes.skip.count) || 0}/${threshold}</strong>
-      </button>
-      <button class="party-vote${votes.more.voted ? ' voted' : ''}"
-              id="party-vote-more"${votes.more.granted ? ' disabled' : ''}>
-        ${votes.more.granted
-          ? '✅ 5 secondes ajoutées'
-          : `⏱ +5 s <strong>${Number(votes.more.count) || 0}/${threshold}</strong>`}
+        ⏭ Passer le morceau <strong>${Number(votes.skip.count) || 0}/${threshold}</strong>
       </button>`;
     zone.classList.remove('hidden');
   }
@@ -2206,7 +2200,6 @@
       if (event.target.closest('#party-answer-btn')) submitPartyAnswer();
       if (event.target.closest('#party-skip-btn')) partyPlayerAction('skip').catch(showPartyError);
       if (event.target.closest('#party-vote-skip')) partyPlayerAction('vote-skip').catch(showPartyError);
-      if (event.target.closest('#party-vote-more')) partyPlayerAction('vote-more').catch(showPartyError);
       if (event.target.closest('#party-chat-send')) sendPartyChat();
       if (event.target.closest('#party-round-btn')) startPartyRound();
       if (event.target.closest('#party-reveal-btn')) revealParty();

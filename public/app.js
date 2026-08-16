@@ -1787,6 +1787,7 @@ function registerAttempt(type, text) {
       updateProgressSegmentsUI();
       memoriserManche();
       guessInput.focus();
+      playAudio();
     } else {
       // C'était la dernière tentative
       endGame(false);
@@ -3831,6 +3832,17 @@ function initPhoneModal() {
 
   btn.addEventListener('click', () => {
     const zone = document.getElementById('phone-content');
+    const urls = (contexte.urls && contexte.urls.length > 0)
+      ? contexte.urls
+      : (contexte.url ? [contexte.url] : []);
+    const listeUrls = urls
+      .map((url, index) => `
+        <p class="share-preview">
+          <a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">
+            ${escapeHtml(url)}
+          </a>
+        </p>`)
+      .join('');
 
     if (!contexte.lan) {
       zone.innerHTML = `
@@ -3853,7 +3865,7 @@ function initPhoneModal() {
       zone.innerHTML = `
         <p class="modal-file">Scanne ce code avec l'appareil photo du téléphone :</p>
         <div class="qr-wrapper"><img src="/api/lan/qr.svg" alt="QR code de l'adresse locale"></div>
-        <pre class="share-preview">${escapeHtml(contexte.url)}</pre>
+        ${listeUrls}
         <p class="modal-file">
           Même wifi obligatoire. Chaque téléphone choisit son profil à chaque
           ouverture, rejoint le code affiché dans « Modes », puis répond ou

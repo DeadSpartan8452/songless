@@ -39,6 +39,35 @@ const HOTE = LAN ? '0.0.0.0' : '127.0.0.1';
 const LAN_PAIR_TOKEN = crypto.randomBytes(18).toString('base64url');
 
 /** Adresses IPv4 par lesquelles le tÃ©lÃ©phone peut joindre cette machine. */
+function adresseRoutable(adresse) {
+  return /^\d+\.\d+\.\d+\.\d+$/.test(adresse);
+}
+
+function estLoopbackOuLli(adresse) {
+  return adresse === '127.0.0.1'
+    || adresse.startsWith('169.254.')
+    || /^0\.0\.0\.0$/.test(adresse);
+}
+
+function interfaceVirtuelle(nom) {
+  const nomLower = String(nom || '').toLowerCase();
+  return /(vbox|vmware|virtual|hyper-?v|wsl|docker|podman|veth|utun|tun|tap|vpn|hamachi|wireguard|nordvpn|zerotier)/i.test(nomLower);
+}
+
+function estLocale(adresse) {
+  return /^192\.168\./.test(adresse)
+    || /^10\./.test(adresse)
+    || /^172\.(1[6-9]|2\d|3[01])\./.test(adresse);
+}
+
+function scoreInterface(nom, adresse) {
+  let score = 100;
+  if (interfaceVirtuelle(nom)) score += 800;
+  if (estLocale(adresse)) score -= 400;
+  if (/^(wifi|wireless|wlan|ethernet|lan|wi-?fi)/i.test(nom)) score -= 30;
+  return score;
+}
+
 function adressesLocales() {
   const out = [];
   const cartes = os.networkInterfaces();
@@ -46,21 +75,39 @@ function adressesLocales() {
     for (const carte of liste || []) {
       if (carte.family !== 'IPv4' && carte.family !== 4) continue;
       if (carte.internal) continue;
-      out.push({ nom, adresse: carte.address });
+      const adresse = String(carte.address || '');
+      if (!adresseRoutable(adresse) || estLoopbackOuLli(adresse)) continue;
+      out.push({
+        nom,
+        adresse,
+        score: scoreInterface(nom, adresse),
+      });
     }
   }
-  // Une carte virtuelle (VirtualBox, WSL, VPN) donne une adresse que le
-  // tÃ©lÃ©phone ne joindra jamais : les rÃ©seaux domestiques passent devant.
-  const domestique = (a) => /^192\.168\./.test(a) || /^10\./.test(a)
-    || /^172\.(1[6-9]|2\d|3[01])\./.test(a);
-  return out.sort((a, b) => Number(domestique(b.adresse)) - Number(domestique(a.adresse)));
+
+  const triees = out
+    .sort((a, b) => a.score - b.score || a.adresse.localeCompare(b.adresse))
+    .map(item => ({ nom: item.nom, adresse: item.adresse }));
+
+  const vues = new Set();
+  return triees.filter(item => {
+    if (vues.has(item.adresse)) return false;
+    vues.add(item.adresse);
+    return true;
+  });
+}
+
+function urlsLan(paired = false) {
+  return adressesLocales().map(item => {
+    const base = `http://${item.adresse}:${PORT}`;
+    return paired
+      ? `${base}/controller.html?pair=${encodeURIComponent(LAN_PAIR_TOKEN)}`
+      : base;
+  });
 }
 
 function urlLan(paired = false) {
-  const premiere = adressesLocales()[0];
-  if (!premiere) return null;
-  const base = `http://${premiere.adresse}:${PORT}`;
-  return paired ? `${base}/controller.html?pair=${encodeURIComponent(LAN_PAIR_TOKEN)}` : base;
+  return urlsLan(paired)[0] || null;
 }
 
 /**
@@ -309,7 +356,8 @@ app.get('/api/context', (req, res) => {
     canAdd: paired,
     controller: LAN && !local,
     readOnly: LAN && !local,
-    url: local ? urlLan() : null,
+    url: LAN ? urlLan() : null,
+    urls: LAN ? urlsLan() : [],
     publicUrl: PUBLIC_URL || null,
     port: PORT,
   });
