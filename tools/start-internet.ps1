@@ -1,8 +1,20 @@
 param(
-  [switch]$SkipBrowser
+  [switch]$SkipBrowser,
+  [switch]$SmokeTest
 )
 
 $ErrorActionPreference = 'Stop'
+
+$CurrentIdentity = [Security.Principal.WindowsIdentity]::GetCurrent()
+$CurrentPrincipal = New-Object Security.Principal.WindowsPrincipal(
+  $CurrentIdentity
+)
+$IsAdministrator = $CurrentPrincipal.IsInRole(
+  [Security.Principal.WindowsBuiltInRole]::Administrator
+)
+if (-not $IsAdministrator -and -not $SmokeTest) {
+  throw 'Le lanceur doit etre valide dans la fenetre de securite Windows.'
+}
 
 $InstanceLock = New-Object System.Threading.Mutex(
   $false,
@@ -54,8 +66,34 @@ if ($PortLocalOccupe -and $PortPublicOccupe) {
     -ForegroundColor Yellow
   exit 0
 }
-if ($PortLocalOccupe -or $PortPublicOccupe) {
-  throw 'Songless tourne deja. Ferme-le avant de lancer le mode Internet.'
+if ($PortLocalOccupe -and -not $PortPublicOccupe) {
+  $AncienSongless = $false
+  try {
+    $Contexte = Invoke-RestMethod -Uri 'http://127.0.0.1:3000/api/context' `
+      -TimeoutSec 2
+    $Connexion = Get-NetTCPConnection -LocalPort 3000 -State Listen |
+      Select-Object -First 1
+    $Processus = Get-CimInstance Win32_Process `
+      -Filter "ProcessId=$($Connexion.OwningProcess)"
+    $AncienSongless = $Contexte.port -eq 3000 `
+      -and $Processus.Name -eq 'node.exe' `
+      -and $Processus.CommandLine -match 'server\.js'
+  } catch {}
+  if (-not $AncienSongless) {
+    throw 'Le port 3000 est utilise par un autre programme.'
+  }
+  Write-Host 'Fermeture de l''ancienne instance Songless...' `
+    -ForegroundColor Yellow
+  Stop-Process -Id $Connexion.OwningProcess -Force
+  Start-Sleep -Milliseconds 800
+  $PortLocalOccupe = Test-NetConnection 127.0.0.1 -Port 3000 `
+    -InformationLevel Quiet -WarningAction SilentlyContinue
+  if ($PortLocalOccupe) {
+    throw 'L''ancienne instance Songless ne s''est pas fermee.'
+  }
+}
+if ($PortPublicOccupe) {
+  throw 'Le port Internet 3001 est deja utilise par un autre programme.'
 }
 
 $env:SONGLESS_PUBLIC_URL = $PublicUrl
@@ -102,10 +140,9 @@ try {
       try {
         $FunnelStatus = & $TailscalePath funnel status --json |
           ConvertFrom-Json
-        $Proxy = $FunnelStatus.Web.PSObject.Properties.Value |
-          ForEach-Object { $_.Handlers.PSObject.Properties.Value.Proxy } |
-          Where-Object { $_ -eq 'http://127.0.0.1:3001' }
-        if ($Proxy) {
+        $FunnelStatusJson = $FunnelStatus | ConvertTo-Json -Depth 12
+        if ($FunnelStatusJson -match `
+          '"Proxy"\s*:\s*"http://127\.0\.0\.1:3001"') {
           $TunnelPret = $true
           break
         }
@@ -117,7 +154,50 @@ try {
     throw 'Le tunnel Tailscale ne s''est pas active apres 6 tentatives.'
   }
 
-  Write-Host 'Tunnel Tailscale actif et verifie.' -ForegroundColor Green
+  $AdressePubliquePrete = $false
+  for ($i = 0; $i -lt 20; $i++) {
+    try {
+      $Response = Invoke-WebRequest -UseBasicParsing `
+        -Uri "$PublicUrl/api/context" -TimeoutSec 3
+      if ($Response.StatusCode -eq 200) {
+        $AdressePubliquePrete = $true
+        break
+      }
+    } catch {}
+    Start-Sleep -Milliseconds 750
+  }
+  if (-not $AdressePubliquePrete) {
+    throw 'Le tunnel est active, mais l''adresse HTTPS ne repond pas.'
+  }
+
+  Write-Host 'Tunnel et adresse HTTPS verifies.' -ForegroundColor Green
+  if ($SmokeTest) {
+    $CorpsSalon = @{
+      mode = 'classic'
+      totalRounds = 1
+      settings = @{}
+    } | ConvertTo-Json
+    $Salon = Invoke-RestMethod -Method Post `
+      -Uri 'http://127.0.0.1:3000/api/party/create' `
+      -ContentType 'application/json' -Body $CorpsSalon -TimeoutSec 3
+    $CodeSalon = [uri]::EscapeDataString([string]$Salon.code)
+    $JetonHote = [uri]::EscapeDataString([string]$Salon.hostToken)
+    $AdresseQr = "http://127.0.0.1:3000/api/party/$CodeSalon/qr.svg" `
+      + "?hostToken=$JetonHote&kind=internet"
+    $Qr = Invoke-WebRequest -UseBasicParsing -Uri $AdresseQr -TimeoutSec 3
+    if ($Qr.StatusCode -ne 200 -or $Qr.Content -notmatch '<svg') {
+      throw 'Le QR code du salon n''a pas pu etre genere.'
+    }
+    $Invitation = Invoke-WebRequest -UseBasicParsing `
+      -Uri $Salon.inviteUrls.internet -TimeoutSec 3
+    if ($Invitation.StatusCode -ne 200) {
+      throw 'Le lien contenu dans le QR code ne repond pas.'
+    }
+    Write-Host 'QR code et invitation Internet verifies.' `
+      -ForegroundColor Green
+    Write-Host 'Test de lancement termine avec succes.' -ForegroundColor Green
+    return
+  }
   if (-not $SkipBrowser) {
     Start-Process $LocalUrl
   }
