@@ -32,10 +32,10 @@
         <h1>Songless <span class="subtitle">Blind Test Local</span></h1>
       </div>
       <nav class="nav-tabs">
-        <button class="tab-btn active" data-tab="game-tab">
+        <button class="tab-btn" data-tab="game-tab">
           <i data-lucide="play-circle"></i> Jouer
         </button>
-        <button class="tab-btn" data-tab="modes-tab">
+        <button class="tab-btn active" data-tab="modes-tab">
           <i data-lucide="gamepad-2"></i> Modes
         </button>
         <button class="tab-btn" data-tab="library-tab">
@@ -47,6 +47,11 @@
       </nav>
 
       <div class="header-tools">
+        <!-- Trophées et succès -->
+        <button class="ghost-btn trophies-header-btn" id="trophies-btn" title="Galerie des 105 Trophées & Succès">
+          <span class="trophies-icon">🏆</span> <span class="trophies-count-badge">0/105</span>
+        </button>
+
         <!-- Profil actif : chaque joueur de la maison a ses propres stats -->
         <button class="profile-btn" id="profile-btn" title="Changer de profil">
           <span class="profile-emoji" id="profile-emoji">🎧</span>
@@ -68,7 +73,7 @@
 
     <main class="app-content">
       <!-- Section Jeu -->
-      <section id="game-tab" class="tab-content active">
+      <section id="game-tab" class="tab-content">
         <div class="game-wrapper">
 
           <!-- Barre de session : seed aléatoire + filtre par genre -->
@@ -175,6 +180,20 @@
                   <button class="seg-btn" data-preset="perso">Sur mesure…</button>
                 </div>
                 <span class="option-note" id="paliers-note"></span>
+              </div>
+
+              <div class="option-row">
+                <span class="option-label">Filtre Audio FX</span>
+                <div class="segmented" role="group" aria-label="Effet de distorsion sonore Web Audio">
+                  <button class="seg-btn active" data-fx="none">Aucun</button>
+                  <button class="seg-btn" data-fx="8bit">🕹️ 8-Bit</button>
+                  <button class="seg-btn" data-fx="radio">📻 Radio 1920</button>
+                  <button class="seg-btn" data-fx="underwater">🌊 Sous l’Eau</button>
+                  <button class="seg-btn" data-fx="nightcore">⚡ Nightcore</button>
+                  <button class="seg-btn" data-fx="slowed">🌙 Slowed</button>
+                  <button class="seg-btn" data-fx="bass">🔊 Bass Boost</button>
+                </div>
+                <span class="option-note">Déforme l'extrait audio en temps réel pour pimenter le blind test.</span>
               </div>
             </div>
           </div>
@@ -333,6 +352,12 @@
 
           <!-- En multijoueur, le PC joue ici tout en gardant les commandes. -->
           <aside class="party-room party-game-panel hidden" id="party-room">
+            <!-- Overlay pour les emojis volants en direct -->
+            <div id="party-reactions-overlay" class="party-reactions-overlay" aria-hidden="true"></div>
+
+            <!-- Bandeau de défi mystère / contrainte surprise -->
+            <div id="party-modifier-banner" class="party-modifier-banner hidden"></div>
+
             <div class="party-head">
               <div>Code <strong id="party-code">—</strong></div>
               <div id="party-round-label">Salon</div>
@@ -343,9 +368,63 @@
               <a class="party-join-link hidden" id="party-internet-link"
                  target="_blank" rel="noopener noreferrer"></a>
             </div>
+
+            <!-- Panel de gestion et classement des Équipes -->
+            <div id="party-team-panel" class="party-team-panel hidden">
+              <div class="party-team-head">
+                <h4><span class="team-head-icon">👥</span> Équipes (<span id="team-count-label">0</span>/16)</h4>
+                <div class="team-host-btns" id="team-host-btns">
+                  <button type="button" class="ghost-btn team-random-btn" id="party-randomize-teams-btn" title="Répartir automatiquement tous les joueurs dans les équipes">🎲 Répartir aléatoirement</button>
+                  <button type="button" class="ghost-btn" id="party-add-team-btn">➕ Créer une équipe</button>
+                </div>
+              </div>
+              <div id="party-teams-grid" class="party-teams-grid"></div>
+            </div>
+
+            <!-- Jauge interactive Tir à la Corde pour le mode Duel -->
+            <div id="party-duel-container" class="party-duel-container hidden">
+              <div class="duel-teams-header">
+                <div class="duel-team-label team-a">
+                  <span class="duel-team-badge" id="duel-team-a-badge">🔴</span>
+                  <strong id="duel-team-a-name">Camp A</strong>
+                  <span class="duel-team-score" id="duel-team-a-score">0 pts</span>
+                </div>
+                <div class="duel-vs-pill">VS</div>
+                <div class="duel-team-label team-b">
+                  <span class="duel-team-score" id="duel-team-b-score">0 pts</span>
+                  <strong id="duel-team-b-name">Camp B</strong>
+                  <span class="duel-team-badge" id="duel-team-b-badge">🔵</span>
+                </div>
+              </div>
+              <div class="duel-track">
+                <div class="duel-zone zone-a"></div>
+                <div class="duel-zone zone-b"></div>
+                <div class="duel-rope">
+                  <div class="duel-knot" id="duel-rope-knot">
+                    <span class="duel-knot-flag">🚩</span>
+                  </div>
+                </div>
+                <div class="duel-goal goal-left">VICTOIRE</div>
+                <div class="duel-goal goal-right">VICTOIRE</div>
+              </div>
+              <div class="duel-status-subtext" id="duel-status-subtext">Trouve plus vite pour tirer la corde vers ton camp !</div>
+            </div>
+
+            <div class="party-podium hidden" id="party-podium"></div>
             <div class="party-players" id="party-players"></div>
             <div class="party-player-actions" id="party-player-actions"></div>
             <div class="party-votes hidden" id="party-votes"></div>
+
+            <!-- Réactions rapides en direct sur PC -->
+            <div class="party-quick-reactions" id="pc-quick-reactions">
+              <button type="button" class="reaction-btn" data-reaction="🔥" title="Feu">🔥</button>
+              <button type="button" class="reaction-btn" data-reaction="👏" title="Bravo">👏</button>
+              <button type="button" class="reaction-btn" data-reaction="😂" title="Rire">😂</button>
+              <button type="button" class="reaction-btn" data-reaction="💀" title="Mort">💀</button>
+              <button type="button" class="reaction-btn" data-reaction="😱" title="Choc">😱</button>
+              <button type="button" class="reaction-btn" data-reaction="🎉" title="Fête">🎉</button>
+            </div>
+
             <section class="party-chat" aria-label="Chat de la partie">
               <div class="party-chat-title">💬 Chat</div>
               <div class="party-chat-messages" id="party-chat-messages"></div>
@@ -358,6 +437,7 @@
             <div class="party-host-actions hidden" id="party-host-actions">
               <button class="cta-btn" id="party-round-btn">Lancer la manche</button>
               <button class="ghost-btn" id="party-reveal-btn">Révéler et compter</button>
+              <button class="ghost-btn" id="party-history-btn" title="Voir l'historique et palmarès des soirées">🏆 Palmarès</button>
               <button class="danger-btn-text" id="party-finish-btn">Terminer</button>
             </div>
           </aside>
@@ -366,7 +446,7 @@
       </section>
 
       <!-- Modes de jeu, collections et multijoueur -->
-      <section id="modes-tab" class="tab-content">
+      <section id="modes-tab" class="tab-content active">
         <div class="modes-container">
           <div class="library-header">
             <h2>Choisir une façon de jouer</h2>
@@ -391,11 +471,35 @@
             </article>
 
             <article class="mode-card">
+              <h3><i data-lucide="swords"></i> Duel Tir à la Corde (Sur PC)</h3>
+              <p>Affronte un ami autour de l’écran ou défie un Bot avec la jauge de tir à la corde interactive.</p>
+              <div class="mode-row">
+                <select id="solo-duel-opponent">
+                  <option value="bot">Face au Bot Solo</option>
+                  <option value="friend">2 Joueurs (Même écran)</option>
+                </select>
+                <button class="cta-btn" id="solo-duel-start-btn">Lancer le Duel</button>
+              </div>
+              <div class="mode-status" id="solo-duel-status"></div>
+            </article>
+
+            <article class="mode-card">
+              <h3><i data-lucide="shield-alert"></i> Survie Battle Royale (Sur PC)</h3>
+              <p>Joue avec 3 cœurs de survie. Chaque chanson non trouvée retire 1 cœur.</p>
+              <div class="mode-row">
+                <button class="cta-btn" id="solo-royale-start-btn">Lancer la Survie (3 cœurs)</button>
+              </div>
+              <div class="mode-status" id="solo-royale-status"></div>
+            </article>
+
+            <article class="mode-card">
               <h3><i data-lucide="brain"></i> Entraînement intelligent</h3>
               <p>Priorité aux morceaux ratés, jamais joués ou oubliés depuis longtemps.</p>
               <div class="mode-row">
                 <button class="ghost-btn accent training-btn" data-rounds="10">10 morceaux</button>
                 <button class="ghost-btn training-btn" data-rounds="20">20 morceaux</button>
+                <button class="ghost-btn training-btn" data-rounds="50">50 morceaux</button>
+                <button class="ghost-btn training-btn" data-rounds="infinite">Sans fin</button>
               </div>
               <div class="mode-status" id="training-status"></div>
             </article>
@@ -420,30 +524,47 @@
               <div class="saved-list" id="challenge-list"></div>
             </article>
 
+            <article class="mode-card mode-card-wide">
+              <h3><i data-lucide="printer"></i> Fiches de Quiz Apéro Imprimables</h3>
+              <p>Génère des fiches de blind test papier prêtes à imprimer ou à exporter en PDF avec QR codes d’écoute pour les joueurs et solutions pour l’animateur.</p>
+              <div class="mode-row">
+                <select id="quiz-print-rounds" aria-label="Nombre de morceaux">
+                  <option value="10">10 morceaux</option>
+                  <option value="20" selected>20 morceaux</option>
+                  <option value="30">30 morceaux</option>
+                </select>
+                <button class="cta-btn" id="quiz-print-btn"><i data-lucide="printer"></i> Imprimer les fiches de quiz</button>
+              </div>
+            </article>
+
             <article class="mode-card mode-card-wide party-card">
               <h3><i data-lucide="users"></i> Soirée multijoueur</h3>
               <p>Chaque téléphone choisit ou crée un profil partagé, puis rejoint la même partie.</p>
               <div class="party-setup" id="party-setup">
                 <div class="mode-row">
                   <select id="party-mode">
-                    <option value="classic">Réponses simultanées</option>
-                    <option value="buzzer">Buzzer</option>
+                    <option value="classic">🎯 Réponses simultanées</option>
+                    <option value="buzzer">🔔 Mode Buzzer</option>
+                    <option value="royale">👑 Battle Royale (3 Vies)</option>
+                    <option value="duel">🥊 Duel (Tir à la Corde)</option>
                   </select>
                   <select id="party-rounds">
+                    <option value="2">2 manches (démo rapide)</option>
                     <option value="5">5 manches</option>
                     <option value="10" selected>10 manches</option>
                     <option value="20">20 manches</option>
                     <option value="infinite">Infini · jusqu’à l’arrêt</option>
                   </select>
                   <button class="cta-btn" id="party-create-btn">Créer la partie</button>
+                  <button class="ghost-btn accent" id="party-demo-btn" type="button" title="Lancer une simulation automatique avec 6 joueurs"><i data-lucide="bot"></i> Démo simulée (6 joueurs)</button>
                 </div>
                 <div class="party-tutorial">
                   <strong>Comment jouer ?</strong>
-                  <span><b>Réponses simultanées :</b> tout le monde écrit sa réponse pendant l’extrait.</span>
-                  <span><b>Buzzer :</b> le premier met la musique en pause et dispose de 10 s. Après 3 erreurs dans la manche, ses erreurs retirent aussi 10 % des points.</span>
+                  <span><b>🎯 Réponses simultanées :</b> la musique progresse par paliers (0,2s, 0,7s, 2,5s...). Chaque joueur a un bouton Passer et jusqu'à 6 essais. L'extrait boucle automatiquement avec une courte pause.</span>
+                  <span><b>🔔 Buzzer :</b> le premier met la musique en pause et dispose de 10 s. Après 3 erreurs dans la manche, ses erreurs retirent aussi 10 % des points.</span>
+                  <span><b>👑 Battle Royale :</b> chaque joueur a 3 cœurs. Rater une manche retire 1 cœur. À 0 cœur, passage en mode Fantôme spectateur. Le dernier survivant gagne la couronne !</span>
+                  <span><b>🥊 Duel (Tir à la Corde) :</b> 2 joueurs ou 2 équipes s'affrontent. Trouver plus vite tire la corde dans votre camp jusqu'à la victoire.</span>
                   <span><b>Votes :</b> la majorité peut passer le morceau ou ajouter 5 s à l’extrait.</span>
-                  <span><b>Bonne réponse au buzzer :</b> résultat et passage connu automatiques, puis manche suivante après 5 s.</span>
-                  <span><b>Infini :</b> les manches et le score continuent sans plafond jusqu’au bouton « Terminer ».</span>
                   <span><b>PC hôte :</b> ton profil joue aussi, sous les commandes de la partie.</span>
                 </div>
                 <div class="party-options" id="party-options">
@@ -452,6 +573,42 @@
                       <option value="titre">Le titre</option>
                       <option value="artiste">L’artiste</option>
                       <option value="annee">L’année</option>
+                    </select>
+                  </label>
+                  <label>Difficulté (paliers)
+                    <select id="party-difficulty">
+                      <option value="facile">Facile (1s, 3s, 6s, 10s, 20s, 30s)</option>
+                      <option value="normal" selected>Normal (0.2s, 0.7s, 2.5s, 5s, 9s, 15s)</option>
+                      <option value="hardcore">Hardcore (0.1s, 0.3s, 0.8s, 2s, 4s, 7s)</option>
+                    </select>
+                  </label>
+                  <label>Filtre Audio FX
+                    <select id="party-audio-fx">
+                      <option value="none">Aucun (son pur)</option>
+                      <option value="8bit">🕹️ 8-Bit Chiptune</option>
+                      <option value="radio">📻 Radio Vintage 1920</option>
+                      <option value="underwater">🌊 Sous l’Eau</option>
+                      <option value="nightcore">⚡ Nightcore (+25% pitch)</option>
+                      <option value="slowed">🌙 Slowed + Reverb</option>
+                      <option value="bass">🔊 Bass Boost</option>
+                    </select>
+                  </label>
+                  <label>Règle de victoire
+                    <select id="party-victory">
+                      <option value="all_steps" selected>Jusqu'au dernier extrait (chacun cherche à son rythme)</option>
+                      <option value="immediate">Victoire définitive (coupe la chanson dès qu'un joueur trouve)</option>
+                    </select>
+                  </label>
+                  <label>Thématique / Sélection
+                    <select id="party-theme-filter">
+                      <option value="all">Toute la sélection</option>
+                      <option value="favorites">⭐ Coups de cœur uniquement</option>
+                      <option value="decade:2020">Années 2020 (2020-2029)</option>
+                      <option value="decade:2010">Années 2010 (2010-2019)</option>
+                      <option value="decade:2000">Années 2000 (2000-2009)</option>
+                      <option value="decade:1990">Années 90 (1990-1999)</option>
+                      <option value="decade:1980">Années 80 (1980-1989)</option>
+                      <option value="decade:1970">Années 70 et avant (≤ 1979)</option>
                     </select>
                   </label>
                   <label>Vitesse
@@ -475,7 +632,7 @@
                       <option value="debut">Le début</option>
                     </select>
                   </label>
-                  <label>Extrait
+                  <label id="party-excerpt-container">Extrait (buzzer)
                     <select id="party-excerpt">
                       <option value="5">5 secondes</option>
                       <option value="10">10 secondes</option>
@@ -484,12 +641,24 @@
                       <option value="60">60 secondes</option>
                     </select>
                   </label>
-                  <label>Barème par réponse
+                  <label>Barème max par manche
                     <select id="party-points">
                       <option value="500">Jusqu’à 500 points</option>
                       <option value="1000" selected>Jusqu’à 1 000 points</option>
                       <option value="1500">Jusqu’à 1 500 points</option>
                       <option value="2000">Jusqu’à 2 000 points</option>
+                    </select>
+                  </label>
+                  <label>🃏 Défis Mystères
+                    <select id="party-mystery">
+                      <option value="false" selected>Désactivé (manches standard)</option>
+                      <option value="true">Activé (contrainte surprise à chaque manche !)</option>
+                    </select>
+                  </label>
+                  <label>🔴🔵 Mode Équipes
+                    <select id="party-teams-mode">
+                      <option value="false" selected>Individuel</option>
+                      <option value="true">En équipes (jusqu'à 16 équipes)</option>
                     </select>
                   </label>
                 </div>
@@ -821,9 +990,45 @@
 
       <div class="profile-list" id="profile-list"></div>
 
+      <label>Choisis ton avatar</label>
+      <div class="emoji-picker-grid" id="pc-emoji-picker">
+        <button type="button" class="emoji-pick-btn active" data-emoji="🎧">🎧</button>
+        <button type="button" class="emoji-pick-btn" data-emoji="🎸">🎸</button>
+        <button type="button" class="emoji-pick-btn" data-emoji="🎹">🎹</button>
+        <button type="button" class="emoji-pick-btn" data-emoji="🎤">🎤</button>
+        <button type="button" class="emoji-pick-btn" data-emoji="🎷">🎷</button>
+        <button type="button" class="emoji-pick-btn" data-emoji="🥁">🥁</button>
+        <button type="button" class="emoji-pick-btn" data-emoji="🎺">🎺</button>
+        <button type="button" class="emoji-pick-btn" data-emoji="🎵">🎵</button>
+        <button type="button" class="emoji-pick-btn" data-emoji="⚡">⚡</button>
+        <button type="button" class="emoji-pick-btn" data-emoji="🚀">🚀</button>
+        <button type="button" class="emoji-pick-btn" data-emoji="👾">👾</button>
+        <button type="button" class="emoji-pick-btn" data-emoji="🕹️">🕹️</button>
+        <button type="button" class="emoji-pick-btn" data-emoji="🎰">🎰</button>
+        <button type="button" class="emoji-pick-btn" data-emoji="🛡️">🛡️</button>
+        <button type="button" class="emoji-pick-btn" data-emoji="👑">👑</button>
+        <button type="button" class="emoji-pick-btn" data-emoji="🔥">🔥</button>
+        <button type="button" class="emoji-pick-btn" data-emoji="⭐">⭐</button>
+        <button type="button" class="emoji-pick-btn" data-emoji="💎">💎</button>
+        <button type="button" class="emoji-pick-btn" data-emoji="🕶️">🕶️</button>
+        <button type="button" class="emoji-pick-btn" data-emoji="🎉">🎉</button>
+        <button type="button" class="emoji-pick-btn" data-emoji="🦊">🦊</button>
+        <button type="button" class="emoji-pick-btn" data-emoji="🐱">🐱</button>
+        <button type="button" class="emoji-pick-btn" data-emoji="🐶">🐶</button>
+        <button type="button" class="emoji-pick-btn" data-emoji="🦁">🦁</button>
+        <button type="button" class="emoji-pick-btn" data-emoji="🐼">🐼</button>
+        <button type="button" class="emoji-pick-btn" data-emoji="🐸">🐸</button>
+        <button type="button" class="emoji-pick-btn" data-emoji="🦄">🦄</button>
+        <button type="button" class="emoji-pick-btn" data-emoji="🌸">🌸</button>
+        <button type="button" class="emoji-pick-btn" data-emoji="🍕">🍕</button>
+        <button type="button" class="emoji-pick-btn" data-emoji="☕">☕</button>
+        <button type="button" class="emoji-pick-btn" data-emoji="👽">👽</button>
+        <button type="button" class="emoji-pick-btn" data-emoji="🤖">🤖</button>
+      </div>
+
       <label for="new-profile-name">Ajouter un joueur</label>
       <div class="profile-add">
-        <input type="text" id="new-profile-emoji" maxlength="2" value="🎧" aria-label="Emoji">
+        <input type="text" id="new-profile-emoji" maxlength="4" value="🎧" aria-label="Emoji">
         <input type="text" id="new-profile-name" placeholder="Prénom" maxlength="20">
         <button class="cta-btn" id="add-profile-btn">Créer</button>
       </div>
@@ -859,11 +1064,96 @@
     </div>
   </div>
 
+  <!-- Modal Palmarès & Historique des Soirées -->
+  <div class="modal-overlay hidden" id="party-history-modal">
+    <div class="modal-card modal-card-large">
+      <div class="modal-head-with-icon">
+        <span class="modal-badge-icon">🏆</span>
+        <div>
+          <h3>Palmarès des Soirées</h3>
+          <p class="modal-file">Historique des parties jouées, vainqueurs et équipes championnes.</p>
+        </div>
+      </div>
+      <div class="party-history-list" id="party-history-list"></div>
+      <div class="modal-actions">
+        <button class="ghost-btn" id="party-history-close-btn">Fermer</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Créer une Équipe -->
+  <div class="modal-overlay hidden" id="team-create-modal">
+    <div class="modal-card">
+      <h3>Créer une Équipe</h3>
+      <p class="modal-file">Choisis un nom et une couleur pour ton équipe.</p>
+      <div class="team-create-presets" id="team-create-presets"></div>
+      <div class="team-create-form">
+        <label for="new-team-name">Nom de l’équipe</label>
+        <input type="text" id="new-team-name" maxlength="30" placeholder="Ex. Les Diables Rouges">
+      </div>
+      <div class="modal-actions">
+        <button class="ghost-btn" id="team-create-cancel-btn">Annuler</button>
+        <button class="cta-btn" id="team-create-confirm-btn">Créer l’équipe</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Galerie des 105 Trophées -->
+  <div class="modal-overlay hidden" id="trophies-modal">
+    <div class="modal-card modal-card-large">
+      <div class="modal-head-with-icon">
+        <span class="modal-badge-icon">🏆</span>
+        <div>
+          <h3>Galerie des Trophées (<span class="trophies-count-badge">0/105</span>)</h3>
+          <p class="modal-file">Succès et médailles à débloquer en jouant en solo ou en soirée.</p>
+        </div>
+      </div>
+      <div class="genre-panel-head" id="trophies-filter-chips">
+        <button class="chip-action active" data-trophy-filter="all">Tous (105)</button>
+        <button class="chip-action" data-trophy-filter="speed">⚡ Rapidité (15)</button>
+        <button class="chip-action" data-trophy-filter="accuracy">🎯 Précision (15)</button>
+        <button class="chip-action" data-trophy-filter="time">🕰️ Époques (12)</button>
+        <button class="chip-action" data-trophy-filter="genre">🎸 Genres (13)</button>
+        <button class="chip-action" data-trophy-filter="audio">🎛️ Audio FX (12)</button>
+        <button class="chip-action" data-trophy-filter="battle">🥊 Battle & Duels (13)</button>
+        <button class="chip-action" data-trophy-filter="party">🎉 Soirées (13)</button>
+        <button class="chip-action" data-trophy-filter="secrets">🔮 Secrets (12)</button>
+      </div>
+      <div class="trophies-grid" id="trophies-grid"></div>
+      <div class="modal-actions">
+        <button class="ghost-btn" id="trophies-close-btn">Fermer</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Fiches Quiz Imprimables -->
+  <div class="modal-overlay hidden" id="quiz-print-modal">
+    <div class="modal-card modal-card-large">
+      <div class="modal-head-with-icon">
+        <span class="modal-badge-icon">📄</span>
+        <div>
+          <h3>Fiches de Quiz Apéro Imprimables</h3>
+          <p class="modal-file">Aperçu avant impression. Imprimez la fiche Joueur et la fiche Animateur.</p>
+        </div>
+      </div>
+      <div class="quiz-print-controls no-print">
+        <button class="cta-btn" id="quiz-do-print-btn"><i data-lucide="printer"></i> Lancer l’impression / Enregistrer en PDF</button>
+        <button class="ghost-btn" id="quiz-toggle-answers-btn">Basculer Fiche Joueurs / Animateur</button>
+      </div>
+      <div class="quiz-print-preview" id="quiz-print-preview"></div>
+      <div class="modal-actions no-print">
+        <button class="ghost-btn" id="quiz-print-close-btn">Fermer</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Notification Toast -->
   <div id="toast" class="toast hidden">Message de notification</div>
 
   <!-- Script Principal -->
   <script src="platform.js"></script>
+  <script src="trophies-data.js"></script>
+  <script src="trophies.js"></script>
   <script src="app.js"></script>
   <script src="expansions.js"></script>
 </body>

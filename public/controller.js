@@ -66,6 +66,11 @@
     })[char]);
   }
 
+  function safeTeamColor(value, fallback = '#8b5cf6') {
+    const color = String(value || '').trim().toLowerCase();
+    return /^#[0-9a-f]{6}$/i.test(color) ? color : fallback;
+  }
+
   async function api(url, options = {}) {
     const headers = new Headers(options.headers || {});
     if (pair) headers.set('X-Songless-Pair', pair);
@@ -386,9 +391,16 @@
           ? '🎵 Passage connu joué avec le PC.'
           : '🔊 Lecture synchronisée avec le PC.';
         audioStopTimer = setTimeout(() => {
-          stopPartyAudio(current.status === 'reveal'
-            ? 'Passage connu terminé.'
-            : 'Extrait terminé. En attente de la révélation.');
+          if (current.status === 'round' && !playback.reveal) {
+            partyAudio.pause();
+            byId('audio-sync-status').innerText = '🔁 Relecture automatique de l’extrait…';
+            const loopDelay = Math.min(4.2, Math.max(2.2, 2.0 + Number(playback.duration) * 0.15));
+            audioStartTimer = setTimeout(start, loopDelay * 1000);
+          } else {
+            stopPartyAudio(current.status === 'reveal'
+              ? 'Passage connu terminé.'
+              : 'Extrait terminé. En attente de la révélation.');
+          }
         }, playable / (Number(playback.speed) || 1) * 1000);
       }).catch(() => {
         byId('audio-sync-status').innerText = '🔇 Touche « Règles » pour autoriser le son.';
@@ -402,7 +414,7 @@
       const reversed = await getReversePartyBuffer(url, key);
       if (audioPlaybackSignature !== signature) return;
       const wait = Math.max(0, delay - (Date.now() - receivedAt));
-      audioStartTimer = setTimeout(() => {
+      const startReverse = () => {
         if (!audioUnlocked || audioRoundKey !== key || audioPlaybackSignature !== signature) return;
         const elapsed = elapsedMusic();
         const remaining = Number(playback.duration) - elapsed;
@@ -418,11 +430,18 @@
         reverseSource.start(0, offset, playable);
         byId('audio-sync-status').innerText = '🔊 Lecture inversée synchronisée avec le PC.';
         audioStopTimer = setTimeout(() => {
-          stopPartyAudio(current.status === 'reveal'
-            ? 'Passage connu terminé.'
-            : 'Extrait terminé. En attente de la révélation.');
+          if (party && state && state.status === 'round' && !playback.reveal) {
+            byId('audio-sync-status').innerText = '🔁 Relecture automatique de l’extrait…';
+            const loopDelay = Math.min(4.2, Math.max(2.2, 2.0 + Number(playback.duration) * 0.15));
+            audioStartTimer = setTimeout(startReverse, loopDelay * 1000);
+          } else {
+            stopPartyAudio(state && state.status === 'reveal'
+              ? 'Passage connu terminé.'
+              : 'Extrait terminé. En attente de la révélation.');
+          }
         }, playable / (Number(playback.speed) || 1) * 1000);
-      }, wait);
+      };
+      audioStartTimer = setTimeout(startReverse, wait);
     } catch (_) {
       byId('audio-sync-status').innerText = 'Impossible de préparer l’extrait inversé sur ce téléphone.';
     }
@@ -457,6 +476,214 @@
     return reverseBufferPromise;
   }
 
+  let lastReactionId = 0;
+
+  function spawnMobileFloatingReaction(emoji) {
+    const overlay = byId('mobile-reactions-overlay');
+    if (!overlay) return;
+    const el = document.createElement('div');
+    el.className = 'mobile-floating-reaction';
+    const left = Math.round(10 + Math.random() * 80);
+    el.style.left = `${left}%`;
+    el.innerText = emoji;
+    overlay.appendChild(el);
+    setTimeout(() => {
+      if (el.parentNode) el.parentNode.removeChild(el);
+    }, 2000);
+  }
+
+  function renderReactions() {
+    if (!state || !Array.isArray(state.reactions)) return;
+    const newReactions = state.reactions.filter(r => Number(r.id) > lastReactionId);
+    if (newReactions.length) {
+      newReactions.forEach(r => spawnMobileFloatingReaction(r.emoji));
+      lastReactionId = Math.max(...state.reactions.map(r => Number(r.id) || 0));
+    }
+  }
+
+  function renderModifierPill() {
+    const pill = byId('mobile-modifier-pill');
+    if (!pill) return;
+    if (state && state.status === 'round' && state.roundModifier) {
+      const mod = state.roundModifier;
+      pill.innerHTML = `<span>🃏 ${escapeHtml(mod.name)}</span>`;
+      pill.classList.remove('hidden');
+    } else {
+      pill.classList.add('hidden');
+      pill.innerHTML = '';
+    }
+  }
+
+  function renderMobileModeBadge() {
+    const badge = byId('mobile-mode-badge');
+    if (!badge || !state) return;
+    const me = currentPlayer();
+    if (state.mode === 'royale') {
+      if (me && me.isGhost) {
+        badge.innerHTML = '<span>👻 Fantôme / Spectateur</span>';
+        badge.className = 'mobile-mode-badge ghost';
+      } else {
+        const lives = me && me.lives !== undefined ? me.lives : 3;
+        badge.innerHTML = `<span>👑 ${'💖'.repeat(lives)}${'🖤'.repeat(3 - lives)}</span>`;
+        badge.className = 'mobile-mode-badge royale';
+      }
+      badge.classList.remove('hidden');
+    } else if (state.mode === 'duel') {
+      badge.innerHTML = '<span>🥊 Mode Duel</span>';
+      badge.className = 'mobile-mode-badge duel';
+      badge.classList.remove('hidden');
+    } else {
+      badge.classList.add('hidden');
+    }
+  }
+
+  function renderMobileDuel() {
+    const card = byId('mobile-duel-card');
+    if (!card || !state) return;
+    if (state.mode !== 'duel') {
+      card.classList.add('hidden');
+      return;
+    }
+    card.classList.remove('hidden');
+
+    const teams = state.teams || [];
+    let nameA = 'Camp A', nameB = 'Camp B';
+    let badgeA = '🔴', badgeB = '🔵';
+    let scoreA = 0, scoreB = 0;
+
+    if (teams.length >= 2) {
+      nameA = teams[0].name;
+      badgeA = teams[0].emoji || '🔴';
+      scoreA = state.players.filter(p => p.teamId === teams[0].id).reduce((s, p) => s + (p.score || 0), 0);
+      nameB = teams[1].name;
+      badgeB = teams[1].emoji || '🔵';
+      scoreB = state.players.filter(p => p.teamId === teams[1].id).reduce((s, p) => s + (p.score || 0), 0);
+    } else if (state.players && state.players.length >= 2) {
+      const p1 = state.players[0];
+      const p2 = state.players[1];
+      nameA = p1.nom;
+      badgeA = p1.emoji || '🔴';
+      scoreA = p1.score || 0;
+      nameB = p2.nom;
+      badgeB = p2.emoji || '🔵';
+      scoreB = p2.score || 0;
+    }
+
+    if (byId('mobile-duel-a-name')) byId('mobile-duel-a-name').innerText = nameA;
+    if (byId('mobile-duel-a-badge')) byId('mobile-duel-a-badge').innerText = badgeA;
+    if (byId('mobile-duel-a-score')) byId('mobile-duel-a-score').innerText = `${scoreA} pts`;
+
+    if (byId('mobile-duel-b-name')) byId('mobile-duel-b-name').innerText = nameB;
+    if (byId('mobile-duel-b-badge')) byId('mobile-duel-b-badge').innerText = badgeB;
+    if (byId('mobile-duel-b-score')) byId('mobile-duel-b-score').innerText = `${scoreB} pts`;
+
+    const score = Math.min(100, Math.max(-100, Number(state.duelScore) || 0));
+    const positionPercent = 50 + (score / 2);
+    const knot = byId('mobile-duel-knot');
+    if (knot) knot.style.left = `${positionPercent}%`;
+
+    const sub = byId('mobile-duel-subtext');
+    if (sub) {
+      if (score <= -90) sub.innerText = `🔥 ${nameA} va l'emporter !`;
+      else if (score >= 90) sub.innerText = `🔥 ${nameB} va l'emporter !`;
+      else sub.innerText = 'Tire la corde vers ton camp !';
+    }
+  }
+
+  function renderTeamCard() {
+    const card = byId('mobile-team-card');
+    if (!card) return;
+    const me = currentPlayer();
+    if (!me) {
+      card.classList.add('hidden');
+      return;
+    }
+    card.classList.remove('hidden');
+    const teams = (state && state.teams) || [];
+    const myTeam = teams.find(t => t.id === me.teamId);
+    const badge = byId('my-team-badge');
+    const nameEl = byId('my-team-name');
+    if (myTeam) {
+      if (badge) badge.innerText = myTeam.emoji || '👥';
+      if (nameEl) {
+        nameEl.innerText = myTeam.name;
+        nameEl.style.color = safeTeamColor(myTeam.color, '#a855f7');
+      }
+    } else {
+      if (badge) badge.innerText = '⚪';
+      if (nameEl) {
+        nameEl.innerText = 'Sans équipe';
+        nameEl.style.color = 'var(--text-muted)';
+      }
+    }
+
+    const details = byId('mobile-team-details');
+    if (!details || details.classList.contains('hidden')) return;
+
+    if (myTeam) {
+      const isCaptain = myTeam.captainProfileId === me.profileId;
+      const members = myTeam.members || [];
+      const requests = myTeam.joinRequests || [];
+      let reqHtml = '';
+      if (isCaptain && requests.length) {
+        reqHtml = `
+          <div class="team-requests-box">
+            <strong>Demandes à rejoindre (${requests.length})</strong>
+            ${requests.map(r => `
+              <div class="team-request-row">
+                <span>${escapeHtml(r.emoji)} ${escapeHtml(r.nom)}</span>
+                <div class="request-actions">
+                  <button type="button" class="action-accept" data-accept-join="${r.profileId}" data-team-id="${myTeam.id}">✓ Accepter</button>
+                  <button type="button" class="action-refuse" data-refuse-join="${r.profileId}" data-team-id="${myTeam.id}">✕</button>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        `;
+      }
+
+      details.innerHTML = `
+        <div class="team-details-content">
+          ${reqHtml}
+          <div class="team-members-header">Membres de l'équipe :</div>
+          <div class="team-members-grid">
+            ${members.map(m => `
+              <div class="team-member-chip">
+                <span>${escapeHtml(m.emoji)} ${escapeHtml(m.nom)}${m.profileId === myTeam.captainProfileId ? ' 👑' : ''}${m.locked ? ' 🔒' : ''}</span>
+                ${isCaptain && m.profileId !== me.profileId && !m.locked ? `<button type="button" class="member-kick-btn" data-kick-member="${m.profileId}" data-team-id="${myTeam.id}">✕</button>` : ''}
+              </div>
+            `).join('')}
+          </div>
+          ${!me.teamLockedByHost ? `<button type="button" class="secondary-btn leave-team-btn" id="mobile-leave-team-btn">Quitter l’équipe</button>` : '<small class="locked-note">Assigné par l’hôte 🔒</small>'}
+        </div>
+      `;
+    } else {
+      details.innerHTML = `
+        <div class="team-details-content">
+          ${teams.length ? `
+            <div class="team-list-header">Rejoindre une équipe :</div>
+            <div class="teams-pick-list">
+              ${teams.map(t => `
+                <div class="team-pick-item" style="border-color: ${safeTeamColor(t.color, '#8b5cf6')}44;">
+                  <div>
+                    <strong style="color: ${safeTeamColor(t.color, '#a855f7')};">${escapeHtml(t.emoji)} ${escapeHtml(t.name)}</strong>
+                    <small>${(t.members || []).length} joueur${(t.members || []).length > 1 ? 's' : ''} · Cap: ${escapeHtml(t.captainNom)}</small>
+                  </div>
+                  <button type="button" class="primary-btn pick-join-btn" data-join-team="${t.id}">Rejoindre</button>
+                </div>
+              `).join('')}
+            </div>
+            <div class="divider"><span>ou créer</span></div>
+          ` : '<div class="wait-note">Aucune équipe pour l’instant. Crée la première ci-dessous :</div>'}
+          <div class="team-create-mini">
+            <input type="text" id="mobile-new-team-name" maxlength="30" placeholder="Nom de ton équipe">
+            <button type="button" class="primary-btn" id="mobile-create-team-btn">Créer</button>
+          </div>
+        </div>
+      `;
+    }
+  }
+
   function renderRoom() {
     if (!state) return;
     byId('room-code').innerText = state.code;
@@ -473,11 +700,27 @@
     byId('room-status').innerText = label[0];
     byId('room-title').innerText = label[1];
     byId('room-subtitle').innerText = label[2];
+    renderModifierPill();
+    renderMobileModeBadge();
+    renderMobileDuel();
+    renderTeamCard();
+    renderReactions();
     renderAction();
     renderVotes();
     renderReveal();
     renderRanking();
     renderChat();
+
+    if (state.status === 'finished' && window.songlessTrophies) {
+      window.songlessTrophies.unlock('party_first_join');
+      const sorted = [...(state.players || [])].sort((a, b) => (b.score || 0) - (a.score || 0));
+      const me = currentPlayer();
+      if (me && sorted[0] && sorted[0].profileId === me.profileId) {
+        window.songlessTrophies.unlock('party_podium_gold');
+        if (state.mode === 'royale') window.songlessTrophies.unlock('battle_royale_win');
+        if (state.mode === 'duel') window.songlessTrophies.unlock('duel_win');
+      }
+    }
   }
 
   function currentPlayer() {
@@ -490,7 +733,14 @@
     const buzzer = state.buzzer || {};
     const startsIn = state.playback
       ? Math.max(0, Math.ceil((Number(state.playback.startedAt) - Number(state.serverNow)) / 1000)) : 0;
-    const signature = `${state.status}:${state.round}:${state.mode}:${startsIn > 0 ? 'wait' : 'go'}:${me ? me.answer : ''}:${me ? me.lastAnswer : ''}:${me ? me.buzzPosition : ''}:${me ? me.buzzerBlockedSeconds : 0}:${buzzer.activeProfileId || ''}:${buzzer.solvedByProfileId || ''}:${buzzer.solvedByProfileId && Number(buzzer.answerSecondsRemaining) > 0 ? 'paused' : 'played'}`;
+    const signature = `${state.status}:${state.round}:${state.mode}:${startsIn > 0 ? 'wait' : 'go'}:${me ? me.currentAttempt : 0}:${me ? me.found : false}:${me ? me.finished : false}:${me ? me.answer : ''}:${me ? me.lastAnswer : ''}:${me ? me.buzzPosition : ''}:${me ? me.buzzerBlockedSeconds : 0}:${buzzer.activeProfileId || ''}:${buzzer.solvedByProfileId || ''}:${buzzer.solvedByProfileId && Number(buzzer.answerSecondsRemaining) > 0 ? 'paused' : 'played'}`;
+    
+    const currentInput = byId('answer-input');
+    const hadFocus = currentInput && document.activeElement === currentInput;
+    const previousVal = currentInput ? currentInput.value : '';
+    const selStart = currentInput ? currentInput.selectionStart : 0;
+    const selEnd = currentInput ? currentInput.selectionEnd : 0;
+
     if (signature === actionSignature) {
       updateActionTimer();
       return;
@@ -522,7 +772,12 @@
           <div class="wait-note">Tu as <span id="action-timer">—</span> s pour répondre.</div>
           ${answerBox()}`;
         updateActionTimer();
-        setTimeout(() => byId('answer-input') && byId('answer-input').focus(), 30);
+        const inp = byId('answer-input');
+        if (inp) {
+          if (previousVal && !inp.value) inp.value = previousVal;
+          if (hadFocus || document.activeElement !== inp) inp.focus();
+          try { if (previousVal) inp.setSelectionRange(selStart, selEnd); } catch (_) {}
+        }
         return;
       }
       if (me.buzzerBlockedSeconds) {
@@ -533,12 +788,40 @@
       zone.innerHTML = '<button id="buzz-btn" class="buzz-btn" type="button">BUZZER</button>';
       return;
     }
-    if (me.answer !== null) {
-      zone.innerHTML = '<div class="wait-note">Réponse envoyée. Attends la révélation du PC.</div>';
+
+    // Mode classique (réponses simultanées)
+    if (me.found) {
+      const count = Array.isArray(me.attempts) ? me.attempts.length : 1;
+      zone.innerHTML = `<div class="wait-note success">🎉 Trouvé en ${count} essai${count > 1 ? 's' : ''} (+${Number(me.earnedPoints) || 0} pt) ! En attente des autres…</div>`;
       return;
     }
-    zone.innerHTML = answerBox();
-    setTimeout(() => byId('answer-input') && byId('answer-input').focus(), 30);
+    if (me.finished) {
+      zone.innerHTML = '<div class="wait-note">❌ Tous tes essais sont épuisés. Attends la révélation.</div>';
+      return;
+    }
+
+    const paliers = state.paliers || [0.2, 0.7, 2.5, 5, 9, 15];
+    const attemptIndex = Number(me.currentAttempt) || 0;
+    const currentDur = paliers[attemptIndex] !== undefined ? paliers[attemptIndex] : paliers[0];
+    const nextDur = paliers[attemptIndex + 1];
+    const skipLabel = nextDur !== undefined
+      ? `Passer (+${(nextDur - currentDur).toFixed(1).replace('.0', '')}s)`
+      : 'Dernier essai !';
+    const attemptsList = Array.isArray(me.attempts) && me.attempts.length
+      ? `<div class="attempts-history">${me.attempts.map(att => `<span class="attempt-badge ${att.type}">${att.type === 'skipped' ? '↷ Passé' : `❌ ${escapeHtml(att.text || 'Raté')}`}</span>`).join('')}</div>`
+      : '';
+
+    zone.innerHTML = `
+      <div class="step-indicator">Essai <strong>${attemptIndex + 1} / ${paliers.length}</strong> · <strong>${currentDur} s</strong></div>
+      ${attemptsList}
+      ${answerBox(skipLabel)}
+    `;
+    const inp = byId('answer-input');
+    if (inp) {
+      if (previousVal && !inp.value) inp.value = previousVal;
+      if (hadFocus || document.activeElement !== inp) inp.focus();
+      try { if (previousVal) inp.setSelectionRange(selStart, selEnd); } catch (_) {}
+    }
   }
 
   function updateActionTimer() {
@@ -573,11 +856,14 @@
     zone.classList.remove('hidden');
   }
 
-  function answerBox() {
+  function answerBox(skipLabel = '') {
     const mode = state.settings && state.settings.answer;
     const placeholder = mode === 'artiste' ? 'Rechercher un artiste…'
       : mode === 'annee' ? 'Donner une année…' : 'Rechercher une chanson…';
     const inputMode = mode === 'annee' ? ' inputmode="numeric"' : '';
+    const skipBtnHtml = skipLabel
+      ? `<button id="skip-btn" class="secondary-btn skip-btn" type="button">${skipLabel}</button>`
+      : '';
     return `
       <div class="answer-block">
         <div class="answer-search">
@@ -586,7 +872,10 @@
                  placeholder="${placeholder}" autocomplete="off"${inputMode}>
           <div id="answer-suggestions" class="answer-suggestions hidden"></div>
         </div>
-        <button id="answer-btn" class="primary-btn" type="button">Envoyer</button>
+        <div class="answer-buttons">
+          <button id="answer-btn" class="primary-btn" type="button">Envoyer</button>
+          ${skipBtnHtml}
+        </div>
       </div>`;
   }
 
@@ -612,7 +901,7 @@
       } catch (_) {
         list.classList.add('hidden');
       }
-    }, 120);
+    }, 60);
   }
 
   function renderAnswerSuggestions(suggestions) {
@@ -651,15 +940,34 @@
   }
 
   function renderRanking() {
-    const sorted = [...state.players].sort((a, b) => b.score - a.score || a.nom.localeCompare(b.nom));
-    byId('ranking').innerHTML = sorted.length
+    const sorted = [...state.players].sort((a, b) => (Number(b.score) || 0) - (Number(a.score) || 0) || a.nom.localeCompare(b.nom));
+    const me = currentPlayer();
+    let podiumHeader = '';
+    if (state.status === 'finished') {
+      const myRank = sorted.findIndex(item => item.profileId === state.viewerProfileId) + 1;
+      const medal = myRank === 1 ? '🥇 1er' : myRank === 2 ? '🥈 2e' : myRank === 3 ? '🥉 3e' : `${myRank}e`;
+      let badgesHtml = '';
+      if (me && me.accolades) {
+        if (me.accolades.lightningWins > 0) badgesHtml += `<span class="controller-badge">⚡ L'Éclair (${me.accolades.lightningWins}x à 0,2s)</span>`;
+        if (me.accolades.firstCorrectCount > 0) badgesHtml += `<span class="controller-badge">🚀 Le Rapide (${me.accolades.firstCorrectCount}x 1er)</span>`;
+        if (me.accolades.clutchWins > 0) badgesHtml += `<span class="controller-badge">🛡️ Le Survivant (${me.accolades.clutchWins}x au 6e)</span>`;
+      }
+      podiumHeader = `
+        <div class="controller-podium">
+          <div class="podium-rank-highlight">🏆 Tu termines <strong>${medal}</strong> avec <strong>${Number(me ? me.score : 0)} pts</strong></div>
+          ${badgesHtml ? `<div class="controller-badges-row">${badgesHtml}</div>` : ''}
+        </div>
+      `;
+    }
+
+    byId('ranking').innerHTML = podiumHeader + (sorted.length
       ? sorted.map((item, index) => `
           <div class="rank-row${item.profileId === state.viewerProfileId ? ' me' : ''}">
-            <span>${index + 1}</span>
+            <span>${index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : index + 1}</span>
             <span>${escapeHtml(item.emoji || '🎧')} ${escapeHtml(item.nom)}</span>
             <span class="rank-score">${Number(item.score) || 0}<small>${Number(item.session && item.session.correct) || 0}/${Number(item.session && item.session.rounds) || 0}</small></span>
           </div>`).join('')
-      : '<div class="wait-note">Aucun joueur n’a encore rejoint.</div>';
+      : '<div class="wait-note">Aucun joueur n’a encore rejoint.</div>');
   }
 
   function renderChat() {
@@ -843,8 +1151,17 @@
       if (input) {
         input.value = answerSuggestion.getAttribute('data-answer-suggestion') || '';
         byId('answer-suggestions').classList.add('hidden');
-        input.focus();
+        submitAnswer();
       }
+      return;
+    }
+    const emojiBtn = event.target.closest('#mobile-emoji-picker [data-emoji]');
+    if (emojiBtn) {
+      const picker = byId('mobile-emoji-picker');
+      if (picker) picker.querySelectorAll('.emoji-pick-btn').forEach(b => b.classList.remove('active'));
+      emojiBtn.classList.add('active');
+      const input = byId('new-emoji');
+      if (input) input.value = emojiBtn.getAttribute('data-emoji') || '🎧';
       return;
     }
     const pick = event.target.closest('[data-profile]');
@@ -867,11 +1184,73 @@
     if (event.target.closest('#tutorial-close-btn')) closePartyTutorial();
     if (event.target.closest('#buzz-btn')) playerAction('buzz');
     if (event.target.closest('#answer-btn')) submitAnswer();
+    if (event.target.closest('#skip-btn')) playerAction('skip');
     if (event.target.closest('#vote-skip-btn')) playerAction('vote-skip');
     if (event.target.closest('#vote-more-btn')) playerAction('vote-more');
     if (event.target.closest('#chat-send-btn')) sendChat();
     if (event.target.closest('#gift-link-btn')) giveMusicLink();
     if (event.target.closest('#gift-file-btn')) giveMusicFile();
+
+    const reactionBtn = event.target.closest('.mobile-quick-reactions [data-reaction]');
+    if (reactionBtn) {
+      const emoji = reactionBtn.getAttribute('data-reaction');
+      playerAction('reaction', { emoji });
+      return;
+    }
+
+    if (event.target.closest('#mobile-team-btn')) {
+      const details = byId('mobile-team-details');
+      if (details) {
+        details.classList.toggle('hidden');
+        renderTeamCard();
+      }
+      return;
+    }
+
+    const joinTeamBtn = event.target.closest('[data-join-team]');
+    if (joinTeamBtn) {
+      const teamId = joinTeamBtn.getAttribute('data-join-team');
+      playerAction('request-join-team', { teamId }).then(() => toast('Demande envoyée au capitaine !'));
+      return;
+    }
+
+    const acceptJoinBtn = event.target.closest('[data-accept-join]');
+    if (acceptJoinBtn) {
+      const profileId = acceptJoinBtn.getAttribute('data-accept-join');
+      const teamId = acceptJoinBtn.getAttribute('data-team-id');
+      playerAction('accept-team-request', { profileId, teamId });
+      return;
+    }
+
+    const refuseJoinBtn = event.target.closest('[data-refuse-join]');
+    if (refuseJoinBtn) {
+      const profileId = refuseJoinBtn.getAttribute('data-refuse-join');
+      const teamId = refuseJoinBtn.getAttribute('data-team-id');
+      playerAction('refuse-team-request', { profileId, teamId });
+      return;
+    }
+
+    const kickMemberBtn = event.target.closest('[data-kick-member]');
+    if (kickMemberBtn) {
+      const profileId = kickMemberBtn.getAttribute('data-kick-member');
+      const teamId = kickMemberBtn.getAttribute('data-team-id');
+      playerAction('kick-team-member', { profileId, teamId });
+      return;
+    }
+
+    if (event.target.closest('#mobile-leave-team-btn')) {
+      playerAction('leave-team');
+      return;
+    }
+
+    if (event.target.closest('#mobile-create-team-btn')) {
+      const nameInput = byId('mobile-new-team-name');
+      const name = nameInput && nameInput.value.trim();
+      if (!name) return toast('Donne un nom à ton équipe.');
+      playerAction('create-team', { name }).then(() => toast(`Équipe « ${name} » créée !`));
+      return;
+    }
+
     const suggestions = byId('answer-suggestions');
     if (suggestions && !event.target.closest('.answer-search')) {
       suggestions.classList.add('hidden');
@@ -902,9 +1281,8 @@
         if (active >= 0 && list && !list.classList.contains('hidden')) {
           event.target.value = items[active].getAttribute('data-answer-suggestion') || '';
           list.classList.add('hidden');
-        } else {
-          submitAnswer();
         }
+        submitAnswer();
       } else if (event.key === 'Escape' && list) {
         list.classList.add('hidden');
       }

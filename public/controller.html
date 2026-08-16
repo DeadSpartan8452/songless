@@ -31,13 +31,58 @@
       <p class="privacy-note">Ce téléphone commande le jeu et peut offrir une musique. Les réglages restent sur le PC.</p>
     </section>
 
+    <!-- Overlay pour les réactions volantes sur mobile -->
+    <div id="mobile-reactions-overlay" class="mobile-reactions-overlay" aria-hidden="true"></div>
+
     <section id="room-screen" class="screen hidden">
       <div class="room-head">
         <div><span class="eyebrow">CODE</span><strong id="room-code">—</strong></div>
+        <div id="mobile-modifier-pill" class="mobile-modifier-pill hidden"></div>
+        <div id="mobile-mode-badge" class="mobile-mode-badge hidden"></div>
         <div class="room-actions">
           <button id="tutorial-open-btn" class="text-btn" type="button">Règles</button>
           <button id="leave-btn" class="text-btn" type="button">Quitter</button>
         </div>
+      </div>
+
+      <!-- Carte Tir à la Corde Mode Duel sur Mobile -->
+      <div id="mobile-duel-card" class="card mobile-duel-card hidden">
+        <div class="duel-teams-header">
+          <div class="duel-team-label team-a">
+            <span id="mobile-duel-a-badge">🔴</span>
+            <strong id="mobile-duel-a-name">Camp A</strong>
+            <span id="mobile-duel-a-score">0 pts</span>
+          </div>
+          <div class="duel-vs-pill">VS</div>
+          <div class="duel-team-label team-b">
+            <span id="mobile-duel-b-score">0 pts</span>
+            <strong id="mobile-duel-b-name">Camp B</strong>
+            <span id="mobile-duel-b-badge">🔵</span>
+          </div>
+        </div>
+        <div class="duel-track">
+          <div class="duel-zone zone-a"></div>
+          <div class="duel-zone zone-b"></div>
+          <div class="duel-rope">
+            <div class="duel-knot" id="mobile-duel-knot">
+              <span class="duel-knot-flag">🚩</span>
+            </div>
+          </div>
+        </div>
+        <small class="duel-subtext" id="mobile-duel-subtext">Tire la corde vers ton camp !</small>
+      </div>
+
+      <!-- Carte Équipe sur Mobile -->
+      <div id="mobile-team-card" class="card mobile-team-card hidden">
+        <div class="team-card-head">
+          <span class="team-badge" id="my-team-badge">🔴</span>
+          <div class="team-card-info">
+            <p class="eyebrow">MON ÉQUIPE</p>
+            <h2 id="my-team-name">Sans équipe</h2>
+          </div>
+          <button type="button" class="text-btn" id="mobile-team-btn">Gérer</button>
+        </div>
+        <div id="mobile-team-details" class="mobile-team-details hidden"></div>
       </div>
 
       <div class="card status-card">
@@ -49,6 +94,16 @@
         <div id="player-action" class="player-action"></div>
         <div id="round-votes" class="round-votes hidden"></div>
         <div id="reveal-card" class="reveal-card hidden"></div>
+      </div>
+
+      <!-- Barre de réactions rapides en direct sur Mobile -->
+      <div class="mobile-quick-reactions" id="mobile-quick-reactions">
+        <button type="button" class="reaction-btn" data-reaction="🔥">🔥</button>
+        <button type="button" class="reaction-btn" data-reaction="👏">👏</button>
+        <button type="button" class="reaction-btn" data-reaction="😂">😂</button>
+        <button type="button" class="reaction-btn" data-reaction="💀">💀</button>
+        <button type="button" class="reaction-btn" data-reaction="😱">😱</button>
+        <button type="button" class="reaction-btn" data-reaction="🎉">🎉</button>
       </div>
 
       <div class="card ranking-card">
@@ -94,9 +149,46 @@
       </button>
       <div class="divider"><span>Nouveau profil</span></div>
       <div class="create-profile">
-        <input id="new-emoji" maxlength="4" value="🎧" aria-label="Emoji du profil">
-        <input id="new-name" maxlength="20" placeholder="Prénom ou pseudo" aria-label="Nom du profil">
-        <button id="create-profile-btn" class="primary-btn" type="button">Créer</button>
+        <label class="picker-label">Choisis ton avatar</label>
+        <div class="emoji-picker-grid" id="mobile-emoji-picker">
+          <button type="button" class="emoji-pick-btn active" data-emoji="🎧">🎧</button>
+          <button type="button" class="emoji-pick-btn" data-emoji="🎸">🎸</button>
+          <button type="button" class="emoji-pick-btn" data-emoji="🎹">🎹</button>
+          <button type="button" class="emoji-pick-btn" data-emoji="🎤">🎤</button>
+          <button type="button" class="emoji-pick-btn" data-emoji="🎷">🎷</button>
+          <button type="button" class="emoji-pick-btn" data-emoji="🥁">🥁</button>
+          <button type="button" class="emoji-pick-btn" data-emoji="🎺">🎺</button>
+          <button type="button" class="emoji-pick-btn" data-emoji="🎵">🎵</button>
+          <button type="button" class="emoji-pick-btn" data-emoji="⚡">⚡</button>
+          <button type="button" class="emoji-pick-btn" data-emoji="🚀">🚀</button>
+          <button type="button" class="emoji-pick-btn" data-emoji="👾">👾</button>
+          <button type="button" class="emoji-pick-btn" data-emoji="🕹️">🕹️</button>
+          <button type="button" class="emoji-pick-btn" data-emoji="🎰">🎰</button>
+          <button type="button" class="emoji-pick-btn" data-emoji="🛡️">🛡️</button>
+          <button type="button" class="emoji-pick-btn" data-emoji="👑">👑</button>
+          <button type="button" class="emoji-pick-btn" data-emoji="🔥">🔥</button>
+          <button type="button" class="emoji-pick-btn" data-emoji="⭐">⭐</button>
+          <button type="button" class="emoji-pick-btn" data-emoji="💎">💎</button>
+          <button type="button" class="emoji-pick-btn" data-emoji="🕶️">🕶️</button>
+          <button type="button" class="emoji-pick-btn" data-emoji="🎉">🎉</button>
+          <button type="button" class="emoji-pick-btn" data-emoji="🦊">🦊</button>
+          <button type="button" class="emoji-pick-btn" data-emoji="🐱">🐱</button>
+          <button type="button" class="emoji-pick-btn" data-emoji="🐶">🐶</button>
+          <button type="button" class="emoji-pick-btn" data-emoji="🦁">🦁</button>
+          <button type="button" class="emoji-pick-btn" data-emoji="🐼">🐼</button>
+          <button type="button" class="emoji-pick-btn" data-emoji="🐸">🐸</button>
+          <button type="button" class="emoji-pick-btn" data-emoji="🦄">🦄</button>
+          <button type="button" class="emoji-pick-btn" data-emoji="🌸">🌸</button>
+          <button type="button" class="emoji-pick-btn" data-emoji="🍕">🍕</button>
+          <button type="button" class="emoji-pick-btn" data-emoji="☕">☕</button>
+          <button type="button" class="emoji-pick-btn" data-emoji="👽">👽</button>
+          <button type="button" class="emoji-pick-btn" data-emoji="🤖">🤖</button>
+        </div>
+        <div class="create-profile-inputs">
+          <input id="new-emoji" maxlength="4" value="🎧" aria-label="Emoji du profil">
+          <input id="new-name" maxlength="20" placeholder="Prénom ou pseudo" aria-label="Nom du profil">
+          <button id="create-profile-btn" class="primary-btn" type="button">Créer</button>
+        </div>
       </div>
     </div>
   </div>
@@ -112,6 +204,8 @@
   </div>
 
   <div id="toast" class="toast hidden" role="status"></div>
+  <script src="trophies-data.js"></script>
+  <script src="trophies.js"></script>
   <script src="controller.js"></script>
 </body>
 </html>

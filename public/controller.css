@@ -236,6 +236,67 @@ h2 { margin: 0 0 14px; font-size: 1.05rem; }
 .answer-suggestion:active, .answer-suggestion.active { background: rgba(139, 92, 246, .22); }
 .answer-suggestion small { color: var(--muted); }
 .answer-suggestion-empty { padding: 12px 14px; color: var(--muted); }
+.answer-buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+@media (max-width: 360px) {
+  .answer-buttons { grid-template-columns: 1fr; }
+}
+.secondary-btn.skip-btn {
+  min-height: 52px;
+  border: 1px solid rgba(255, 255, 255, .16);
+  border-radius: 13px;
+  color: var(--text);
+  background: rgba(255, 255, 255, .08);
+  font-weight: 800;
+  transition: background .15s ease, border-color .15s ease;
+}
+.secondary-btn.skip-btn:active {
+  background: rgba(255, 255, 255, .15);
+  border-color: rgba(255, 255, 255, .3);
+}
+.step-indicator {
+  display: inline-block;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(139, 92, 246, .15);
+  border: 1px solid rgba(139, 92, 246, .3);
+  color: #d9c9ff;
+  font-size: .88rem;
+  margin-bottom: 8px;
+}
+.attempts-history {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+.attempt-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 9px;
+  border-radius: 8px;
+  font-size: .78rem;
+  font-weight: 700;
+}
+.attempt-badge.skipped {
+  background: rgba(255, 255, 255, .08);
+  border: 1px solid rgba(255, 255, 255, .12);
+  color: var(--muted);
+}
+.attempt-badge.failed {
+  background: rgba(255, 107, 125, .15);
+  border: 1px solid rgba(255, 107, 125, .3);
+  color: #ff9da9;
+}
+.attempt-badge.success {
+  background: rgba(85, 214, 139, .15);
+  border: 1px solid rgba(85, 214, 139, .3);
+  color: #79f0aa;
+}
 .buzz-btn {
   min-height: 150px;
   border: 0;
@@ -247,7 +308,8 @@ h2 { margin: 0 0 14px; font-size: 1.05rem; }
   font-weight: 1000;
 }
 .buzz-btn:active { transform: translateY(7px); box-shadow: 0 5px 0 #710d20; }
-.wait-note { padding: 14px; border-radius: 12px; color: var(--muted); background: var(--panel-2); }
+.wait-note { padding: 14px; border-radius: 12px; color: var(--muted); background: var(--panel-2); font-weight: 700; }
+.wait-note.success { color: #55d68b; background: rgba(85, 214, 139, .12); border: 1px solid rgba(85, 214, 139, .25); }
 .reveal-card { margin-top: 18px; padding: 16px; border-radius: 14px; background: var(--panel-2); }
 .reveal-card strong, .reveal-card span { display: block; }
 .reveal-card strong { font-size: 1.25rem; }
@@ -356,3 +418,528 @@ h2 { margin: 0 0 14px; font-size: 1.05rem; }
   .gate { align-items: center; padding: 20px; }
   .gate-sheet { border-bottom: 1px solid var(--border); border-radius: 24px; }
 }
+
+/* Podium & Badges sur manette smartphone */
+.controller-podium {
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.22), rgba(245, 158, 11, 0.18));
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  border-radius: 14px;
+  padding: 14px;
+  margin-bottom: 14px;
+  text-align: center;
+}
+
+.podium-rank-highlight {
+  font-size: 1.05rem;
+  color: #fff;
+  margin-bottom: 6px;
+}
+
+.podium-rank-highlight strong {
+  color: #fde047;
+}
+
+.controller-badges-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.controller-badge {
+  display: inline-block;
+  padding: 4px 9px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #e2e8f0;
+}
+
+/* Emoji picker mobile */
+.picker-label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+
+.emoji-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 6px;
+  margin-bottom: 12px;
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+@media (max-width: 420px) {
+  .emoji-picker-grid {
+    grid-template-columns: repeat(6, 1fr);
+  }
+}
+
+.emoji-pick-btn {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  padding: 6px 0;
+  font-size: 1.25rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+}
+
+.emoji-pick-btn:active {
+  transform: scale(1.2);
+}
+
+.emoji-pick-btn.active {
+  border-color: #a855f7;
+  background: rgba(168, 85, 247, 0.3);
+  box-shadow: 0 0 10px rgba(168, 85, 247, 0.5);
+}
+
+.create-profile-inputs {
+  display: grid;
+  grid-template-columns: 56px 1fr auto;
+  gap: 8px;
+  align-items: center;
+}
+
+/* Overlay des réactions volantes mobile */
+.mobile-reactions-overlay {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 999;
+}
+
+.mobile-floating-reaction {
+  position: absolute;
+  bottom: 80px;
+  font-size: 2.5rem;
+  animation: floatMobileUp 2s cubic-bezier(0.2, 0.8, 0.3, 1) forwards;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.5));
+}
+
+@keyframes floatMobileUp {
+  0% {
+    transform: translateY(0) scale(0.4);
+    opacity: 0;
+  }
+  15% {
+    transform: translateY(-20px) scale(1.2);
+    opacity: 1;
+  }
+  80% {
+    transform: translateY(-160px) scale(1);
+    opacity: 0.9;
+  }
+  100% {
+    transform: translateY(-220px) scale(0.7);
+    opacity: 0;
+  }
+}
+
+/* Réactions rapides en bas */
+.mobile-quick-reactions {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 10px;
+  padding: 6px;
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 12px;
+}
+
+.mobile-quick-reactions .reaction-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 10px;
+  padding: 6px 12px;
+  font-size: 1.35rem;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: transform 0.1s ease;
+}
+
+.mobile-quick-reactions .reaction-btn:active {
+  transform: scale(1.3);
+  background: rgba(168, 85, 247, 0.3);
+}
+
+/* Pilule Modificateur Mystère */
+.mobile-modifier-pill {
+  margin-top: 4px;
+}
+
+.mobile-modifier-pill span {
+  display: inline-block;
+  background: linear-gradient(135deg, rgba(234, 179, 8, 0.3), rgba(168, 85, 247, 0.35));
+  border: 1px solid rgba(234, 179, 8, 0.6);
+  color: #fde047;
+  font-size: 0.8rem;
+  font-weight: 800;
+  padding: 4px 10px;
+  border-radius: 999px;
+  animation: pulseGlow 2s infinite alternate ease-in-out;
+}
+
+/* Carte Équipe Mobile */
+.mobile-team-card {
+  margin-bottom: 12px;
+}
+
+.mobile-team-btn {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.mobile-team-summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+}
+
+.team-badge-icon {
+  font-size: 1.3rem;
+}
+
+.team-open-arrow {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.mobile-team-details {
+  margin-top: 8px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px;
+}
+
+.team-details-content {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.team-requests-box {
+  background: rgba(234, 179, 8, 0.12);
+  border: 1px solid rgba(234, 179, 8, 0.4);
+  border-radius: 8px;
+  padding: 8px;
+  font-size: 0.85rem;
+}
+
+.team-requests-box strong {
+  display: block;
+  margin-bottom: 6px;
+  color: #fde047;
+}
+
+.team-request-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 4px;
+}
+
+.request-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.action-accept {
+  background: #10b981;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.action-refuse {
+  background: #ef4444;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.team-members-header {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.team-members-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.team-member-chip {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 4px 8px;
+  font-size: 0.8rem;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.member-kick-btn {
+  background: none;
+  border: none;
+  color: #ef4444;
+  font-weight: 800;
+  font-size: 0.8rem;
+  cursor: pointer;
+  padding: 0 2px;
+}
+
+.leave-team-btn {
+  margin-top: 4px;
+  font-size: 0.8rem !important;
+  color: #ef4444 !important;
+}
+
+.locked-note {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.team-list-header {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.teams-pick-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+.team-pick-item {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid;
+  border-radius: 8px;
+  padding: 8px 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.team-pick-item strong {
+  display: block;
+  font-size: 0.85rem;
+}
+
+.team-pick-item small {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+.pick-join-btn {
+  padding: 4px 10px !important;
+  font-size: 0.8rem !important;
+}
+
+.team-create-mini {
+  display: flex;
+  gap: 6px;
+}
+
+.team-create-mini input {
+  flex: 1;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 8px;
+  color: var(--text);
+  font-size: 0.85rem;
+}
+
+.team-create-mini button {
+  padding: 6px 12px !important;
+  font-size: 0.85rem !important;
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  margin-block: 4px;
+}
+
+.divider::before, .divider::after {
+  content: '';
+  flex: 1;
+  border-bottom: 1px solid var(--border);
+}
+
+.divider span {
+  padding: 0 8px;
+}
+
+.mobile-mode-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(234, 179, 8, 0.15);
+  border: 1px solid rgba(234, 179, 8, 0.4);
+  color: #fde047;
+}
+
+.mobile-mode-badge.royale {
+  background: rgba(236, 72, 153, 0.15);
+  border-color: rgba(236, 72, 153, 0.4);
+  color: #f472b6;
+}
+
+.mobile-mode-badge.ghost {
+  background: rgba(148, 163, 184, 0.15);
+  border-color: rgba(148, 163, 184, 0.3);
+  color: #94a3b8;
+}
+
+.mobile-mode-badge.duel {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: rgba(239, 68, 68, 0.4);
+  color: #f87171;
+}
+
+/* ============================================================
+   CARTE TIR À LA CORDE DUEL SUR SMARTPHONE
+   ============================================================ */
+.mobile-duel-card {
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(59, 130, 246, 0.1));
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.mobile-duel-card .duel-teams-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.85rem;
+}
+
+.mobile-duel-card .duel-team-label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.mobile-duel-card .duel-team-label.team-a {
+  color: #f87171;
+}
+
+.mobile-duel-card .duel-team-label.team-b {
+  color: #60a5fa;
+  flex-direction: row-reverse;
+}
+
+.mobile-duel-card .duel-vs-pill {
+  font-size: 0.68rem;
+  font-weight: 800;
+  color: #fde047;
+}
+
+.mobile-duel-card .duel-track {
+  position: relative;
+  height: 20px;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 999px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+}
+
+.mobile-duel-card .duel-zone {
+  flex: 1;
+  height: 100%;
+}
+
+.mobile-duel-card .duel-zone.zone-a {
+  background: linear-gradient(90deg, rgba(239, 68, 68, 0.4), transparent);
+}
+
+.mobile-duel-card .duel-zone.zone-b {
+  background: linear-gradient(90deg, transparent, rgba(59, 130, 246, 0.4));
+}
+
+.mobile-duel-card .duel-rope {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 100%;
+  height: 3px;
+  background: repeating-linear-gradient(45deg, #d97706, #d97706 6px, #b45309 6px, #b45309 12px);
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.mobile-duel-card .duel-knot {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate3d(-50%, -50%, 0);
+  transition: left 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: left;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mobile-duel-card .duel-knot-flag {
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.mobile-duel-card .duel-subtext {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  text-align: center;
+  font-weight: 600;
+}
+

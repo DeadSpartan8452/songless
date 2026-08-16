@@ -61,6 +61,7 @@ let reglages = reglagesParDefaut();
 let audio = new Audio();
 let isPlaying = false;
 let playTimeout = null;
+let autoLoopTimeout = null;
 let progressInterval = null;
 
 // Lecture à l'envers : le morceau est décodé en mémoire et retourné. On garde
@@ -274,6 +275,96 @@ function initCanvas() {
   ctx.scale(dpr, dpr);
 }
 
+let fxNodes = {
+  shaper: null,
+  filter: null,
+  gain: null,
+};
+
+function fxSpeedMultiplier() {
+  return String(reglages.fx || 'none') === 'nightcore' ? 1.25 : 1;
+}
+
+function make8bitCurve(steps = 14) {
+  const n = 4096;
+  const curve = new Float32Array(n);
+  for (let i = 0; i < n; i++) {
+    const x = (i * 2) / n - 1;
+    curve[i] = Math.round(x * steps) / steps;
+  }
+  return curve;
+}
+
+function connectAudioChain() {
+  if (!audioContext || !sourceNode || !analyser) return;
+  try {
+    sourceNode.disconnect();
+    if (fxNodes.shaper) fxNodes.shaper.disconnect();
+    if (fxNodes.filter) fxNodes.filter.disconnect();
+    if (fxNodes.gain) fxNodes.gain.disconnect();
+  } catch (_) {}
+
+  const isGameFinished = !resultCard.classList.contains('hidden');
+  const fx = isGameFinished ? 'none' : (reglages.fx || 'none');
+
+  let currentOut = sourceNode;
+
+  if (fx === '8bit') {
+    const shaper = audioContext.createWaveShaper();
+    shaper.curve = make8bitCurve(12);
+    const filter = audioContext.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.value = 3400;
+    sourceNode.connect(shaper);
+    shaper.connect(filter);
+    fxNodes.shaper = shaper;
+    fxNodes.filter = filter;
+    currentOut = filter;
+  } else if (fx === 'radio') {
+    const filter = audioContext.createBiquadFilter();
+    filter.type = 'bandpass';
+    filter.frequency.value = 1400;
+    filter.Q.value = 3.0;
+    sourceNode.connect(filter);
+    fxNodes.filter = filter;
+    currentOut = filter;
+  } else if (fx === 'nightcore') {
+    const filter = audioContext.createBiquadFilter();
+    filter.type = 'highshelf';
+    filter.frequency.value = 2500;
+    filter.gain.value = 4;
+    sourceNode.connect(filter);
+    fxNodes.filter = filter;
+    currentOut = filter;
+  } else if (fx === 'underwater') {
+    const filter = audioContext.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.value = 450;
+    filter.Q.value = 3.5;
+    sourceNode.connect(filter);
+    fxNodes.filter = filter;
+    currentOut = filter;
+  } else if (fx === 'bass') {
+    const filter = audioContext.createBiquadFilter();
+    filter.type = 'lowshelf';
+    filter.frequency.value = 140;
+    filter.gain.value = 14;
+    sourceNode.connect(filter);
+    fxNodes.filter = filter;
+    currentOut = filter;
+  } else if (fx === 'slowed') {
+    const filter = audioContext.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.value = 3200;
+    sourceNode.connect(filter);
+    fxNodes.filter = filter;
+    currentOut = filter;
+  }
+
+  currentOut.connect(analyser);
+  analyser.connect(audioContext.destination);
+}
+
 function initWebAudio() {
   if (audioContext) return;
   
@@ -287,8 +378,7 @@ function initWebAudio() {
     // Note: crossorigin est nécessaire pour éviter les erreurs CORS en local
     audio.crossOrigin = "anonymous";
     sourceNode = audioContext.createMediaElementSource(audio);
-    sourceNode.connect(analyser);
-    analyser.connect(audioContext.destination);
+    connectAudioChain();
     
     const bufferLength = analyser.frequencyBinCount;
     dataArray = new Uint8Array(bufferLength);
@@ -423,7 +513,8 @@ function playAudio(syncPlayback = null) {
   // La vitesse ne s'applique qu'à la devinette : le morceau dévoilé se réécoute
   // tel qu'il est. `preservesPitch = false` laisse la hauteur du son suivre la
   // vitesse — c'est justement ce qui rend l'exercice retors.
-  const vitesse = isGameFinished ? 1 : reglages.vitesse;
+  const speedSource = Number(reglages.vitesse) || 1;
+  const vitesse = isGameFinished ? 1 : speedSource * fxSpeedMultiplier();
   audio.playbackRate = vitesse;
   audio.preservesPitch = false;
   audio.mozPreservesPitch = false;
@@ -484,8 +575,23 @@ function playAudio(syncPlayback = null) {
       }, 30);
 
       playTimeout = setTimeout(() => {
-        pauseAudio();
-        updatePlayerUI(0, maxPlayDuration);
+        if (!isGameFinished) {
+          audio.pause();
+          clearInterval(progressInterval);
+          if (animationFrameId) cancelAnimationFrame(animationFrameId);
+          drawIdleWaveform();
+          updatePlayerUI(0, maxPlayDuration);
+          const loopDelay = Math.min(4.2, Math.max(2.2, 2.0 + maxPlayDuration * 0.15));
+          clearTimeout(autoLoopTimeout);
+          autoLoopTimeout = setTimeout(() => {
+            if (isPlaying && resultCard.classList.contains('hidden')) {
+              playAudio(syncPlayback);
+            }
+          }, (loopDelay / vitesse) * 1000);
+        } else {
+          pauseAudio();
+          updatePlayerUI(0, maxPlayDuration);
+        }
       }, (remainingDuration / vitesse) * 1000);
     })
     .catch(err => {
@@ -743,7 +849,7 @@ async function jouerAlEnvers(syncPlayback = null) {
     : durations[currentAttempt];
   const initialElapsed = syncPlayback
     ? Math.min(palier, Math.max(0, Number(syncPlayback.elapsed) || 0)) : 0;
-  const vitesse = reglages.vitesse;
+  const vitesse = (Number(reglages.vitesse) || 1) * fxSpeedMultiplier();
   const duree = bufferInverse.duration;
 
   // Position du point d'extrait dans le tampon retourné.
@@ -770,8 +876,22 @@ async function jouerAlEnvers(syncPlayback = null) {
 
   sourceTampon.onended = () => {
     sourceTampon = null;
-    pauseAudio();
+    clearInterval(progressInterval);
+    if (animationFrameId) cancelAnimationFrame(animationFrameId);
+    drawIdleWaveform();
     updatePlayerUI(0, palier);
+    const isGameFinished = !resultCard.classList.contains('hidden');
+    if (!isGameFinished && isPlaying) {
+      const loopDelay = Math.min(4.2, Math.max(2.2, 2.0 + palier * 0.15));
+      clearTimeout(autoLoopTimeout);
+      autoLoopTimeout = setTimeout(() => {
+        if (isPlaying && resultCard.classList.contains('hidden')) {
+          jouerAlEnvers(syncPlayback);
+        }
+      }, (loopDelay / vitesse) * 1000);
+    } else {
+      pauseAudio();
+    }
   };
 
   sourceTampon.start(0, depart, longueur);
@@ -784,6 +904,8 @@ function pauseAudio() {
   arreterSourceTampon();
 
   clearTimeout(playTimeout);
+  clearTimeout(autoLoopTimeout);
+  autoLoopTimeout = null;
   clearInterval(progressInterval);
   if (animationFrameId) cancelAnimationFrame(animationFrameId);
   
@@ -1729,6 +1851,20 @@ function endGame(isWin) {
       attempt: isWin ? currentAttempt + 1 : null,
     });
   }
+  if (window.songlessTrophies) {
+    window.songlessTrophies.evaluateRound({
+      track: currentTrack,
+      isWin,
+      attempt: isWin ? currentAttempt + 1 : null,
+      durIndex: isWin ? currentAttempt : null,
+      mode: reglages.reponse,
+      speed: reglages.vitesse,
+      way: reglages.sens,
+      start: reglages.depart,
+      preset: reglages.preset,
+      fx: reglages.fx,
+    });
+  }
 }
 
 /** Renseigne la fiche du morceau dévoilé (titre, artiste, genre, pochette). */
@@ -2662,6 +2798,18 @@ function initProfilEvents() {
     renderProfileList();
   };
 
+  const picker = document.getElementById('pc-emoji-picker');
+  if (picker) {
+    picker.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-emoji]');
+      if (!btn) return;
+      picker.querySelectorAll('.emoji-pick-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const emojiInput = document.getElementById('new-profile-emoji');
+      if (emojiInput) emojiInput.value = btn.getAttribute('data-emoji') || '🎧';
+    });
+  }
+
   document.getElementById('add-profile-btn').addEventListener('click', ajouter);
   document.getElementById('new-profile-name').addEventListener('keydown', (e) => {
     if (e.key === 'Enter') ajouter();
@@ -2682,6 +2830,7 @@ function reglagesParDefaut() {
     sens: 'normal',         // 'normal' | 'inverse'
     depart: 'seed',         // 'seed' | 'refrain' | 'debut'
     preset: 'normal',       // 'facile' | 'normal' | 'hardcore' | 'perso'
+    fx: 'none',             // 'none' | '8bit' | 'radio' | 'underwater' | 'nightcore' | 'slowed' | 'bass'
     paliers: [...PALIERS_PRESETS.normal],
   };
 }
@@ -2791,6 +2940,7 @@ function majBoutonsOptions() {
   marquer('[data-way]', 'data-way', reglages.sens);
   marquer('[data-start]', 'data-start', reglages.depart);
   marquer('[data-preset]', 'data-preset', reglages.preset);
+  marquer('[data-fx]', 'data-fx', reglages.fx || 'none');
 
   const note = document.getElementById('answer-note');
   if (note) {
@@ -2897,6 +3047,24 @@ function initOptionsEvents() {
       appliquerReglages();
       startNewGame();
       showToast(`Paliers ${preset} : ${durations.map(formatSecondes).join(' · ')}`);
+    });
+  });
+
+  document.querySelectorAll('[data-fx]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      reglages.fx = btn.getAttribute('data-fx') || 'none';
+      appliquerReglages();
+      connectAudioChain();
+      const labels = {
+        none: 'Son pur sans distorsion.',
+        '8bit': 'Filtre 8-Bit Chiptune activé.',
+        radio: 'Filtre Radio Vintage 1920 activé.',
+        underwater: 'Filtre Sous l’Eau activé.',
+        nightcore: 'Effet Nightcore survolté activé.',
+        slowed: 'Effet Slowed + Reverb activé.',
+        bass: 'Effet Bass Boost activé.',
+      };
+      showToast(labels[reglages.fx] || 'Filtre audio appliqué.');
     });
   });
 
