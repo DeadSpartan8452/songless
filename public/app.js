@@ -71,7 +71,6 @@ let reglages = reglagesParDefaut();
 let audio = new Audio();
 let isPlaying = false;
 let playTimeout = null;
-let autoLoopTimeout = null;
 let progressInterval = null;
 
 // Lecture à l'envers : le morceau est décodé en mémoire et retourné. On garde
@@ -585,23 +584,8 @@ function playAudio(syncPlayback = null) {
       }, 30);
 
       playTimeout = setTimeout(() => {
-        if (!isGameFinished) {
-          audio.pause();
-          clearInterval(progressInterval);
-          if (animationFrameId) cancelAnimationFrame(animationFrameId);
-          drawIdleWaveform();
-          updatePlayerUI(0, maxPlayDuration);
-          const loopDelay = Math.min(4.2, Math.max(2.2, 2.0 + maxPlayDuration * 0.15));
-          clearTimeout(autoLoopTimeout);
-          autoLoopTimeout = setTimeout(() => {
-            if (isPlaying && resultCard.classList.contains('hidden')) {
-              playAudio(syncPlayback);
-            }
-          }, (loopDelay / vitesse) * 1000);
-        } else {
-          pauseAudio();
-          updatePlayerUI(0, maxPlayDuration);
-        }
+        pauseAudio();
+        updatePlayerUI(0, maxPlayDuration);
       }, (remainingDuration / vitesse) * 1000);
     })
     .catch(err => {
@@ -886,22 +870,8 @@ async function jouerAlEnvers(syncPlayback = null) {
 
   sourceTampon.onended = () => {
     sourceTampon = null;
-    clearInterval(progressInterval);
-    if (animationFrameId) cancelAnimationFrame(animationFrameId);
-    drawIdleWaveform();
+    pauseAudio();
     updatePlayerUI(0, palier);
-    const isGameFinished = !resultCard.classList.contains('hidden');
-    if (!isGameFinished && isPlaying) {
-      const loopDelay = Math.min(4.2, Math.max(2.2, 2.0 + palier * 0.15));
-      clearTimeout(autoLoopTimeout);
-      autoLoopTimeout = setTimeout(() => {
-        if (isPlaying && resultCard.classList.contains('hidden')) {
-          jouerAlEnvers(syncPlayback);
-        }
-      }, (loopDelay / vitesse) * 1000);
-    } else {
-      pauseAudio();
-    }
   };
 
   sourceTampon.start(0, depart, longueur);
@@ -914,8 +884,6 @@ function pauseAudio() {
   arreterSourceTampon();
 
   clearTimeout(playTimeout);
-  clearTimeout(autoLoopTimeout);
-  autoLoopTimeout = null;
   clearInterval(progressInterval);
   if (animationFrameId) cancelAnimationFrame(animationFrameId);
   
