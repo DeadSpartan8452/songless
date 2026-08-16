@@ -1016,6 +1016,16 @@ app.get('/api/tracks/:id/audio', (req, res) => {
 });
 
 // Route: RÃ©cupÃ©rer la pochette
+function envoyerPochetteParDefaut(res) {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="160" height="160" viewBox="0 0 160 160">
+    <rect width="160" height="160" rx="18" fill="#201a35"/>
+    <circle cx="62" cy="112" r="22" fill="#a78bfa"/>
+    <path d="M78 112V45l49-10v58" fill="none" stroke="#a78bfa" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="112" cy="94" r="22" fill="#a78bfa"/>
+  </svg>`;
+  res.type('image/svg+xml').set('Cache-Control', 'private, max-age=300').send(svg);
+}
+
 app.get('/api/tracks/:id/cover', async (req, res) => {
   try {
     const morceau = resoudreMorceau(req.params.id);
@@ -1032,11 +1042,13 @@ app.get('/api/tracks/:id/cover', async (req, res) => {
       res.set('Content-Type', picture.format);
       return res.send(picture.data);
     } else {
-      return res.status(404).json({ error: 'Pas de pochette pour ce fichier' });
+      return envoyerPochetteParDefaut(res);
     }
   } catch (error) {
-    console.error('Erreur extraction pochette:', error);
-    res.status(500).json({ error: 'Impossible de lire la pochette' });
+    // Certains fichiers audio lisibles contiennent néanmoins des métadonnées
+    // de pochette incomplètes. Cela ne doit ni polluer la console ni casser la
+    // bibliothèque : le jeu affiche simplement sa pochette neutre.
+    envoyerPochetteParDefaut(res);
   }
 });
 

@@ -19,6 +19,16 @@ let victoryAutoPlay = false;
 // Contexte serveur : mode réseau local, et droit d'écrire ou non.
 let contexte = { lan: false, local: true, readOnly: false, url: null };
 
+// Les gestionnaires JavaScript écrits directement dans le HTML sont bloqués
+// par notre politique de sécurité. On traite donc les pochettes cassées avec
+// un écouteur central, compatible avec la CSP et avec les éléments dynamiques.
+document.addEventListener('error', event => {
+  const image = event.target;
+  if (!(image instanceof HTMLImageElement) || !image.matches('[data-cover-fallback]')) return;
+  const parent = image.parentNode;
+  if (parent) parent.textContent = '🎵';
+}, true);
+
 // --- Anti-triche : mémoire des manches entamées dans la session.
 //
 // Revenir en arrière (pavé num. 3) sur un morceau déjà commencé restituait une
@@ -2100,7 +2110,7 @@ function renderLibraryList() {
     let coverHtml = '🎵';
     if (track.hasCover) {
       coverHtml = `<img src="/api/tracks/${track.id}/cover" alt="Pochette"
-        onerror="this.parentNode.textContent='🎵'">`;
+        data-cover-fallback>`;
     }
 
     const review = track.needsReview
