@@ -594,7 +594,8 @@
     const card = byId('mobile-team-card');
     if (!card) return;
     const me = currentPlayer();
-    if (!me) {
+    const isTeamsMode = Boolean(state && state.settings && state.settings.teamsMode);
+    if (!me || !isTeamsMode) {
       card.classList.add('hidden');
       return;
     }

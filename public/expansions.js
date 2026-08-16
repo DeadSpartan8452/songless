@@ -1162,8 +1162,9 @@
     renderPartyReactions();
     renderPartyDuel(partyState);
 
+    const isTeams = Boolean(partyState.settings && partyState.settings.teamsMode);
     byId('party-players').innerHTML = partyState.players.map(player => {
-      const team = (partyState.teams || []).find(t => t.id === player.teamId);
+      const team = isTeams ? (partyState.teams || []).find(t => t.id === player.teamId) : null;
       const teamColor = safeTeamColor(team && team.color, '#a855f7');
       const teamPill = team ? `<span class="player-team-pill" style="border-color:${teamColor}; background:${teamColor}20; color:${teamColor}">${escapeHtml(team.emoji || '👥')} ${escapeHtml(team.name)}</span>` : '';
       return `
@@ -1291,13 +1292,13 @@
   function renderPartyTeams() {
     const panel = byId('party-team-panel');
     if (!panel) return;
-    const teams = (partyState && partyState.teams) || [];
-    const show = Boolean(partyState && (teams.length > 0 || (partyState.settings && partyState.settings.teamsMode) || partyState.status === 'lobby'));
-    if (!show || !partyState) {
+    const isTeamsMode = Boolean(partyState && partyState.settings && partyState.settings.teamsMode);
+    if (!isTeamsMode || !partyState) {
       panel.classList.add('hidden');
       partyTeamsSignature = '';
       return;
     }
+    const teams = (partyState && partyState.teams) || [];
     panel.classList.remove('hidden');
     const countEl = byId('team-count-label');
     if (countEl) countEl.innerText = teams.length;
