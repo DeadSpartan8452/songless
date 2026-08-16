@@ -86,6 +86,27 @@
 .party-divider::before, .party-divider::after { content: ''; flex: 1; height: 1px; background: #e5dfd7; }
 .party-head { display: flex; justify-content: space-between; gap: 12px; font-size: 1.05rem; margin-bottom: 14px; }
 .party-invites { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+.party-join-qr {
+  flex-basis: 100%;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px;
+  border: 1px solid rgba(168, 85, 247, .35);
+  border-radius: 12px;
+  background: rgba(28, 24, 39, .72);
+}
+.party-join-qr.hidden { display: none; }
+.party-join-qr img {
+  width: 132px;
+  height: 132px;
+  padding: 6px;
+  border-radius: 10px;
+  background: #fff;
+}
+.party-join-qr div { display: grid; gap: 5px; }
+.party-join-qr strong { color: #f4eaff; font-size: 1rem; }
+.party-join-qr span { color: #c4b5d4; font-size: .82rem; }
 .party-join-link {
   flex-basis: 100%;
   color: #d8b4fe;
@@ -93,6 +114,10 @@
   overflow-wrap: anywhere;
 }
 #party-code { letter-spacing: .16em; font-size: 1.35rem; color: var(--accent); }
+@media (max-width: 560px) {
+  .party-join-qr { flex-direction: column; text-align: center; }
+  .party-join-qr img { width: 160px; height: 160px; }
+}
 .party-players { display: grid; gap: 8px; margin: 12px 0; }
 .party-player {
   display: grid;

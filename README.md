@@ -79,7 +79,9 @@ En ligne de commande : `node server.js --lan`.
 Chaque soirée affiche un bouton **Copier le lien même wifi**. Le lien contient
 un secret aléatoire propre au salon : connaître seulement le code à cinq
 caractères ne suffit pas pour entrer depuis Internet. Quand le tunnel HTTPS est
-configuré, un second bouton copie le lien Internet.
+configuré, un QR code ouvre directement l'invitation Internet sécurisée et un
+second bouton permet toujours de copier le lien. Sans tunnel, le QR code utilise
+automatiquement l'adresse du wifi local.
 
 Le mode Internet tourne exclusivement sur ce PC avec Tailscale Funnel. Il
 n'utilise aucun serveur distant personnel et n'ouvre aucun port entrant sur la

@@ -624,6 +624,38 @@ app.post('/api/party/:code/join', (req, res) => {
   }
 });
 
+/** QR code d'invitation d'un salon, visible uniquement par l'hote local. */
+app.get('/api/party/:code/qr.svg', async (req, res) => {
+  const party = partyStore.get(req.params.code);
+  if (!party) return res.status(404).json({ error: 'Partie introuvable.' });
+
+  const state = partyStore.publicState(party, null, req.query.hostToken);
+  if (!estLocal(req) || !state.isHost) {
+    return res.status(403).json({ error: 'QR code reserve a l\'ordinateur hote.' });
+  }
+
+  const kind = req.query.kind === 'internet' ? 'internet' : 'lan';
+  const base = kind === 'internet' ? PUBLIC_URL : urlLan();
+  const inviteUrl = partyInviteUrl(base, party);
+  if (!inviteUrl) {
+    return res.status(404).json({ error: 'Adresse d\'invitation indisponible.' });
+  }
+
+  try {
+    const svg = await QRCode.toString(inviteUrl, {
+      type: 'svg',
+      errorCorrectionLevel: 'M',
+      margin: 2,
+      width: 240,
+    });
+    res.type('image/svg+xml');
+    res.set('Cache-Control', 'no-store');
+    res.send(svg);
+  } catch (_) {
+    res.status(500).json({ error: 'QR code impossible a produire.' });
+  }
+});
+
 app.get('/api/party/:code', (req, res) => {
   const party = partyStore.get(req.params.code);
   if (!party) return res.status(404).json({ error: 'Partie introuvable.' });

@@ -1144,6 +1144,9 @@
     const invites = byId('party-invites');
     const internetButton = byId('party-copy-internet');
     const internetLink = byId('party-internet-link');
+    const qrWrapper = byId('party-join-qr');
+    const qrImage = byId('party-join-qr-image');
+    const qrLabel = byId('party-join-qr-label');
     const internetUrl = party.inviteUrls && typeof party.inviteUrls.internet === 'string'
       && party.inviteUrls.internet.startsWith('https://')
       ? party.inviteUrls.internet
@@ -1155,6 +1158,22 @@
     internetLink.classList.toggle('hidden', !internetUrl);
     internetLink.href = internetUrl || '#';
     internetLink.innerText = internetUrl ? `Lien à envoyer : ${internetUrl}` : '';
+
+    const lanUrl = party.inviteUrls && typeof party.inviteUrls.lan === 'string'
+      ? party.inviteUrls.lan
+      : '';
+    const qrKind = internetUrl ? 'internet' : (lanUrl ? 'lan' : '');
+    qrWrapper.classList.toggle('hidden', !partyState.isHost || !qrKind);
+    if (partyState.isHost && qrKind) {
+      const qrSource = `/api/party/${encodeURIComponent(party.code)}/qr.svg?hostToken=${encodeURIComponent(party.hostToken)}&kind=${qrKind}`;
+      if (qrImage.dataset.source !== qrSource) {
+        qrImage.src = qrSource;
+        qrImage.dataset.source = qrSource;
+      }
+      qrLabel.innerText = qrKind === 'internet'
+        ? 'Fonctionne à distance grâce au lien HTTPS'
+        : 'Téléphone connecté au même Wi-Fi';
+    }
 
     renderPartyPodium(partyState);
     renderPartyTeams();

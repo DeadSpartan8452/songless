@@ -86,15 +86,40 @@ try {
   if (-not $Pret) {
     throw 'Songless ne repond pas apres 10 secondes.'
   }
-  if (-not $SkipBrowser) {
-    Start-Process $LocalUrl
-  }
+
   Write-Host "Adresse HTTPS : $PublicUrl" -ForegroundColor Green
   Write-Host 'Le premier lancement peut demander une validation dans le navigateur.'
   Write-Host 'Fermer cette fenetre coupe immediatement le lien Internet.'
-  & $TailscalePath funnel --yes --bg 3001
-  if (-not $?) {
-    throw 'Le lien Internet Tailscale n''a pas pu demarrer.'
+
+  $TunnelPret = $false
+  for ($Tentative = 1; $Tentative -le 6; $Tentative++) {
+    Write-Host "Demarrage du tunnel Tailscale ($Tentative/6)..." `
+      -ForegroundColor DarkGray
+    & $TailscalePath funnel --yes --bg 3001 | Out-Host
+    $FunnelExitCode = $LASTEXITCODE
+    if ($FunnelExitCode -eq 0) {
+      Start-Sleep -Milliseconds 800
+      try {
+        $FunnelStatus = & $TailscalePath funnel status --json |
+          ConvertFrom-Json
+        $Proxy = $FunnelStatus.Web.PSObject.Properties.Value |
+          ForEach-Object { $_.Handlers.PSObject.Properties.Value.Proxy } |
+          Where-Object { $_ -eq 'http://127.0.0.1:3001' }
+        if ($Proxy) {
+          $TunnelPret = $true
+          break
+        }
+      } catch {}
+    }
+    Start-Sleep -Seconds 1
+  }
+  if (-not $TunnelPret) {
+    throw 'Le tunnel Tailscale ne s''est pas active apres 6 tentatives.'
+  }
+
+  Write-Host 'Tunnel Tailscale actif et verifie.' -ForegroundColor Green
+  if (-not $SkipBrowser) {
+    Start-Process $LocalUrl
   }
   Wait-Process -Id $Node.Id
 } finally {
