@@ -8,6 +8,7 @@
   let invitedCode = params.get('party') || readSession('songless_invited_party');
   let invite = params.get('invite') || readSession('songless_invite');
   let profiles = [];
+  let canEditProfiles = false;
   let pendingProfile = null;
   // Le profil est volontairement propre à cette page. Une actualisation doit
   // toujours redemander qui tient le téléphone.
@@ -103,6 +104,7 @@
           ? 'Invitation invalide ou expirée : demande un nouveau lien à l’hôte.'
           : 'Appairage absent : rescane le QR code affiché sur le PC.');
       }
+      canEditProfiles = context.canEditProfiles === true;
       const result = await api('/api/controller/profiles');
       profiles = Array.isArray(result.profiles) ? result.profiles : [];
       renderProfiles();
@@ -128,6 +130,151 @@
           </button>`).join('')
       : '<div class="wait-note">Aucun profil pour le moment. Crée le premier ci-dessous.</div>';
     byId('confirm-profile-btn').disabled = !pendingProfile;
+    if (byId('edit-profile-open-btn')) {
+      byId('edit-profile-open-btn').classList.toggle('hidden', !canEditProfiles);
+      byId('edit-profile-open-btn').disabled = !canEditProfiles || !pendingProfile;
+    }
+  }
+
+  function openEditProfile() {
+    if (!canEditProfiles || !pendingProfile) return;
+    const editSection = byId('edit-profile-section');
+    if (!editSection) return;
+    byId('edit-name').value = pendingProfile.nom || '';
+    byId('edit-emoji').value = pendingProfile.emoji || '🎧';
+
+    // Remplir le sélecteur d'emoji d'édition
+    const editPicker = byId('edit-emoji-picker');
+    const mainPicker = byId('mobile-emoji-picker');
+    if (editPicker && mainPicker && !editPicker.children.length) {
+      editPicker.innerHTML = mainPicker.innerHTML;
+      editPicker.querySelectorAll('.emoji-pick-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          editPicker.querySelectorAll('.emoji-pick-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          byId('edit-emoji').value = btn.dataset.emoji || '🎧';
+        });
+      });
+    }
+
+    if (editPicker) {
+      editPicker.querySelectorAll('.emoji-pick-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.emoji === (pendingProfile.emoji || '🎧'));
+      });
+    }
+
+    editSection.classList.remove('hidden');
+    byId('edit-name').focus();
+  }
+
+  function cancelEditProfile() {
+    const editSection = byId('edit-profile-section');
+    if (editSection) editSection.classList.add('hidden');
+  }
+
+  async function saveEditProfile() {
+    if (!pendingProfile) return;
+    const nom = byId('edit-name').value.trim();
+    const emoji = byId('edit-emoji').value.trim() || '🎧';
+    if (!nom) return toast('Écris un prénom ou un pseudo.');
+
+    try {
+      const updated = await api(`/api/controller/profiles/${encodeURIComponent(pendingProfile.id)}`, {
+        method: 'PUT',
+        body: JSON.stringify({ nom, emoji }),
+      });
+      const idx = profiles.findIndex(p => p.id === pendingProfile.id);
+      if (idx >= 0) profiles[idx] = updated;
+      pendingProfile = updated;
+      if (profile && profile.id === updated.id) {
+        profile = updated;
+        byId('profile-change-btn').innerText = `${profile.emoji || '🎧'} ${profile.nom}`;
+      }
+      renderProfiles();
+      cancelEditProfile();
+      toast('Profil mis à jour avec succès !');
+    } catch (error) {
+      toast(error.message);
+    }
+  }
+
+  function showPalmares() {
+    const targetProfile = profile || pendingProfile || (profiles.length ? profiles[0] : null);
+    if (!targetProfile) return toast('Crée ou choisis d’abord un profil.');
+    const sheet = byId('palmares-gate');
+    if (!sheet) return;
+
+    const mp = (targetProfile && targetProfile.multiplayer) || {};
+    const sessions = Number(mp.sessions) || 0;
+    const wins = Number(mp.wins) || 0;
+    const correct = Number(mp.correct) || 0;
+    const rounds = Number(mp.rounds) || 0;
+    const rate = rounds > 0 ? Math.round((correct / rounds) * 100) : 0;
+
+    byId('palmares-summary').innerHTML = `
+      <div class="palmares-stat-card">
+        <div class="palmares-stat-val">${sessions}</div>
+        <div class="palmares-stat-lbl">Soirées jouées</div>
+      </div>
+      <div class="palmares-stat-card">
+        <div class="palmares-stat-val">${wins}</div>
+        <div class="palmares-stat-lbl">Victoires</div>
+      </div>
+      <div class="palmares-stat-card">
+        <div class="palmares-stat-val">${correct}</div>
+        <div class="palmares-stat-lbl">Bonnes réponses</div>
+      </div>
+      <div class="palmares-stat-card">
+        <div class="palmares-stat-val">${rate}%</div>
+        <div class="palmares-stat-lbl">Taux de réussite</div>
+      </div>
+    `;
+
+    const badges = [];
+    if (wins >= 5) badges.push({ emoji: '👑', label: 'Maître du jeu' });
+    if (correct >= 20) badges.push({ emoji: '⚡', label: 'L’Éclair' });
+    if (sessions >= 10) badges.push({ emoji: '🛡️', label: 'Vétéran' });
+    if (rate >= 70 && rounds >= 10) badges.push({ emoji: '🎯', label: 'Tireur d’élite' });
+    if (wins >= 1) badges.push({ emoji: '🏆', label: 'Champion' });
+
+    byId('palmares-badges').innerHTML = badges.length
+      ? badges.map(b => `<div class="palmares-badge-pill"><span>${b.emoji}</span><strong>${b.label}</strong></div>`).join('')
+      : '<div class="wait-note" style="margin:0;">Joue des parties pour décrocher des distinctions !</div>';
+
+    const allTrophies = typeof SONGLESS_TROPHIES !== 'undefined' ? SONGLESS_TROPHIES : [];
+    const unlockedIds = new Set(window.songlessTrophies
+      && typeof window.songlessTrophies.getUnlockedIds === 'function'
+      ? window.songlessTrophies.getUnlockedIds()
+      : []);
+    const unlockedCount = unlockedIds.size;
+    const totalCount = allTrophies.length || 105;
+    const percent = Math.min(100, Math.round((unlockedCount / totalCount) * 100));
+
+    byId('palmares-count-label').innerText = `${unlockedCount} / ${totalCount} (${percent}%)`;
+    byId('palmares-bar-fill').style.width = `${percent}%`;
+
+    byId('palmares-trophies-list').innerHTML = allTrophies.length
+      ? allTrophies.map(t => {
+          const unlocked = unlockedIds.has(t.id);
+          return `
+            <div class="trophy-item-mobile ${unlocked ? 'unlocked' : 'locked'}">
+              <span class="trophy-mobile-icon">${t.icon || '🏆'}</span>
+              <div class="trophy-mobile-info">
+                <div class="trophy-mobile-title">${escapeHtml(t.name || t.id)}</div>
+                <div class="trophy-mobile-desc">${escapeHtml(t.desc || '')}</div>
+              </div>
+              <span class="trophy-mobile-status">${unlocked ? '✓ Débloqué' : '🔒'}</span>
+            </div>
+          `;
+        }).join('')
+      : '<div class="wait-note">105 trophées à débloquer au fil des soirées !</div>';
+
+    sheet.classList.remove('hidden');
+  }
+
+  function hidePalmares() {
+    const sheet = byId('palmares-gate');
+    if (sheet) sheet.classList.add('hidden');
   }
 
   function globalStatsLabel(stats) {
@@ -140,6 +287,7 @@
 
   function showProfileGate() {
     pendingProfile = null;
+    cancelEditProfile();
     renderProfiles();
     byId('join-screen').setAttribute('inert', '');
     byId('profile-gate').classList.remove('hidden');
@@ -372,41 +520,57 @@
     }
     partyAudio.playbackRate = Number(playback.speed) || 1;
     partyAudio.preservesPitch = false;
-    const start = () => {
+    const start = (isFirstPlay = true) => {
       if (!audioUnlocked || audioRoundKey !== key || audioPlaybackSignature !== signature) return;
-      const elapsed = elapsedMusic();
-      const remaining = Number(playback.duration) - elapsed;
-      if (remaining <= 0) return stopPartyAudio('Extrait terminé. En attente de la révélation.');
       if (partyAudio.readyState < 2) {
-        partyAudio.addEventListener('canplay', start, { once: true });
+        partyAudio.addEventListener('canplay', () => start(isFirstPlay), { once: true });
         return;
       }
       markPhoneRoundStarted(playback);
-      const position = (Number(playback.offset) || 0) + elapsed;
-      const playable = Math.min(remaining, Math.max(0, partyAudio.duration - position));
-      if (playable <= 0) return stopPartyAudio('Extrait terminé. En attente de la révélation.');
+      const startOffset = Number(playback.offset) || 0;
+      const fullDuration = Number(playback.duration) || 0.2;
+      const speed = Number(playback.speed) || 1;
+
+      const elapsed = isFirstPlay ? elapsedMusic() : 0;
+      const remaining = fullDuration - elapsed;
+      if (remaining <= 0 && isFirstPlay) {
+        if (current.status === 'round' && !playback.reveal) {
+          const loopDelay = Math.min(4.2, Math.max(2.2, 2.0 + fullDuration * 0.15));
+          clearTimeout(audioStartTimer);
+          audioStartTimer = setTimeout(() => start(false), loopDelay * 1000);
+          return;
+        }
+        return stopPartyAudio('Extrait terminé. En attente de la révélation.');
+      }
+
+      const position = startOffset + elapsed;
+      const playable = Math.min(Math.max(0.1, remaining), Math.max(0.1, partyAudio.duration - position));
       partyAudio.currentTime = position;
       partyAudio.play().then(() => {
         byId('audio-sync-status').innerText = current.status === 'reveal'
           ? '🎵 Passage connu joué avec le PC.'
           : '🔊 Lecture synchronisée avec le PC.';
+        clearTimeout(audioStopTimer);
         audioStopTimer = setTimeout(() => {
           if (current.status === 'round' && !playback.reveal) {
             partyAudio.pause();
+            partyAudio.currentTime = startOffset;
             byId('audio-sync-status').innerText = '🔁 Relecture automatique de l’extrait…';
-            const loopDelay = Math.min(4.2, Math.max(2.2, 2.0 + Number(playback.duration) * 0.15));
-            audioStartTimer = setTimeout(start, loopDelay * 1000);
+            const loopDelay = Math.min(4.2, Math.max(2.2, 2.0 + fullDuration * 0.15));
+            clearTimeout(audioStartTimer);
+            audioStartTimer = setTimeout(() => start(false), (loopDelay / speed) * 1000);
           } else {
             stopPartyAudio(current.status === 'reveal'
               ? 'Passage connu terminé.'
               : 'Extrait terminé. En attente de la révélation.');
           }
-        }, playable / (Number(playback.speed) || 1) * 1000);
+        }, (playable / speed) * 1000);
       }).catch(() => {
         byId('audio-sync-status').innerText = '🔇 Touche « Règles » pour autoriser le son.';
       });
     };
-    audioStartTimer = setTimeout(start, delay);
+    clearTimeout(audioStartTimer);
+    audioStartTimer = setTimeout(() => start(true), delay);
   }
 
   async function prepareReversePartyAudio(url, playback, elapsedMusic, delay, key, receivedAt, signature) {
@@ -414,34 +578,49 @@
       const reversed = await getReversePartyBuffer(url, key);
       if (audioPlaybackSignature !== signature) return;
       const wait = Math.max(0, delay - (Date.now() - receivedAt));
-      const startReverse = () => {
+      const startReverse = (isFirstPlay = true) => {
         if (!audioUnlocked || audioRoundKey !== key || audioPlaybackSignature !== signature) return;
-        const elapsed = elapsedMusic();
-        const remaining = Number(playback.duration) - elapsed;
-        if (remaining <= 0) return stopPartyAudio('Extrait terminé. En attente de la révélation.');
         markPhoneRoundStarted(playback);
+        const fullDuration = Number(playback.duration) || 0.2;
+        const speed = Number(playback.speed) || 1;
+        const elapsed = isFirstPlay ? elapsedMusic() : 0;
+        const remaining = fullDuration - elapsed;
+
+        if (remaining <= 0 && isFirstPlay) {
+          if (party && state && state.status === 'round' && !playback.reveal) {
+            const loopDelay = Math.min(4.2, Math.max(2.2, 2.0 + fullDuration * 0.15));
+            clearTimeout(audioStartTimer);
+            audioStartTimer = setTimeout(() => startReverse(false), loopDelay * 1000);
+            return;
+          }
+          return stopPartyAudio('Extrait terminé. En attente de la révélation.');
+        }
+
+        try { if (reverseSource) reverseSource.stop(); } catch (_) {}
         reverseSource = reverseAudioContext.createBufferSource();
         reverseSource.buffer = reversed;
-        reverseSource.playbackRate.value = Number(playback.speed) || 1;
+        reverseSource.playbackRate.value = speed;
         reverseSource.connect(reverseAudioContext.destination);
         const offset = Math.max(0, reversed.duration - (Number(playback.offset) || 0) + elapsed);
-        const playable = Math.min(remaining, Math.max(0, reversed.duration - offset));
-        if (playable <= 0) return stopPartyAudio('Extrait terminé. En attente de la révélation.');
+        const playable = Math.min(Math.max(0.1, remaining), Math.max(0.1, reversed.duration - offset));
         reverseSource.start(0, offset, playable);
         byId('audio-sync-status').innerText = '🔊 Lecture inversée synchronisée avec le PC.';
+        clearTimeout(audioStopTimer);
         audioStopTimer = setTimeout(() => {
           if (party && state && state.status === 'round' && !playback.reveal) {
             byId('audio-sync-status').innerText = '🔁 Relecture automatique de l’extrait…';
-            const loopDelay = Math.min(4.2, Math.max(2.2, 2.0 + Number(playback.duration) * 0.15));
-            audioStartTimer = setTimeout(startReverse, loopDelay * 1000);
+            const loopDelay = Math.min(4.2, Math.max(2.2, 2.0 + fullDuration * 0.15));
+            clearTimeout(audioStartTimer);
+            audioStartTimer = setTimeout(() => startReverse(false), (loopDelay / speed) * 1000);
           } else {
             stopPartyAudio(state && state.status === 'reveal'
               ? 'Passage connu terminé.'
               : 'Extrait terminé. En attente de la révélation.');
           }
-        }, playable / (Number(playback.speed) || 1) * 1000);
+        }, (playable / speed) * 1000);
       };
-      audioStartTimer = setTimeout(startReverse, wait);
+      clearTimeout(audioStartTimer);
+      audioStartTimer = setTimeout(() => startReverse(true), wait);
     } catch (_) {
       byId('audio-sync-status').innerText = 'Impossible de préparer l’extrait inversé sur ce téléphone.';
     }
@@ -711,6 +890,7 @@
     renderReveal();
     renderRanking();
     renderChat();
+    renderTyping();
 
     if (state.status === 'finished' && window.songlessTrophies) {
       window.songlessTrophies.unlock('party_first_join');
@@ -840,17 +1020,37 @@
     const zone = byId('round-votes');
     const me = currentPlayer();
     const votes = state && state.votes;
-    if (!zone || !me || state.status !== 'round' || !votes || !votes.skip) {
+    if (!zone || !me || state.status !== 'round' || !votes) {
       if (zone) zone.classList.add('hidden');
       return;
     }
     const threshold = Number(votes.threshold) || 1;
-    zone.innerHTML = `
-      <button type="button" class="vote-btn${votes.skip.voted ? ' voted' : ''}"
-              id="vote-skip-btn"${votes.skip.passed ? ' disabled' : ''}>
-        ⏭ Passer le morceau · ${Number(votes.skip.count) || 0}/${threshold}
-      </button>`;
-    zone.classList.remove('hidden');
+    let buttonsHtml = '';
+
+    if (state.mode === 'classic' && votes.nextStep && votes.nextStep.nextDuration) {
+      buttonsHtml += `
+        <button type="button" class="vote-btn${votes.nextStep.voted ? ' voted' : ''}"
+                id="vote-step-btn">
+          ⏭ Débloquer palier suivant (${votes.nextStep.nextDuration}s) · ${Number(votes.nextStep.count) || 0}/${threshold}
+        </button>
+      `;
+    }
+
+    if (votes.skip) {
+      buttonsHtml += `
+        <button type="button" class="vote-btn${votes.skip.voted ? ' voted' : ''}"
+                id="vote-skip-btn"${votes.skip.passed ? ' disabled' : ''}>
+          ⏭ Passer la manche entière · ${Number(votes.skip.count) || 0}/${threshold}
+        </button>
+      `;
+    }
+
+    if (buttonsHtml) {
+      zone.innerHTML = buttonsHtml;
+      zone.classList.remove('hidden');
+    } else {
+      zone.classList.add('hidden');
+    }
   }
 
   function answerBox(skipLabel = '') {
@@ -980,6 +1180,43 @@
             <span class="rank-score">${Number(item.score) || 0}<small>${Number(item.session && item.session.correct) || 0}/${Number(item.session && item.session.rounds) || 0}</small></span>
           </div>`).join('')
       : '<div class="wait-note">Aucun joueur n’a encore rejoint.</div>');
+  }
+
+  function formatTypingText(typers) {
+    if (!typers || !typers.length) return '';
+    const dots = '<span class="typing-dots"><span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span></span>';
+    if (typers.length === 1) {
+      return `<span><strong>${escapeHtml(typers[0].nom)}</strong> est en train d'écrire ${dots}</span>`;
+    }
+    if (typers.length === 2) {
+      return `<span><strong>${escapeHtml(typers[0].nom)}</strong> et <strong>${escapeHtml(typers[1].nom)}</strong> sont en train d'écrire ${dots}</span>`;
+    }
+    if (typers.length === 3) {
+      return `<span><strong>${escapeHtml(typers[0].nom)}</strong>, <strong>${escapeHtml(typers[1].nom)}</strong> et <strong>${escapeHtml(typers[2].nom)}</strong> sont en train d'écrire ${dots}</span>`;
+    }
+    return `<span>Plusieurs personnes sont en train d'écrire ${dots}</span>`;
+  }
+
+  function renderTyping() {
+    const indicator = byId('chat-typing-indicator');
+    if (!indicator || !state) return;
+    const typers = Array.isArray(state.typing) ? state.typing : [];
+    if (typers.length > 0) {
+      indicator.innerHTML = formatTypingText(typers);
+      indicator.classList.remove('hidden');
+    } else {
+      indicator.classList.add('hidden');
+      indicator.innerHTML = '';
+    }
+  }
+
+  let lastTypingSent = 0;
+  function notifyTyping() {
+    const now = Date.now();
+    if (party && now - lastTypingSent > 1200) {
+      lastTypingSent = now;
+      playerAction('typing');
+    }
   }
 
   function renderChat() {
@@ -1184,6 +1421,11 @@
         renderProfiles();
       }
     }
+    if (event.target.closest('#palmares-open-btn') || event.target.closest('#palmares-room-btn')) showPalmares();
+    if (event.target.closest('#palmares-close-btn') || event.target.closest('#palmares-close-bottom-btn')) hidePalmares();
+    if (event.target.closest('#edit-profile-open-btn')) openEditProfile();
+    if (event.target.closest('#edit-profile-save-btn')) saveEditProfile();
+    if (event.target.closest('#edit-profile-cancel-btn')) cancelEditProfile();
     if (event.target.closest('#confirm-profile-btn') && pendingProfile) selectProfile(pendingProfile);
     if (event.target.closest('#create-profile-btn')) createProfile();
     if (event.target.closest('#profile-change-btn')) {
@@ -1197,6 +1439,7 @@
     if (event.target.closest('#buzz-btn')) playerAction('buzz');
     if (event.target.closest('#answer-btn')) submitAnswer();
     if (event.target.closest('#skip-btn')) playerAction('skip');
+    if (event.target.closest('#vote-step-btn')) playerAction('vote-next-step');
     if (event.target.closest('#vote-skip-btn')) playerAction('vote-skip');
     if (event.target.closest('#chat-send-btn')) sendChat();
     if (event.target.closest('#gift-link-btn')) giveMusicLink();
@@ -1306,7 +1549,13 @@
   });
 
   document.addEventListener('input', event => {
-    if (event.target.id === 'answer-input') scheduleAnswerSuggestions();
+    if (event.target.id === 'answer-input') {
+      scheduleAnswerSuggestions();
+      notifyTyping();
+    }
+    if (event.target.id === 'chat-input') {
+      notifyTyping();
+    }
   });
 
   byId('profile-gate').addEventListener('click', event => {

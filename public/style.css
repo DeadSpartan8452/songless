@@ -2597,5 +2597,43 @@ code {
   font-weight: 600;
 }
 
+/* Party Chat Typing Indicator */
+.party-typing-indicator {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  padding: 4px 10px;
+  min-height: 22px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-style: italic;
+}
+
+.party-typing-indicator strong {
+  color: var(--text-color);
+}
+
+.typing-dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.typing-dot {
+  width: 4px;
+  height: 4px;
+  background-color: #a855f7;
+  border-radius: 50%;
+  animation: partyTypingBounce 1.2s infinite ease-in-out;
+}
+
+.typing-dot:nth-child(2) { animation-delay: 0.2s; }
+.typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes partyTypingBounce {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+  30% { transform: translateY(-4px); opacity: 1; }
+}
+
 
 

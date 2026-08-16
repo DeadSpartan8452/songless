@@ -268,8 +268,16 @@ app.use((req, res, next) => {
   req.songlessRemote = true;
 
   if (req.path === '/api/controller/profiles') {
-    if (!paired && !invited) return res.status(403).json({ error: 'Invitation Songless invalide ou expirÃ©e.' });
+    if (!paired && !invited) return res.status(403).json({ error: 'Invitation Songless invalide ou expirée.' });
     if (req.method === 'GET' || req.method === 'POST') return next();
+  }
+
+  // Renommer un profil partagé modifie durablement les données du PC hôte.
+  // Une simple invitation Internet ne doit donc jamais suffire : il faut le
+  // jeton d'appairage remis par le QR code affiché sur le réseau local.
+  if (req.path.startsWith('/api/controller/profiles/')) {
+    if (!paired) return res.status(403).json({ error: 'Modification réservée aux appareils appairés en réseau local.' });
+    if (req.method === 'PUT') return next();
   }
 
   // Le son d'une manche n'est accessible qu'avec le jeton alÃ©atoire remis au
@@ -353,6 +361,7 @@ app.get('/api/context', (req, res) => {
     lan: LAN,
     local,
     paired,
+    canEditProfiles: local || lanPaired,
     canAdd: paired,
     controller: LAN && !local,
     readOnly: LAN && !local,
@@ -409,6 +418,19 @@ app.post('/api/controller/profiles', (req, res) => {
   try {
     const profile = playerStore.createProfile(req.body || {});
     res.status(201).json({ id: profile.id, nom: profile.nom, emoji: profile.emoji });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+app.put('/api/controller/profiles/:id', (req, res) => {
+  try {
+    const profile = playerStore.updateProfile(req.params.id, {
+      nom: req.body && req.body.nom,
+      emoji: req.body && req.body.emoji,
+    });
+    if (!profile) return res.status(404).json({ error: 'Profil introuvable.' });
+    res.json({ id: profile.id, nom: profile.nom, emoji: profile.emoji, multiplayer: profile.multiplayer });
   } catch (error) {
     res.status(400).json({ error: error.message });
   }

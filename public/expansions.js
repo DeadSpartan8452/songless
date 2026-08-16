@@ -1178,6 +1178,7 @@
         </div>`;
     }).join('');
     renderPartyChat();
+    renderPartyTyping();
 
     byId('party-host-actions').classList.toggle('hidden', !partyState.isHost);
     byId('party-round-btn').disabled = partyRoundStarting
@@ -1603,17 +1604,74 @@
     const votes = partyState && partyState.votes;
     const me = partyState && partyState.players.find(
       player => player.profileId === partyState.viewerProfileId);
-    if (!zone || !me || partyState.status !== 'round' || !votes || !votes.skip) {
+    if (!zone || !me || partyState.status !== 'round' || !votes) {
       if (zone) zone.classList.add('hidden');
       return;
     }
     const threshold = Number(votes.threshold) || 1;
-    zone.innerHTML = `
-      <button class="party-vote${votes.skip.voted ? ' voted' : ''}"
-              id="party-vote-skip"${votes.skip.passed ? ' disabled' : ''}>
-        ⏭ Passer le morceau <strong>${Number(votes.skip.count) || 0}/${threshold}</strong>
-      </button>`;
-    zone.classList.remove('hidden');
+    let buttonsHtml = '';
+
+    if (partyState.mode === 'classic' && votes.nextStep && votes.nextStep.nextDuration) {
+      buttonsHtml += `
+        <button class="party-vote${votes.nextStep.voted ? ' voted' : ''}"
+                id="party-vote-step">
+          ⏭ Débloquer palier suivant (${votes.nextStep.nextDuration}s) <strong>${Number(votes.nextStep.count) || 0}/${threshold}</strong>
+        </button>
+      `;
+    }
+
+    if (votes.skip) {
+      buttonsHtml += `
+        <button class="party-vote${votes.skip.voted ? ' voted' : ''}"
+                id="party-vote-skip"${votes.skip.passed ? ' disabled' : ''}>
+          ⏭ Passer la manche entière <strong>${Number(votes.skip.count) || 0}/${threshold}</strong>
+        </button>
+      `;
+    }
+
+    if (buttonsHtml) {
+      zone.innerHTML = buttonsHtml;
+      zone.classList.remove('hidden');
+    } else {
+      zone.classList.add('hidden');
+    }
+  }
+
+  function formatPartyTypingText(typers) {
+    if (!typers || !typers.length) return '';
+    const dots = '<span class="typing-dots"><span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span></span>';
+    if (typers.length === 1) {
+      return `<span><strong>${escapeHtml(typers[0].nom)}</strong> est en train d'écrire ${dots}</span>`;
+    }
+    if (typers.length === 2) {
+      return `<span><strong>${escapeHtml(typers[0].nom)}</strong> et <strong>${escapeHtml(typers[1].nom)}</strong> sont en train d'écrire ${dots}</span>`;
+    }
+    if (typers.length === 3) {
+      return `<span><strong>${escapeHtml(typers[0].nom)}</strong>, <strong>${escapeHtml(typers[1].nom)}</strong> et <strong>${escapeHtml(typers[2].nom)}</strong> sont en train d'écrire ${dots}</span>`;
+    }
+    return `<span>Plusieurs personnes sont en train d'écrire ${dots}</span>`;
+  }
+
+  function renderPartyTyping() {
+    const indicator = byId('party-typing-indicator');
+    if (!indicator || !partyState) return;
+    const typers = Array.isArray(partyState.typing) ? partyState.typing : [];
+    if (typers.length > 0) {
+      indicator.innerHTML = formatPartyTypingText(typers);
+      indicator.classList.remove('hidden');
+    } else {
+      indicator.classList.add('hidden');
+      indicator.innerHTML = '';
+    }
+  }
+
+  let partyLastTypingSent = 0;
+  function notifyPartyTyping() {
+    const now = Date.now();
+    if (partyState && now - partyLastTypingSent > 1200) {
+      partyLastTypingSent = now;
+      partyPlayerAction('typing').catch(() => {});
+    }
   }
 
   function renderPartyChat() {
@@ -2200,6 +2258,7 @@
       if (event.target.closest('#party-buzz-btn')) partyPlayerAction('buzz').catch(showPartyError);
       if (event.target.closest('#party-answer-btn')) submitPartyAnswer();
       if (event.target.closest('#party-skip-btn')) partyPlayerAction('skip').catch(showPartyError);
+      if (event.target.closest('#party-vote-step')) partyPlayerAction('vote-next-step').catch(showPartyError);
       if (event.target.closest('#party-vote-skip')) partyPlayerAction('vote-skip').catch(showPartyError);
       if (event.target.closest('#party-chat-send')) sendPartyChat();
       if (event.target.closest('#party-round-btn')) startPartyRound();
@@ -2231,7 +2290,13 @@
     });
 
     byId('party-room').addEventListener('input', event => {
-      if (event.target.id === 'party-answer-input') schedulePartySuggestions();
+      if (event.target.id === 'party-answer-input') {
+        schedulePartySuggestions();
+        notifyPartyTyping();
+      }
+      if (event.target.id === 'party-chat-input') {
+        notifyPartyTyping();
+      }
     });
     byId('party-room').addEventListener('keydown', event => {
       if (event.target.id === 'party-chat-input' && event.key === 'Enter') {

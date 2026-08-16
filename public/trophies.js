@@ -325,6 +325,7 @@
     unlock,
     evaluateRound,
     openTrophiesModal,
+    getUnlockedIds: () => [...unlockedTrophies],
     getUnlockedCount: () => unlockedTrophies.size,
     getTotalCount: () => (typeof SONGLESS_TROPHIES !== 'undefined' ? SONGLESS_TROPHIES.length : 105),
   };

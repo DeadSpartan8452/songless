@@ -12,7 +12,10 @@
 <body>
   <header class="topbar">
     <div class="brand"><span aria-hidden="true">🎵</span> Songless</div>
-    <span class="controller-label">Télécommande</span>
+    <div class="topbar-right">
+      <button id="palmares-open-btn" class="topbar-palmares-btn" type="button">🏆 Palmarès</button>
+      <span class="controller-label">Télécommande</span>
+    </div>
   </header>
 
   <main>
@@ -40,6 +43,7 @@
         <div id="mobile-modifier-pill" class="mobile-modifier-pill hidden"></div>
         <div id="mobile-mode-badge" class="mobile-mode-badge hidden"></div>
         <div class="room-actions">
+          <button id="palmares-room-btn" class="text-btn" type="button">🏆 Palmarès</button>
           <button id="tutorial-open-btn" class="text-btn" type="button">Règles</button>
           <button id="leave-btn" class="text-btn" type="button">Quitter</button>
         </div>
@@ -114,6 +118,7 @@
       <div class="card chat-card">
         <h2>💬 Chat</h2>
         <div id="chat-messages" class="chat-messages"></div>
+        <div id="chat-typing-indicator" class="chat-typing-indicator hidden"></div>
         <div class="chat-form">
           <input id="chat-input" maxlength="240" autocomplete="off"
                  placeholder="Écrire à tout le monde…">
@@ -142,11 +147,30 @@
     <div class="gate-sheet">
       <p class="eyebrow">AVANT DE JOUER</p>
       <h1 id="profile-title">Qui joue sur ce téléphone ?</h1>
-      <p class="gate-copy">Choisis ton profil Songless ou crée-en un.</p>
+      <p class="gate-copy">Choisis ton profil Songless, modifie-le ou crée-en un nouveau.</p>
       <div id="profile-list" class="profile-list"></div>
-      <button id="confirm-profile-btn" class="primary-btn confirm-profile-btn" type="button" disabled>
-        Valider ce profil
-      </button>
+      <div class="profile-gate-actions">
+        <button id="confirm-profile-btn" class="primary-btn confirm-profile-btn" type="button" disabled>
+          Valider ce profil
+        </button>
+        <button id="edit-profile-open-btn" class="secondary-btn edit-profile-btn" type="button" disabled>
+          ✏️ Modifier
+        </button>
+      </div>
+
+      <!-- Section Modification de profil -->
+      <div id="edit-profile-section" class="edit-profile-section hidden">
+        <div class="divider"><span>Modifier le profil sélectionné</span></div>
+        <label class="picker-label">Choisis ton avatar</label>
+        <div class="emoji-picker-grid" id="edit-emoji-picker"></div>
+        <div class="create-profile-inputs">
+          <input id="edit-emoji" maxlength="4" value="🎧" aria-label="Emoji du profil">
+          <input id="edit-name" maxlength="20" placeholder="Prénom ou pseudo" aria-label="Nom du profil">
+          <button id="edit-profile-save-btn" class="primary-btn" type="button">Enregistrer</button>
+          <button id="edit-profile-cancel-btn" class="secondary-btn" type="button">Annuler</button>
+        </div>
+      </div>
+
       <div class="divider"><span>Nouveau profil</span></div>
       <div class="create-profile">
         <label class="picker-label">Choisis ton avatar</label>
@@ -190,6 +214,34 @@
           <button id="create-profile-btn" class="primary-btn" type="button">Créer</button>
         </div>
       </div>
+    </div>
+  </div>
+
+  <div id="palmares-gate" class="gate palmares-gate hidden" role="dialog"
+       aria-modal="true" aria-labelledby="palmares-title">
+    <div class="gate-sheet palmares-sheet">
+      <div class="palmares-header">
+        <div>
+          <p class="eyebrow">SUCCÈS & STATISTIQUES</p>
+          <h1 id="palmares-title">🏆 Mon Palmarès</h1>
+        </div>
+        <button id="palmares-close-btn" class="icon-btn palmares-close" type="button" aria-label="Fermer">✕</button>
+      </div>
+
+      <div class="palmares-summary" id="palmares-summary"></div>
+      <div class="palmares-badges" id="palmares-badges"></div>
+      <div class="palmares-progress-block">
+        <div class="palmares-progress-header">
+          <strong>Trophées remportés</strong>
+          <span id="palmares-count-label">0 / 105</span>
+        </div>
+        <div class="palmares-bar-track">
+          <div class="palmares-bar-fill" id="palmares-bar-fill" style="width: 0%;"></div>
+        </div>
+      </div>
+
+      <div class="palmares-trophies-list" id="palmares-trophies-list"></div>
+      <button id="palmares-close-bottom-btn" class="primary-btn" type="button">Fermer le palmarès</button>
     </div>
   </div>
 
