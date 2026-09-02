@@ -568,6 +568,7 @@ lib/
   party-answers.js      validation commune des titres, artistes et années
   party-rounds.js       préparation et révélation des manches côté serveur
   party-results.js      classement et persistance des résultats multijoueurs
+  party-royale.js       vies, éliminations et duel final Battle Royale
   party-suggestions.js  autocomplétion sûre des réponses de soirée
   player-store.js       profils, statistiques, listes et sauvegardes partagés
   party.js              salons, manches, buzzers et scores temporaires
