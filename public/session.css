@@ -296,6 +296,7 @@
 .download-card input[type="text"],
 .download-card select,
 .modal-card input[type="text"],
+.modal-card input[type="number"],
 .modal-card select,
 .tracks-search-wrapper select {
   background: var(--bg2);
@@ -311,6 +312,7 @@
 .download-card input[type="text"]:focus,
 .download-card select:focus,
 .modal-card input[type="text"]:focus,
+.modal-card input[type="number"]:focus,
 .modal-card select:focus {
   outline: none;
   border-color: var(--accent);
@@ -421,6 +423,7 @@
 
 .track-select-checkbox,
 .track-item-cover,
+.favorite-track-btn,
 .preview-track-btn,
 .edit-track-btn,
 .delete-track-btn {
@@ -455,6 +458,15 @@
   color: var(--text-muted);
   opacity: 1;
   margin-left: 6px;
+}
+
+.track-item-metadata {
+  margin-top: 2px;
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .track-flag {
@@ -587,6 +599,27 @@
   background: rgba(168, 85, 247, 0.16);
 }
 
+.favorite-track-btn {
+  display: flex;
+  padding: 6px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.favorite-track-btn:hover,
+.favorite-track-btn:focus-visible,
+.favorite-track-btn.active {
+  color: #f59e0b;
+  background: rgba(245, 158, 11, 0.12);
+}
+
+.favorite-track-btn.active svg { fill: currentColor; }
+.favorite-track-btn svg { width: 16px; height: 16px; }
+
 .edit-track-btn {
   background: transparent;
   border: none;
@@ -669,8 +702,35 @@
 }
 
 .modal-card input[type="text"],
+.modal-card input[type="number"],
 .modal-card select {
   width: 100%;
+}
+
+.edit-classification-grid {
+  display: grid;
+  grid-template-columns: minmax(90px, 0.75fr) repeat(2, minmax(130px, 1fr));
+  gap: 10px;
+}
+
+.edit-classification-grid > div { min-width: 0; }
+
+.edit-favorite-toggle {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--bg2);
+  cursor: pointer;
+  text-transform: none !important;
+  letter-spacing: 0 !important;
+}
+
+.edit-favorite-toggle input { margin: 0; }
+
+@media (max-width: 560px) {
+  .edit-classification-grid { grid-template-columns: 1fr; }
 }
 
 .modal-actions {

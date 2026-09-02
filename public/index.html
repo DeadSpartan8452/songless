@@ -996,6 +996,40 @@
       <label for="edit-genre">Genre</label>
       <select id="edit-genre"></select>
 
+      <label for="edit-genre-detail">Sous-genre précis <span class="label-hint">facultatif</span></label>
+      <input type="text" id="edit-genre-detail" maxlength="80" placeholder="Synthwave, city pop…">
+
+      <div class="edit-classification-grid">
+        <div>
+          <label for="edit-year">Année</label>
+          <input type="number" id="edit-year" min="1900" max="2100" inputmode="numeric">
+        </div>
+        <div>
+          <label for="edit-year-source">Source</label>
+          <select id="edit-year-source">
+            <option value="unknown">Inconnue</option>
+            <option value="manual">Saisie manuelle</option>
+            <option value="musicbrainz">MusicBrainz</option>
+            <option value="tag">Fichier audio</option>
+            <option value="filename">Nom du fichier</option>
+          </select>
+        </div>
+        <div>
+          <label for="edit-year-confidence">Confiance</label>
+          <select id="edit-year-confidence">
+            <option value="unknown">Inconnue</option>
+            <option value="high">Élevée</option>
+            <option value="medium">Moyenne</option>
+            <option value="low">Faible</option>
+          </select>
+        </div>
+      </div>
+
+      <label class="edit-favorite-toggle" for="edit-favorite">
+        <input type="checkbox" id="edit-favorite">
+        <span>Ajouter aux coups de cœur</span>
+      </label>
+
       <label for="edit-aliases">Autres réponses acceptées <span class="label-hint">séparées par des virgules</span></label>
       <input type="text" id="edit-aliases" placeholder="polish cow, vache polonaise">
 

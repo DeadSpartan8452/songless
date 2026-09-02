@@ -579,6 +579,7 @@ lib/
   party.js              salons, manches, buzzers et scores temporaires
   antivirus.js          analyse Defender avant installation d'un fichier
   titles.js            nettoyage, translittération, genres, alias
+  track-metadata.js    favoris, sous-genres, années, provenance et confiance
   overrides.json       titres connus sous un autre nom  ← à compléter
   store.js             lecture/écriture de metadata.json
   downloader.js        yt-dlp + ffmpeg, détection de doublons, playlists

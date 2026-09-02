@@ -9,6 +9,7 @@ const QRCode = require('qrcode');
 
 const T = require('./lib/titles');
 const store = require('./lib/store');
+const trackMetadata = require('./lib/track-metadata');
 const downloader = require('./lib/downloader');
 const importer = require('./lib/importer');
 const health = require('./lib/health');
@@ -136,7 +137,9 @@ function estEntreeInternet(req) {
 }
 
 // Dossiers de stockage
-const MUSIC_DIR = path.join(__dirname, 'musiques');
+const MUSIC_DIR = process.env.SONGLESS_MUSIC_DIR
+  ? path.resolve(process.env.SONGLESS_MUSIC_DIR)
+  : path.join(__dirname, 'musiques');
 const PUBLIC_DIR = path.join(__dirname, 'public');
 
 // Création des dossiers s'ils n'existent pas
@@ -927,6 +930,7 @@ function listAudioFiles() {
  */
 async function buildTrack(fileName, meta) {
   const id = Buffer.from(fileName).toString('base64url');
+  const classification = trackMetadata.readClassification(meta);
 
   if (meta && meta.title) {
     return {
@@ -937,7 +941,7 @@ async function buildTrack(fileName, meta) {
       artist: meta.artist || '',
       genre: meta.genre || 'Autre',
       duration: meta.duration || 0,
-      year: meta.year || null,
+      ...classification,
       aliases: meta.aliases || [],
       hasCover: !!meta.hasCover,
       needsReview: !!meta.needsReview,
@@ -960,7 +964,7 @@ async function buildTrack(fileName, meta) {
     artist,
     genre: 'Autre',
     duration: tags.duration,
-    year: null,
+    ...classification,
     aliases: T.buildAliases(title, `${artist} ${title}`),
     hasCover: tags.hasCover,
     needsReview: T.detectScript(title) !== 'latin',
@@ -1212,8 +1216,18 @@ app.patch('/api/tracks/:id/meta', (req, res) => {
     }
 
     const current = store.get(fileName) || {};
-    const { title, artist, genre, aliases } = req.body || {};
-    const patch = { reviewed: true, needsReview: false };
+    const body = req.body || {};
+    const { title, artist, genre, aliases } = body;
+    const patch = trackMetadata.classificationPatch(body);
+    const identityEdited = (typeof title === 'string' && !!title.trim())
+      || typeof artist === 'string'
+      || (typeof genre === 'string' && !!genre.trim())
+      || Array.isArray(aliases);
+
+    if (identityEdited) {
+      patch.reviewed = true;
+      patch.needsReview = false;
+    }
 
     if (typeof title === 'string' && title.trim()) {
       const clean = title.trim();
@@ -1229,12 +1243,14 @@ app.patch('/api/tracks/:id/meta', (req, res) => {
       patch.genre = resolved;
     }
 
-    patch.aliases = T.buildAliases(
-      patch.title || current.title,
-      patch.originalTitle || current.originalTitle,
-      current.aliases || [],
-      Array.isArray(aliases) ? aliases : [],
-    );
+    if (identityEdited) {
+      patch.aliases = T.buildAliases(
+        patch.title || current.title,
+        patch.originalTitle || current.originalTitle,
+        current.aliases || [],
+        Array.isArray(aliases) ? aliases : [],
+      );
+    }
 
     store.set(fileName, patch);
     res.json({ success: true, track: store.get(fileName) });

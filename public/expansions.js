@@ -640,7 +640,7 @@
     let trackList = [...playlist];
     const theme = settings.theme || 'all';
     if (theme === 'favorites') {
-      trackList = trackList.filter(t => t.favori || t.coupDeCoeur);
+      trackList = trackList.filter(t => t.favorite === true);
     } else if (theme.startsWith('decade:')) {
       const startDecade = parseInt(theme.split(':')[1], 10);
       if (startDecade === 1970) {

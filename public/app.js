@@ -2119,6 +2119,8 @@ function renderLibraryList() {
       ? '<span class="track-flag" title="Titre à renommer en nom connu">⚠</span>' : '';
     const original = track.originalTitle
       ? `<span class="track-item-original">${escapeHtml(track.originalTitle)}</span>` : '';
+    const details = [track.genreDetail, track.year].filter(Boolean)
+      .map(value => escapeHtml(value)).join(' · ');
 
     item.setAttribute('data-genre', track.genre || 'Autre');
     item.setAttribute('data-review', track.needsReview ? '1' : '0');
@@ -2130,9 +2132,16 @@ function renderLibraryList() {
       <div class="track-item-details">
         <div class="track-item-title">${escapeHtml(track.title)} ${review}</div>
         <div class="track-item-artist">${escapeHtml(track.artist)} ${original}</div>
+        ${details ? `<div class="track-item-metadata">${details}</div>` : ''}
       </div>
       <span class="genre-badge small">${escapeHtml(track.genre || 'Autre')}</span>
       <span class="preview-time" aria-hidden="true"></span>
+      <button class="favorite-track-btn${track.favorite ? ' active' : ''}"
+              data-id="${track.id}" aria-pressed="${track.favorite ? 'true' : 'false'}"
+              title="${track.favorite ? 'Retirer des coups de cœur' : 'Ajouter aux coups de cœur'}"
+              aria-label="${track.favorite ? 'Retirer' : 'Ajouter'} ${escapeHtml(track.title)} ${track.favorite ? 'des' : 'aux'} coups de cœur">
+        <i data-lucide="star"></i>
+      </button>
       <button class="preview-track-btn" data-id="${track.id}" title="Écouter ce morceau">
         <i data-lucide="play" class="icon-play"></i>
         <i data-lucide="pause" class="icon-pause hidden"></i>
@@ -2154,6 +2163,11 @@ function renderLibraryList() {
     item.querySelector('.preview-track-btn').addEventListener('click', (e) => {
       e.stopPropagation();
       basculerApercu(track);
+    });
+
+    item.querySelector('.favorite-track-btn').addEventListener('click', async (e) => {
+      e.stopPropagation();
+      await toggleTrackFavorite(track, e.currentTarget);
     });
 
     // Écouteur édition
@@ -2179,6 +2193,30 @@ function renderLibraryList() {
   majCompteurARenommer();
   filterLibraryDisplay();   // la liste vient d'être reconstruite : on réapplique les filtres
   dessinerIcones();
+}
+
+async function toggleTrackFavorite(track, button) {
+  const favorite = !track.favorite;
+  button.disabled = true;
+  try {
+    const res = await fetch(`/api/tracks/${track.id}/meta`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ favorite }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Erreur');
+    track.favorite = favorite;
+    button.classList.toggle('active', favorite);
+    button.setAttribute('aria-pressed', String(favorite));
+    button.title = favorite ? 'Retirer des coups de cœur' : 'Ajouter aux coups de cœur';
+    button.setAttribute('aria-label',
+      `${favorite ? 'Retirer' : 'Ajouter'} ${track.title} ${favorite ? 'des' : 'aux'} coups de cœur`);
+  } catch (e) {
+    showToast(`Impossible de modifier le coup de cœur : ${e.message}`, 'error');
+  } finally {
+    button.disabled = false;
+  }
 }
 
 // ==========================================
@@ -4562,6 +4600,11 @@ function openEditModal(track) {
   document.getElementById('edit-title').value = track.title || '';
   document.getElementById('edit-artist').value = track.artist || '';
   document.getElementById('edit-aliases').value = '';
+  document.getElementById('edit-genre-detail').value = track.genreDetail || '';
+  document.getElementById('edit-year').value = track.year || '';
+  document.getElementById('edit-year-source').value = track.yearSource || 'unknown';
+  document.getElementById('edit-year-confidence').value = track.yearConfidence || 'unknown';
+  document.getElementById('edit-favorite').checked = track.favorite === true;
 
   const genreSelect = document.getElementById('edit-genre');
   if (![...genreSelect.options].some(o => o.value === track.genre)) {
@@ -4603,6 +4646,11 @@ function initEditModalEvents() {
       title: document.getElementById('edit-title').value.trim(),
       artist: document.getElementById('edit-artist').value.trim(),
       genre: document.getElementById('edit-genre').value,
+      genreDetail: document.getElementById('edit-genre-detail').value.trim(),
+      year: document.getElementById('edit-year').value,
+      yearSource: document.getElementById('edit-year-source').value,
+      yearConfidence: document.getElementById('edit-year-confidence').value,
+      favorite: document.getElementById('edit-favorite').checked,
       aliases: document.getElementById('edit-aliases').value
         .split(',').map(s => s.trim()).filter(Boolean),
     };

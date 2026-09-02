@@ -179,7 +179,11 @@ async function main() {
     }
 
     if (annee) {
-      maj[fichier] = { year: annee, yearSource: 'musicbrainz' };
+      maj[fichier] = {
+        year: annee,
+        yearSource: 'musicbrainz',
+        yearConfidence: 'medium',
+      };
       trouves++;
     }
 
