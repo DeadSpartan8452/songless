@@ -271,8 +271,16 @@ aucune erreur console, aucun débordement ou texte coupé, et aucune violation A
 - le passage réel en lecture seule a mesuré 1 027 encodages et les dimensions
   des 1 026 pochettes annoncées : 4 encodages faibles, 35 intermédiaires et
   39 pochettes sous 256 px ont été signalés, sans aucune écriture automatique ;
-- la détection des doublons doit apprendre à distinguer explicitement les
-  variantes artistiques.
+- le comparateur oppose maintenant les paires suspectes avec durée, taille,
+  année, genre et écoute indépendante ; une paire de même taille reçoit une
+  empreinte SHA-256 pour confirmer si les octets sont strictement identiques ;
+- les variantes artistiques connues restent exclues des rapprochements ;
+- « conserver les deux » mémorise un faux positif dans la sauvegarde partagée,
+  et « réexaminer » restaure uniquement la paire choisie ;
+- le comparateur ne propose aucune suppression et n’écrit jamais dans les
+  fichiers musicaux ;
+- le parcours Chromium desktop/mobile, titre long compris, passe sans erreur
+  console, débordement, troncature ou violation Axe.
 
 Les parodies, remix, reprises, versions sped-up, slowed, live, acoustiques,
 instrumentales, karaoké et remasterisées sont conservés comme des morceaux

@@ -21,6 +21,7 @@ const partySuggestions = require('./lib/party-suggestions');
 const modeRegistry = require('./lib/mode-registry');
 const antivirus = require('./lib/antivirus');
 const blacklist = require('./lib/blacklist');
+const duplicateComparison = require('./lib/duplicate-comparison');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -555,6 +556,24 @@ async function allBuiltTracks() {
     result.push(await buildTrack(fileName, metadata[fileName]));
   }
   return result;
+}
+
+async function sha256File(filePath) {
+  const hash = crypto.createHash('sha256');
+  const handle = await fs.promises.open(filePath, 'r');
+  const buffer = Buffer.allocUnsafe(1024 * 1024);
+  try {
+    let position = 0;
+    while (true) {
+      const { bytesRead } = await handle.read(buffer, 0, buffer.length, position);
+      if (!bytesRead) break;
+      hash.update(buffer.subarray(0, bytesRead));
+      position += bytesRead;
+    }
+    return hash.digest('hex');
+  } finally {
+    await handle.close();
+  }
 }
 
 async function partyTrackIdsAfterBlacklist(values, mode) {
@@ -1737,6 +1756,66 @@ app.post('/api/download/playlist', async (req, res) => {
 // ==========================================
 // DIAGNOSTIC DE LA BIBLIOTHÈQUE
 // ==========================================
+
+app.get('/api/library/duplicates', async (_req, res) => {
+  try {
+    const tracks = await allBuiltTracks();
+    for (const track of tracks) {
+      try {
+        track.size = fs.statSync(path.join(MUSIC_DIR, track.fileName)).size;
+      } catch (_) {
+        track.size = 0;
+      }
+    }
+    const dismissed = playerStore.duplicateDecisions();
+    const comparisons = duplicateComparison.findComparisons(
+      tracks,
+      dismissed.map(item => item.key),
+      200
+    );
+    const hashes = new Map();
+    for (const comparison of comparisons) {
+      const [left, right] = comparison.tracks;
+      if (!left.size || left.size !== right.size) continue;
+      for (const track of [left, right]) {
+        if (!hashes.has(track.fileName)) {
+          hashes.set(track.fileName, await sha256File(path.join(MUSIC_DIR, track.fileName)));
+        }
+      }
+      if (hashes.get(left.fileName) === hashes.get(right.fileName)) {
+        comparison.exactFile = true;
+        comparison.confidence = 'exact';
+        comparison.reason = 'Les deux fichiers ont exactement les mêmes octets.';
+      }
+    }
+    res.set('Cache-Control', 'no-store');
+    res.json({
+      totalTracks: tracks.length,
+      total: comparisons.length,
+      truncated: comparisons.length >= 200,
+      dismissed: dismissed.length,
+      decisions: dismissed,
+      comparisons,
+    });
+  } catch (error) {
+    res.status(500).json({ error: `Comparaison impossible : ${error.message}` });
+  }
+});
+
+app.post('/api/library/duplicates/decision', (req, res) => {
+  try {
+    res.status(201).json(playerStore.recordDuplicateDecision(req.body || {}));
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+app.delete('/api/library/duplicates/decision/:key', (req, res) => {
+  if (!playerStore.deleteDuplicateDecision(req.params.key)) {
+    return res.status(404).json({ error: 'Décision introuvable.' });
+  }
+  res.json({ success: true });
+});
 
 /**
  * Route: passer la bibliothèque en revue.

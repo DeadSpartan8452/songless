@@ -893,6 +893,32 @@
             <div class="health-report hidden" id="health-report"></div>
           </div>
 
+          <!-- Comparaison manuelle des doublons -->
+          <div class="download-card duplicate-review-card" id="duplicate-review-card">
+            <div class="download-head">
+              <div>
+                <span class="section-kicker">Décision humaine</span>
+                <h3><i data-lucide="copy-check"></i> Comparer les doublons</h3>
+              </div>
+              <span class="duplicate-review-count" id="duplicate-review-count">Non analysé</span>
+            </div>
+            <p class="download-hint">
+              Songless rapproche les fiches suspectes et vérifie les octets quand
+              c’est possible. Écoute les deux versions : rien n’est supprimé automatiquement.
+            </p>
+            <div class="duplicate-review-actions">
+              <button class="cta-btn" id="duplicate-review-btn">
+                <i data-lucide="scan-line"></i> Chercher les doublons
+              </button>
+              <button class="ghost-btn hidden" id="duplicate-decisions-btn">
+                Voir les paires conservées
+              </button>
+            </div>
+            <div class="duplicate-review-status hidden" id="duplicate-review-status" role="status"></div>
+            <div class="duplicate-review-list" id="duplicate-review-list"></div>
+            <div class="duplicate-decisions hidden" id="duplicate-decisions"></div>
+          </div>
+
           <div class="library-grid">
             <!-- Zone d'upload -->
             <div class="upload-card">
@@ -1334,6 +1360,7 @@
   <script src="trophies-data.js"></script>
   <script src="trophies.js"></script>
   <script src="app.js"></script>
+  <script src="duplicate-comparison.js"></script>
   <script src="expansions.js"></script>
 </body>
 </html>

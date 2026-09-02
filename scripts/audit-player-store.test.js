@@ -57,6 +57,16 @@ try {
   assert.strictEqual(store.updateBlacklistRule('absente', { active: false }), null);
   ok('la blacklist survit au chargement et permet une levée anticipée');
 
+  const distinct = store.recordDuplicateDecision({
+    files: ['copie-b.mp3', 'copie-a.mp3'], decision: 'distinct', reason: 'Versions voulues',
+  });
+  assert.deepStrictEqual(distinct.files, ['copie-a.mp3', 'copie-b.mp3']);
+  assert.strictEqual(store.duplicateDecisions()[0].reason, 'Versions voulues');
+  assert.throws(() => store.recordDuplicateDecision({
+    files: ['seul.mp3'], decision: 'distinct',
+  }), /invalide/);
+  ok('les décisions de faux positif sont normalisées et persistantes');
+
   const alpha = store.upsertProfile({
     id: 'alpha<>',
     nom: '  Alpha  ',
@@ -191,6 +201,7 @@ try {
   assert.strictEqual(restored.partyHistory[0].id, 'ph_test');
   assert.strictEqual(restored.blacklist[0].id, 'bl_test');
   assert.strictEqual(restored.blacklist[0].active, false);
+  assert.strictEqual(restored.duplicateDecisions[0].key, distinct.key);
   ok('une sauvegarde exportée restaure profils, listes, statistiques et historique');
 
   assert.strictEqual(store.deleteProfile('beta'), true);

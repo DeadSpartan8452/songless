@@ -46,6 +46,7 @@ async function main() {
   fs.mkdirSync(musicDir, { recursive: true });
   const metadataTracks = {
     'alpha-one.mp3': { title: 'Alpha One', artist: 'Alpha', genre: 'Rock', year: 1997, duration: 180 },
+    'alpha-copy.mp3': { title: 'Alpha One', artist: 'Alpha', genre: 'Rock', year: 1997, duration: 180 },
     'beta-two.mp3': { title: 'Beta Two', artist: 'Beta', genre: 'Pop', year: 2004, duration: 190 },
     'gamma-three.mp3': { title: 'Gamma Three', artist: 'Gamma', genre: 'Jazz', year: 2012, duration: 200 },
   };
@@ -152,8 +153,8 @@ async function main() {
       }),
     });
     assert.strictEqual(blacklistPreview.status, 200);
-    assert.strictEqual(blacklistPreview.body.total, 3);
-    assert.strictEqual(blacklistPreview.body.excluded, 2);
+    assert.strictEqual(blacklistPreview.body.total, 4);
+    assert.strictEqual(blacklistPreview.body.excluded, 3);
     assert.strictEqual(blacklistPreview.body.remaining, 1);
     assert.strictEqual(blacklistPreview.body.reasons[0].reasons.length > 0, true);
     ok('l’aperçu HTTP cumule les exclusions et annonce les morceaux restants');
@@ -183,6 +184,27 @@ async function main() {
     assert.strictEqual(removedRule.status, 200);
     assert.strictEqual((await request('/api/blacklist')).body.rules.length, 0);
     ok('une exclusion peut être levée puis supprimée immédiatement par HTTP');
+
+    const duplicates = await request('/api/library/duplicates');
+    assert.strictEqual(duplicates.status, 200);
+    assert.strictEqual(duplicates.body.total, 1);
+    assert.strictEqual(duplicates.body.comparisons[0].exactFile, true);
+    assert.strictEqual(duplicates.body.comparisons[0].confidence, 'exact');
+    const distinct = await request('/api/library/duplicates/decision', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        files: duplicates.body.comparisons[0].files,
+        decision: 'distinct',
+        reason: 'Deux versions à conserver',
+      }),
+    });
+    assert.strictEqual(distinct.status, 201);
+    assert.strictEqual((await request('/api/library/duplicates')).body.total, 0);
+    assert.strictEqual((await request(`/api/library/duplicates/decision/${distinct.body.key}`, {
+      method: 'DELETE',
+    })).status, 200);
+    ok('la comparaison distingue les octets identiques et mémorise les faux positifs');
 
     const exported = await request('/api/player/export');
     assert.strictEqual(exported.status, 200);

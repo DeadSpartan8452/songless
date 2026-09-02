@@ -608,6 +608,219 @@ body.lecture-seule #refresh-library-btn {
   color: var(--accent);
 }
 
+/* Comparateur de doublons : deux platines face à face, sans bouton de
+   suppression. La décision proposée est toujours réversible. */
+.duplicate-review-card {
+  border-color: rgba(56, 189, 248, 0.28);
+  background: linear-gradient(145deg, rgba(14, 165, 233, 0.055), transparent 45%), var(--card-bg);
+}
+
+.duplicate-review-count,
+.duplicate-confidence {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.duplicate-review-count {
+  padding: 5px 9px;
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  color: #7dd3fc;
+  background: rgba(14, 165, 233, 0.08);
+}
+
+.duplicate-review-actions,
+.duplicate-pair-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.duplicate-review-status,
+.duplicate-empty {
+  margin-top: 14px;
+  padding: 11px 13px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text-muted);
+  background: rgba(0, 0, 0, 0.2);
+  font-size: 0.8rem;
+}
+
+.duplicate-review-list {
+  display: grid;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.duplicate-pair {
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: rgba(5, 5, 8, 0.58);
+}
+
+.duplicate-pair-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.duplicate-pair-head p {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+}
+
+.duplicate-confidence {
+  flex: 0 0 auto;
+  padding: 4px 8px;
+  color: #bae6fd;
+  background: rgba(14, 165, 233, 0.14);
+}
+
+.duplicate-confidence.exact {
+  color: #fecaca;
+  background: rgba(248, 113, 113, 0.14);
+}
+
+.duplicate-versus {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: 10px;
+  align-items: stretch;
+}
+
+.duplicate-vs {
+  align-self: center;
+  color: var(--accent);
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+}
+
+.duplicate-track {
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr);
+  gap: 10px;
+  padding: 11px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.duplicate-cover {
+  display: grid;
+  place-items: center;
+  width: 58px;
+  height: 58px;
+  overflow: hidden;
+  border-radius: 9px;
+  background: var(--bg2);
+  font-size: 1.5rem;
+}
+
+.duplicate-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.duplicate-track-copy {
+  min-width: 0;
+}
+
+.duplicate-track-copy strong,
+.duplicate-track-copy > span,
+.duplicate-track-copy small {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.duplicate-track-copy strong {
+  color: var(--text);
+  font-size: 0.88rem;
+}
+
+.duplicate-track-copy > span:not(.duplicate-side),
+.duplicate-track-copy small {
+  margin-top: 3px;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+}
+
+.duplicate-track-copy .duplicate-side {
+  margin-bottom: 4px;
+  color: #7dd3fc;
+  font-size: 0.62rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.duplicate-track-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: 6px;
+}
+
+.duplicate-pair-actions {
+  justify-content: flex-end;
+}
+
+.duplicate-decisions {
+  margin-top: 14px;
+  padding: 12px;
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+}
+
+.duplicate-decisions h4 {
+  margin-bottom: 8px;
+  font-size: 0.84rem;
+}
+
+.duplicate-decision-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  border-top: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 0.74rem;
+}
+
+.duplicate-decision-row span {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 650px) {
+  .duplicate-versus {
+    grid-template-columns: 1fr;
+  }
+
+  .duplicate-vs {
+    justify-self: center;
+  }
+
+  .duplicate-pair-head,
+  .duplicate-review-actions,
+  .duplicate-pair-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .duplicate-review-actions button,
+  .duplicate-pair-actions button {
+    width: 100%;
+  }
+}
+
 /* ---------------------------------------------------------------- mobile */
 
 @media (max-width: 600px) {

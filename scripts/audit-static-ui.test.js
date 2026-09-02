@@ -158,4 +158,19 @@ test('le rendu de bibliothèque accepte les métadonnées numériques', () => {
   assert.match(app, /function renderLibraryMetadataFilters\(\) \{\s+const canonicalGenres/);
 });
 
+test('le comparateur de doublons reste manuel, réversible et sans suppression', () => {
+  const index = read('index.html');
+  const comparison = read('duplicate-comparison.js');
+  for (const id of [
+    'duplicate-review-card', 'duplicate-review-btn', 'duplicate-review-list',
+    'duplicate-decisions-btn', 'duplicate-decisions',
+  ]) {
+    assert.match(index, new RegExp(`id=["']${id}["']`));
+  }
+  assert.match(comparison, /Conserver les deux · versions distinctes/);
+  assert.match(comparison, /data-duplicate-restore/);
+  assert.match(comparison, /\/api\/library\/duplicates\/decision/);
+  assert.doesNotMatch(comparison, /fetch\(`?\/api\/tracks\/[^\n]+DELETE|Supprimer le fichier/);
+});
+
 console.log(`\n${passed} tests statiques d’interface réussis.`);

@@ -49,7 +49,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "<ch
 | Statistiques par genre et par artiste | onglet **Statistiques** |
 | Résumé de partie à partager | bouton « Partager » en fin de manche |
 | Télécommande Kahoot sur téléphone | `Songless (telephone).bat` + bouton 📱 |
-| Détection de doublons | automatique au téléchargement + `tools/dedupe.js` |
+| Comparaison des doublons | onglet **Bibliothèque** → « Comparer les doublons » |
 | Diagnostic de la bibliothèque | onglet **Bibliothèque** → « État de la bibliothèque » |
 | Exclusions temporaires par morceau, artiste, genre ou période | onglet **Bibliothèque** → « Blacklist temporaire » |
 
@@ -483,6 +483,17 @@ soit par `dedupe.js` ou pendant un import. Une détection de doublon reste une
 supposition : si elle se trompe, le fichier se récupère. Vide ce dossier quand
 tu es sûr.
 
+Pour décider visuellement, utilise **Bibliothèque → Comparer les doublons**.
+Chaque paire affiche les deux fiches, leurs durées et tailles, avec un bouton
+d’écoute pour chacune. « Octets identiques » signifie qu’une empreinte SHA-256
+a confirmé deux fichiers strictement identiques ; les autres niveaux restent
+des ressemblances à vérifier humainement.
+
+Le bouton **Conserver les deux · versions distinctes** masque uniquement cette
+paire et mémorise la décision dans la sauvegarde Songless. **Paires conservées →
+Réexaminer** annule cette décision de façon ciblée. Le comparateur lui-même ne
+supprime jamais de musique.
+
 Pour corriger un titre et un artiste inversés :
 
 ```bash
@@ -614,6 +625,7 @@ lib/
   downloader.js        yt-dlp + ffmpeg, détection de doublons, playlists
   importer.js          archives et dossiers : extraction, tri, doublons
   dupes.js             définition commune de « c'est le même morceau »
+  duplicate-comparison.js  paires suspectes et décisions stables
   health.js            diagnostic de la bibliothèque
 tools/
   download.js          ajout de musique en ligne de commande
@@ -626,6 +638,7 @@ tools/
   fix-latin-titles.js  noms des titres latins étrangers
 public/
   index.html, app.js, style.css
+  duplicate-comparison.js  comparateur manuel et réversible
   platform.js           appairage et synchronisation téléphone ↔ PC
   expansions.js         parties finies, entraînement, listes et multijoueur
   expansions.css        interface de l'onglet Modes
