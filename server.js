@@ -1204,6 +1204,82 @@ app.delete('/api/tracks/:id', async (req, res) => {
 // MÉTADONNÉES (titre affiché, genre, alias)
 // ==========================================
 
+const bulkMetadataPreviews = new Map();
+const BULK_PREVIEW_TTL = 10 * 60 * 1000;
+
+function purgeBulkMetadataPreviews() {
+  const now = Date.now();
+  for (const [token, preview] of bulkMetadataPreviews) {
+    if (preview.expiresAt <= now) bulkMetadataPreviews.delete(token);
+  }
+}
+
+app.post('/api/tracks/meta-preview', (req, res) => {
+  try {
+    purgeBulkMetadataPreviews();
+    const ids = [...new Set(Array.isArray(req.body && req.body.ids) ? req.body.ids : [])];
+    if (!ids.length || ids.length > 500 || ids.some(id => typeof id !== 'string')) {
+      return res.status(400).json({ error: 'Sélection invalide (1 à 500 morceaux).' });
+    }
+    const requestedGenre = String(req.body.genre || '').trim();
+    const genre = T.resolveGenre(requestedGenre);
+    if (!genre) return res.status(400).json({ error: 'Choisissez un genre canonique valide.' });
+    const classification = trackMetadata.classificationPatch({
+      genreDetail: req.body.genreDetail,
+      genreSource: 'manual',
+      genreConfidence: 'high',
+    });
+    const files = ids.map((id) => {
+      const track = resoudreMorceau(id);
+      if (!track || !fs.existsSync(track.filePath)) throw new Error('Sélection périmée ou morceau absent.');
+      const current = store.get(track.fileName) || {};
+      return {
+        id,
+        fileName: track.fileName,
+        title: current.title || T.fromFilename(track.fileName).title || track.fileName,
+        currentGenre: current.genre || 'Autre',
+        currentGenreDetail: current.genreDetail || '',
+      };
+    });
+    const token = crypto.randomBytes(24).toString('base64url');
+    const patch = { genre, ...classification };
+    bulkMetadataPreviews.set(token, {
+      expiresAt: Date.now() + BULK_PREVIEW_TTL,
+      files: files.map(file => file.fileName),
+      patch,
+    });
+    return res.json({
+      token,
+      expiresInSeconds: BULK_PREVIEW_TTL / 1000,
+      patch,
+      items: files.map(({ fileName, ...item }) => item),
+    });
+  } catch (error) {
+    return res.status(400).json({ error: error.message || 'Impossible de préparer cet aperçu.' });
+  }
+});
+
+app.post('/api/tracks/meta-apply', (req, res) => {
+  purgeBulkMetadataPreviews();
+  const token = String(req.body && req.body.token || '');
+  const preview = bulkMetadataPreviews.get(token);
+  if (!preview) return res.status(400).json({ error: 'Aperçu absent ou expiré : recommencez la prévisualisation.' });
+
+  try {
+    const entries = {};
+    for (const fileName of preview.files) {
+      const filePath = path.join(MUSIC_DIR, fileName);
+      if (!fs.existsSync(filePath)) throw new Error('La bibliothèque a changé : aucun changement appliqué.');
+      entries[fileName] = preview.patch;
+    }
+    store.setMany(entries);
+    bulkMetadataPreviews.delete(token);
+    return res.json({ success: true, updated: Object.keys(entries).length });
+  } catch (error) {
+    return res.status(409).json({ error: error.message || 'Impossible d’appliquer cet aperçu.' });
+  }
+});
+
 // Route: Corriger la fiche d'un morceau
 app.patch('/api/tracks/:id/meta', (req, res) => {
   try {

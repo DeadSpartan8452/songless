@@ -116,4 +116,21 @@ test('toutes les interfaces utilisent le favicon local sans le confondre avec un
   assert.doesNotMatch(read('app.js'), /favicon\.svg[^\n]*(?:cover|pochette)/i);
 });
 
+test('le classement en lot exige un aperçu distinct avant application', () => {
+  const index = read('index.html');
+  const app = read('app.js');
+  for (const id of [
+    'bulk-classify-btn',
+    'bulk-classify-modal',
+    'bulk-classify-preview-btn',
+    'bulk-classify-apply-btn',
+    'bulk-preview-list',
+  ]) {
+    assert.match(index, new RegExp(`id=["']${id}["']`));
+  }
+  assert.match(app, /fetch\('\/api\/tracks\/meta-preview'/);
+  assert.match(app, /fetch\('\/api\/tracks\/meta-apply'/);
+  assert.match(app, /bulkMetadataPreviewToken/);
+});
+
 console.log(`\n${passed} tests statiques d’interface réussis.`);

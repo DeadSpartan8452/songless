@@ -46,6 +46,7 @@ const SUPPRESSION_SANS_SAISIE = 5;
 
 // Bibliothèque : n'afficher que les morceaux marqués « à renommer ».
 let filtreARenommer = false;
+let bulkMetadataPreviewToken = '';
 let essaisDetail = [];              // [{ type, texte }] de la manche en cours
 let issueManche = null;             // null | 'win' | 'lose'
 let ecouteSeule = false;
@@ -2009,6 +2010,7 @@ function initLibraryEvents() {
 
   // Filtre « à renommer »
   initReviewFilter();
+  initBulkClassifyEvents();
 
   // Supprimer la sélection
   const deleteSelectedBtn = document.getElementById('delete-selected-btn');
@@ -2334,6 +2336,7 @@ function updateBulkActionsUI() {
   const bulkActionsBar = document.getElementById('tracks-bulk-actions');
   const selectAllCheckbox = document.getElementById('select-all-tracks');
   const selectedCountSpan = document.getElementById('selected-tracks-count');
+  const classifyBtn = document.getElementById('bulk-classify-btn');
   
   const allCheckboxes = tracksListContainer.querySelectorAll('.track-select-checkbox');
   const checkedBoxes = tracksListContainer.querySelectorAll('.track-select-checkbox:checked');
@@ -2341,11 +2344,112 @@ function updateBulkActionsUI() {
   if (allCheckboxes.length > 0) {
     bulkActionsBar.classList.remove('hidden');
     selectedCountSpan.innerText = checkedBoxes.length;
+    if (classifyBtn) classifyBtn.disabled = checkedBoxes.length === 0;
     
     selectAllCheckbox.checked = (allCheckboxes.length === checkedBoxes.length);
   } else {
     bulkActionsBar.classList.add('hidden');
+    if (classifyBtn) classifyBtn.disabled = true;
   }
+}
+
+function selectedTrackIds() {
+  return [...tracksListContainer.querySelectorAll('.track-select-checkbox:checked')]
+    .map(checkbox => checkbox.getAttribute('data-id'));
+}
+
+function invalidateBulkMetadataPreview() {
+  bulkMetadataPreviewToken = '';
+  document.getElementById('bulk-preview-list')?.classList.add('hidden');
+  document.getElementById('bulk-classify-apply-btn')?.classList.add('hidden');
+}
+
+function closeBulkClassifyModal() {
+  document.getElementById('bulk-classify-modal')?.classList.add('hidden');
+  invalidateBulkMetadataPreview();
+}
+
+function initBulkClassifyEvents() {
+  const modal = document.getElementById('bulk-classify-modal');
+  const openBtn = document.getElementById('bulk-classify-btn');
+  const previewBtn = document.getElementById('bulk-classify-preview-btn');
+  const applyBtn = document.getElementById('bulk-classify-apply-btn');
+  const genre = document.getElementById('bulk-genre');
+  const genreDetail = document.getElementById('bulk-genre-detail');
+  if (!modal || !openBtn || !previewBtn || !applyBtn || !genre || !genreDetail) return;
+
+  openBtn.addEventListener('click', () => {
+    const ids = selectedTrackIds();
+    if (!ids.length) return;
+    document.getElementById('bulk-classify-count').innerText = ids.length;
+    genreDetail.value = '';
+    invalidateBulkMetadataPreview();
+    modal.classList.remove('hidden');
+    genre.focus();
+  });
+  document.getElementById('bulk-classify-cancel-btn')
+    .addEventListener('click', closeBulkClassifyModal);
+  modal.addEventListener('click', event => {
+    if (event.target === modal) closeBulkClassifyModal();
+  });
+  [genre, genreDetail].forEach(field => field.addEventListener('input', invalidateBulkMetadataPreview));
+
+  previewBtn.addEventListener('click', async () => {
+    const ids = selectedTrackIds();
+    if (!ids.length || !genre.value) {
+      showToast('Sélectionne des morceaux et un genre.', 'warn');
+      return;
+    }
+    previewBtn.disabled = true;
+    try {
+      const response = await fetch('/api/tracks/meta-preview', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids, genre: genre.value, genreDetail: genreDetail.value.trim() }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Aperçu impossible');
+      bulkMetadataPreviewToken = data.token;
+      const examples = data.items.slice(0, 20).map(item => `
+        <div class="bulk-preview-item">
+          <strong>${escapeHtml(item.title)}</strong>
+          <span>${escapeHtml(item.currentGenre)}${item.currentGenreDetail ? ` · ${escapeHtml(item.currentGenreDetail)}` : ''}
+            → ${escapeHtml(data.patch.genre)}${data.patch.genreDetail ? ` · ${escapeHtml(data.patch.genreDetail)}` : ''}</span>
+        </div>`).join('');
+      const remaining = data.items.length - Math.min(data.items.length, 20);
+      const list = document.getElementById('bulk-preview-list');
+      list.innerHTML = examples + (remaining ? `<p>… et ${remaining} autre(s).</p>` : '');
+      list.classList.remove('hidden');
+      applyBtn.classList.remove('hidden');
+    } catch (error) {
+      showToast(`Impossible de prévisualiser : ${error.message}`, 'error');
+      invalidateBulkMetadataPreview();
+    } finally {
+      previewBtn.disabled = false;
+    }
+  });
+
+  applyBtn.addEventListener('click', async () => {
+    if (!bulkMetadataPreviewToken) return;
+    applyBtn.disabled = true;
+    try {
+      const response = await fetch('/api/tracks/meta-apply', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: bulkMetadataPreviewToken }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Application impossible');
+      closeBulkClassifyModal();
+      showToast(`${data.updated} morceau${data.updated > 1 ? 'x' : ''} classé${data.updated > 1 ? 's' : ''}.`, 'ok');
+      loadLibrary();
+    } catch (error) {
+      showToast(`Impossible d'appliquer : ${error.message}`, 'error');
+      invalidateBulkMetadataPreview();
+    } finally {
+      applyBtn.disabled = false;
+    }
+  });
 }
 
 function deleteMultipleTracks(ids) {
@@ -4122,6 +4226,11 @@ function renderLibraryMetadataFilters() {
     libraryGenreDetailFilter.value = details.includes(keep) ? keep : '';
   }
 
+  const bulkGenre = document.getElementById('bulk-genre');
+  if (bulkGenre) {
+    bulkGenre.innerHTML = names.map(n => `<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join('');
+  }
+
   if (libraryYearFilter) {
     const keep = libraryYearFilter.value;
     const decades = [...new Set(tracks.map(track => track.year)
@@ -4513,6 +4622,7 @@ const LIBELLES_PROBLEMES = {
   'sans-fiche': 'Fichiers sans fiche',
   'sans-artiste': 'Sans artiste',
   'sans-genre': 'Sans genre',
+  'genre-incertain': 'Genres à confirmer',
   'sans-annee': 'Sans année',
   'annee-incertaine': 'Années à confirmer',
   'sans-pochette': 'Sans pochette musicale',
@@ -4713,6 +4823,8 @@ function initEditModalEvents() {
       artist: document.getElementById('edit-artist').value.trim(),
       genre: document.getElementById('edit-genre').value,
       genreDetail: document.getElementById('edit-genre-detail').value.trim(),
+      genreSource: 'manual',
+      genreConfidence: 'high',
       year: document.getElementById('edit-year').value,
       yearSource: document.getElementById('edit-year-source').value,
       yearConfidence: document.getElementById('edit-year-confidence').value,

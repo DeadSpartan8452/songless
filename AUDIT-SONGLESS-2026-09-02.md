@@ -238,6 +238,9 @@ Il ne correspond ni à un fichier absent ni à une erreur de l’application.
 - `tools/years.js` n’écrit plus directement : il produit un aperçu JSON, puis
   exige une seconde commande `--apply` ; l’application est bornée aux fichiers
   encore présents et ne peut transmettre aucun champ de titre ;
+- la sélection multiple permet maintenant de préparer un classement genre et
+  sous-genre ; le serveur renvoie un aperçu lisible et un jeton temporaire à
+  usage unique avant d’autoriser l’application, sans accepter de champ titre ;
 - la grande majorité des années doit être complétée ;
 - genres et artistes demandent une normalisation avec niveau de confiance ;
 - la qualité d’encodage et les dimensions visuelles des pochettes restent à analyser ;

@@ -868,6 +868,9 @@
                 <label class="select-all-label">
                   <input type="checkbox" id="select-all-tracks"> Sélectionner tout
                 </label>
+                <button class="ghost-btn small" id="bulk-classify-btn" disabled>
+                  <i data-lucide="tags"></i> Classer la sélection
+                </button>
                 <button class="delete-selected-btn" id="delete-selected-btn">
                   <i data-lucide="trash-2"></i> Supprimer la sélection (<span id="selected-tracks-count">0</span>)
                 </button>
@@ -1047,6 +1050,30 @@
       <div class="modal-actions">
         <button class="ghost-btn" id="edit-cancel-btn">Annuler</button>
         <button class="cta-btn" id="edit-save-btn">Enregistrer</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Classement de plusieurs morceaux : aperçu serveur obligatoire avant écriture -->
+  <div class="modal-overlay hidden" id="bulk-classify-modal" role="dialog" aria-modal="true"
+       aria-labelledby="bulk-classify-title">
+    <div class="modal-card">
+      <h3 id="bulk-classify-title">Classer la sélection</h3>
+      <p class="modal-file"><span id="bulk-classify-count">0</span> morceau(x) — aucun titre ne sera modifié.</p>
+
+      <label for="bulk-genre">Genre canonique</label>
+      <select id="bulk-genre"></select>
+
+      <label for="bulk-genre-detail">Sous-genre précis <span class="label-hint">facultatif</span></label>
+      <input type="text" id="bulk-genre-detail" maxlength="80" placeholder="Synthwave, city pop…">
+
+      <p class="bulk-preview-note">Source : saisie manuelle · confiance élevée</p>
+      <div class="bulk-preview-list hidden" id="bulk-preview-list" aria-live="polite"></div>
+
+      <div class="modal-actions">
+        <button class="ghost-btn" id="bulk-classify-cancel-btn">Annuler</button>
+        <button class="ghost-btn" id="bulk-classify-preview-btn">Prévisualiser</button>
+        <button class="cta-btn hidden" id="bulk-classify-apply-btn">Appliquer cet aperçu</button>
       </div>
     </div>
   </div>

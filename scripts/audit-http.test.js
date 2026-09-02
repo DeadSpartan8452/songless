@@ -257,7 +257,13 @@ async function main() {
       headers: invitedHeaders,
     });
     assert.strictEqual(forbiddenLibrary.status, 403);
-    ok('un invité ne peut pas consulter la bibliothèque');
+    const forbiddenBulkEdit = await request(REMOTE, '/api/tracks/meta-preview', {
+      method: 'POST',
+      headers: { ...invitedHeaders, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids: ['interdit'], genre: 'Rock' }),
+    });
+    assert.strictEqual(forbiddenBulkEdit.status, 403);
+    ok('un invité ne peut ni consulter ni classer la bibliothèque');
 
     const remoteCreate = await request(REMOTE, '/api/party/create', {
       method: 'POST',

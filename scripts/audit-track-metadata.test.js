@@ -34,7 +34,8 @@ test('une année valide conserve provenance et confiance', () => {
     year: 2007, yearSource: 'musicbrainz', yearConfidence: 'medium',
   });
   assert.deepStrictEqual(value, {
-    favorite: false, genreDetail: '', year: 2007,
+    favorite: false, genreDetail: '', genreSource: 'unknown',
+    genreConfidence: 'unknown', year: 2007,
     yearSource: 'musicbrainz', yearConfidence: 'medium',
   });
 });
