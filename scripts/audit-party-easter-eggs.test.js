@@ -32,6 +32,14 @@ test('la définition est bornée et rejette les champs inconnus', () => {
   assert.strictEqual(Object.hasOwn(value, 'secret'), false);
 });
 
+test('Portal est un préréglage déclaratif activable par une métadonnée courte', () => {
+  const value = eggs.sanitizeDefinition('portal');
+  assert.strictEqual(value.id, 'portal');
+  assert.strictEqual(value.theme, 'portal');
+  assert.match(value.failureText, /cake is a lie/i);
+  assert.ok(value.hint.length > 20);
+});
+
 test('aucun easter egg ne fuit avant un verdict', () => {
   const viewer = player();
   assert.strictEqual(eggs.publicState(party(viewer), viewer, 'player'), null);
@@ -85,11 +93,33 @@ test('la TV célèbre un succès mais ne diffuse pas un échec individuel', () =
   assert.strictEqual(eggs.publicState(party(loser), null, 'tv'), null);
 });
 
+test('le PC hôte partage la célébration seulement après une réussite', () => {
+  const winner = player({ found: true, finished: true, correct: true });
+  assert.strictEqual(eggs.publicState(party(winner), null, 'host').phase, 'success');
+  assert.strictEqual(eggs.publicState(party(player()), null, 'host'), null);
+});
+
 test('la révélation globale publie seulement le résultat final', () => {
   const viewer = player({ finished: true, correct: false, attempts: [{ type: 'skipped' }] });
   const state = eggs.publicState(party(viewer, { status: 'reveal' }), null, 'tv');
   assert.strictEqual(state.phase, 'reveal');
   assert.strictEqual(state.outcome, 'failure');
+});
+
+test('le rendu Portal reste absent du DOM sans charge utile publique', () => {
+  const fs = require('fs');
+  const path = require('path');
+  const script = fs.readFileSync(path.join(__dirname, '..', 'public', 'easter-eggs.js'), 'utf8');
+  const css = fs.readFileSync(path.join(__dirname, '..', 'public', 'easter-eggs.css'), 'utf8');
+  for (const html of ['index.html', 'controller.html', 'tv.html']) {
+    const source = fs.readFileSync(path.join(__dirname, '..', 'public', html), 'utf8');
+    assert.match(source, /easter-eggs\.js/);
+    assert.match(source, /easter-eggs\.css/);
+  }
+  assert.match(script, /if \(!egg \|\| !egg\.id\)/);
+  assert.match(script, /textContent = String\(value/);
+  assert.match(css, /prefers-reduced-motion: reduce/);
+  assert.match(css, /portal-confetti/);
 });
 
 console.log(`\n${passed} tests easter eggs réussis.`);

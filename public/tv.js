@@ -84,6 +84,11 @@
   }
 
   function render(state) {
+    if (window.songlessEasterEggs) {
+      window.songlessEasterEggs.render(state.easterEgg, {
+        surface: 'tv', partyCode: state.code, round: state.round,
+      });
+    }
     const finalDuel = state.finalDuel;
     const finalists = finalDuel ? (finalDuel.contenders || []).map(entry => ({
       ...entry,

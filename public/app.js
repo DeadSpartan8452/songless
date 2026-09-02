@@ -5102,6 +5102,8 @@ function openEditModal(track) {
   document.getElementById('edit-year-source').value = track.yearSource || 'unknown';
   document.getElementById('edit-year-confidence').value = track.yearConfidence || 'unknown';
   document.getElementById('edit-favorite').checked = track.favorite === true;
+  document.getElementById('edit-easter-egg').value = typeof track.easterEgg === 'string'
+    ? track.easterEgg : (track.easterEgg && track.easterEgg.id) || '';
 
   const genreSelect = document.getElementById('edit-genre');
   if (![...genreSelect.options].some(o => o.value === track.genre)) {
@@ -5150,6 +5152,7 @@ function initEditModalEvents() {
       yearSource: document.getElementById('edit-year-source').value,
       yearConfidence: document.getElementById('edit-year-confidence').value,
       favorite: document.getElementById('edit-favorite').checked,
+      easterEgg: document.getElementById('edit-easter-egg').value,
       aliases: document.getElementById('edit-aliases').value
         .split(',').map(s => s.trim()).filter(Boolean),
     };

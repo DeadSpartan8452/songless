@@ -1116,6 +1116,7 @@
           originalTitle: currentTrack.originalTitle,
           artist: currentTrack.artist,
           genre: currentTrack.genre,
+          year: currentTrack.year,
         },
         highlightOffset,
         highlightDuration: 5,
@@ -1172,12 +1173,18 @@
     const runningNote = byId('party-running-note');
     if (runningNote) runningNote.classList.toggle('hidden', !(party && partyState));
     if (!party || !partyState) {
+      if (window.songlessEasterEggs) window.songlessEasterEggs.remove('host');
       byId('party-setup').classList.remove('hidden');
       byId('party-room').classList.add('hidden');
       return;
     }
     byId('party-setup').classList.add('hidden');
     byId('party-room').classList.remove('hidden');
+    if (window.songlessEasterEggs) {
+      window.songlessEasterEggs.render(partyState.easterEgg, {
+        surface: 'host', partyCode: partyState.code, round: partyState.round,
+      });
+    }
     byId('party-code').innerText = partyState.code;
     byId('party-round-label').innerText = partyState.finalDuel && partyState.finalDuel.active
       ? '⚔️ Duel final'
@@ -2304,6 +2311,7 @@
           originalTitle: currentTrack.originalTitle,
           artist: currentTrack.artist,
           genre: currentTrack.genre,
+          year: currentTrack.year,
         },
         highlightOffset,
         highlightDuration: 5,

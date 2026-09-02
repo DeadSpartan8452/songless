@@ -164,7 +164,7 @@
 
   function syncTrophyCountBadge() {
     const badges = document.querySelectorAll('.trophies-count-badge');
-    const total = typeof SONGLESS_TROPHIES !== 'undefined' ? SONGLESS_TROPHIES.length : 205;
+    const total = typeof SONGLESS_TROPHIES !== 'undefined' ? SONGLESS_TROPHIES.length : 206;
     badges.forEach(b => {
       b.innerText = `${unlockedTrophies.size}/${total}`;
     });
@@ -420,6 +420,6 @@
     openTrophiesModal,
     getUnlockedIds: () => [...unlockedTrophies],
     getUnlockedCount: () => unlockedTrophies.size,
-    getTotalCount: () => (typeof SONGLESS_TROPHIES !== 'undefined' ? SONGLESS_TROPHIES.length : 205),
+    getTotalCount: () => (typeof SONGLESS_TROPHIES !== 'undefined' ? SONGLESS_TROPHIES.length : 206),
   };
 })();

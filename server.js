@@ -19,6 +19,7 @@ const partyResults = require('./lib/party-results');
 const partyRounds = require('./lib/party-rounds');
 const partySuggestions = require('./lib/party-suggestions');
 const partyIntruder = require('./lib/party-intruder');
+const partyEasterEggs = require('./lib/party-easter-eggs');
 const modeRegistry = require('./lib/mode-registry');
 const antivirus = require('./lib/antivirus');
 const blacklist = require('./lib/blacklist');
@@ -1462,6 +1463,14 @@ app.patch('/api/tracks/:id/meta', (req, res) => {
         current.aliases || [],
         Array.isArray(aliases) ? aliases : [],
       );
+    }
+
+    if (Object.hasOwn(body, 'easterEgg')) {
+      const easterEggId = String(body.easterEgg || '').trim().toLowerCase();
+      if (easterEggId && !partyEasterEggs.CATALOG[easterEggId]) {
+        return res.status(400).json({ error: 'Easter egg inconnu' });
+      }
+      patch.easterEgg = easterEggId || null;
     }
 
     store.set(fileName, patch);

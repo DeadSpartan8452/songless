@@ -105,6 +105,23 @@ async function main() {
     assert.strictEqual(updated.yearConfidence, 'high');
     assert.strictEqual(updated.title, 'Titre de test');
 
+    const portalResponse = await fetch(`${base}/api/tracks/${initial.id}/meta`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ easterEgg: 'portal' }),
+    });
+    assert.strictEqual(portalResponse.status, 200);
+    const portalBody = await portalResponse.json();
+    assert.strictEqual(portalBody.track.easterEgg, 'portal');
+    const invalidEggResponse = await fetch(`${base}/api/tracks/${initial.id}/meta`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ easterEgg: 'effet-inconnu' }),
+    });
+    assert.strictEqual(invalidEggResponse.status, 400);
+    const [withPortal] = await (await fetch(`${base}/api/tracks`)).json();
+    assert.strictEqual(withPortal.easterEgg, 'portal');
+
     const previewResponse = await fetch(`${base}/api/tracks/meta-preview`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

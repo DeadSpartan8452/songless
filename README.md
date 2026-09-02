@@ -203,24 +203,11 @@ Un nom de fichier YouTube n'est pas une réponse jouable. Chaque morceau reçoit
 donc un **titre affiché** (la réponse à deviner) et garde son **titre
 d'origine** à part, montré à la fin de la partie.
 
-Les règles, dans l'ordre :
-
-1. **`lib/overrides.json`** — les morceaux connus sous un autre nom que leur
-   titre réel. C'est là que se règle le cas que tu citais : le morceau polonais
-   *Gdzie jest biały węgorz ?* s'appelle **Polish Cow** dans le jeu, et les deux
-   formes sont acceptées à la saisie. Le fichier est fait pour être complété à
-   la main.
-2. **Alphabets non latins** — le cyrillique et le grec sont translittérés
-   automatiquement (Пыяла → Pyyala). Le japonais, le chinois et le coréen ne se
-   translittèrent pas utilement : ils sont signalés pour être nommés à la main.
-   Les 28 cas de la bibliothèque ont été traités (`tools/fix-cjk-titles.js`).
-3. **Langues latines étrangères** — les 15 titres concernés (espagnol,
-   portugais, vietnamien, polonais…) ont été nommés dans
-   `tools/fix-latin-titles.js`.
-4. **Anglais et français** — laissés tels quels, seulement débarrassés du bruit
-   (« Official Video », « Lyrics », « _CBR_256k », identifiants YouTube…).
-
-Les titres anglais restent en anglais, comme demandé.
+Le nom source reste la référence : Songless ne traduit, ne translittère et ne
+réécrit jamais automatiquement un titre pendant un tri par genre, année ou
+favori. Les anciens scripts de correction restent des outils d’archive manuels ;
+ils ne sont jamais lancés par l’interface. Une autre forme peut être ajoutée
+comme alias accepté sans créer une seconde identité du morceau.
 
 ### Corriger un titre
 Bouton crayon dans la liste de l'onglet **Bibliothèque**, ou :
@@ -233,6 +220,14 @@ node tools/retitle.js "fichier.mp3" --alias "autre réponse acceptée"
 
 Une fiche corrigée à la main est marquée comme validée : `tools/enrich.js` ne
 l'écrasera plus.
+
+### Marquer un morceau Portal
+
+Depuis le même bouton crayon, le champ discret **Effet secret** permet de choisir
+**Portal — gâteau de la chambre de test**. L’effet reste totalement absent des
+écrans avant le verdict autorisé. Il n’apparaît après une mauvaise réponse que
+lorsque toutes les tentatives sont épuisées ; passer le morceau ne le déclenche
+jamais.
 
 ---
 

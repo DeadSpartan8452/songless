@@ -247,7 +247,7 @@
       ? window.songlessTrophies.getUnlockedIds()
       : []);
     const unlockedCount = unlockedIds.size;
-    const totalCount = allTrophies.length || 205;
+    const totalCount = allTrophies.length || 206;
     const percent = Math.min(100, Math.round((unlockedCount / totalCount) * 100));
 
     byId('palmares-count-label').innerText = `${unlockedCount} / ${totalCount} (${percent}%)`;
@@ -268,7 +268,7 @@
             </div>
           `;
         }).join('')
-      : '<div class="wait-note">205 trophées à débloquer au fil des soirées !</div>';
+      : '<div class="wait-note">206 trophées à débloquer au fil des soirées !</div>';
 
     sheet.classList.remove('hidden');
   }
@@ -373,6 +373,11 @@
 
   function receiveState(next) {
     state = next;
+    if (window.songlessEasterEggs) {
+      window.songlessEasterEggs.render(next.easterEgg, {
+        surface: 'controller', partyCode: next.code, round: next.round,
+      });
+    }
     renderRoom();
     maybeShowPartyTutorial(next);
     syncPartyAudio(next);
@@ -1736,6 +1741,7 @@
     pollTimer = null;
     party = null;
     state = null;
+    if (window.songlessEasterEggs) window.songlessEasterEggs.remove('controller');
     actionSignature = '';
     audioRoundKey = '';
     audioPlaybackSignature = '';

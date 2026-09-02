@@ -16,6 +16,7 @@
   <link rel="stylesheet" href="session.css">
   <link rel="stylesheet" href="features.css">
   <link rel="stylesheet" href="expansions.css">
+  <link rel="stylesheet" href="easter-eggs.css">
   <!-- Icônes Lucide, servies en local (public/vendor/).
        Elles venaient d'unpkg.com : hors ligne, `lucide` n'existait pas et la
        première ligne de l'initialisation plantait, emportant tout le jeu avec
@@ -1162,6 +1163,12 @@
       <label for="edit-aliases">Autres réponses acceptées <span class="label-hint">séparées par des virgules</span></label>
       <input type="text" id="edit-aliases" placeholder="polish cow, vache polonaise">
 
+      <label for="edit-easter-egg">Effet secret <span class="label-hint">facultatif · visible seulement après le verdict</span></label>
+      <select id="edit-easter-egg">
+        <option value="">Aucun</option>
+        <option value="portal">Portal — gâteau de la chambre de test</option>
+      </select>
+
       <div class="modal-actions">
         <button class="ghost-btn" id="edit-cancel-btn">Annuler</button>
         <button class="cta-btn" id="edit-save-btn">Enregistrer</button>
@@ -1366,6 +1373,7 @@
   <script src="platform.js"></script>
   <script src="trophies-data.js"></script>
   <script src="trophies.js"></script>
+  <script src="easter-eggs.js"></script>
   <script src="app.js"></script>
   <script src="duplicate-comparison.js"></script>
   <script src="expansions.js"></script>

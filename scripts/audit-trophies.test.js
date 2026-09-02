@@ -41,10 +41,13 @@ function trophyRuntime() {
   return context.window.songlessTrophies;
 }
 
-test('le catalogue contient exactement 105 succès historiques et 100 nouveaux', () => {
-  assert.strictEqual(SONGLESS_TROPHIES.length, 205);
-  assert.strictEqual(new Set(SONGLESS_TROPHIES.map(item => item.id)).size, 205);
-  assert.strictEqual(SONGLESS_TROPHIES.filter(item => item.rule).length, 100);
+test('le catalogue contient 105 succès historiques, 100 séries et le secret Portal', () => {
+  assert.strictEqual(SONGLESS_TROPHIES.length, 206);
+  assert.strictEqual(new Set(SONGLESS_TROPHIES.map(item => item.id)).size, 206);
+  assert.strictEqual(SONGLESS_TROPHIES.filter(item => item.rule).length, 101);
+  const portal = SONGLESS_TROPHIES.find(item => item.id === 'secret_portal_cake');
+  assert.ok(portal && portal.hidden);
+  assert.deepStrictEqual(portal.rule.where, { id: 'portal', outcome: 'success' });
 });
 
 test('chaque nouveau succès possède un texte précis et une condition bornée', () => {

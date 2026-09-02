@@ -256,7 +256,15 @@ const MODE_TROPHIES = [
   },
 ]);
 
-SONGLESS_TROPHIES.push(...SONGLESS_TROPHY_EXPANSION, ...MODE_TROPHIES);
+const PORTAL_TROPHY = {
+  id: 'secret_portal_cake', cat: 'secrets', icon: '🍰',
+  name: 'Sujet de Test 1498',
+  desc: 'Trouver un morceau marqué Portal avant la fin de toutes les tentatives.',
+  hidden: true,
+  rule: { event: 'easter_egg', target: 1, where: { id: 'portal', outcome: 'success' } },
+};
+
+SONGLESS_TROPHIES.push(...SONGLESS_TROPHY_EXPANSION, ...MODE_TROPHIES, PORTAL_TROPHY);
 
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = { SONGLESS_TROPHIES };
