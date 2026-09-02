@@ -11,6 +11,8 @@ const BASE = `http://127.0.0.1:${PORT}`;
 const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'songless-player-http-'));
 const dataFile = path.join(tempRoot, 'songless-data.json');
 const backupDir = path.join(tempRoot, 'backups');
+const musicDir = path.join(tempRoot, 'musiques');
+const metadataFile = path.join(tempRoot, 'metadata.json');
 let passed = 0;
 
 function ok(name) {
@@ -41,6 +43,16 @@ async function waitForServer(child) {
 }
 
 async function main() {
+  fs.mkdirSync(musicDir, { recursive: true });
+  const metadataTracks = {
+    'alpha-one.mp3': { title: 'Alpha One', artist: 'Alpha', genre: 'Rock', year: 1997, duration: 180 },
+    'beta-two.mp3': { title: 'Beta Two', artist: 'Beta', genre: 'Pop', year: 2004, duration: 190 },
+    'gamma-three.mp3': { title: 'Gamma Three', artist: 'Gamma', genre: 'Jazz', year: 2012, duration: 200 },
+  };
+  for (const fileName of Object.keys(metadataTracks)) {
+    fs.writeFileSync(path.join(musicDir, fileName), Buffer.from([0]));
+  }
+  fs.writeFileSync(metadataFile, JSON.stringify({ version: 1, tracks: metadataTracks }), 'utf8');
   fs.writeFileSync(dataFile, JSON.stringify({
     version: 1,
     profiles: [{ id: 'initial', nom: 'Initial', emoji: '🎧' }],
@@ -57,6 +69,8 @@ async function main() {
       PORT: String(PORT),
       SONGLESS_DATA_FILE: dataFile,
       SONGLESS_BACKUP_DIR: backupDir,
+      SONGLESS_MUSIC_DIR: musicDir,
+      SONGLESS_METADATA_FILE: metadataFile,
     },
     stdio: ['ignore', 'pipe', 'pipe'],
     windowsHide: true,
@@ -113,6 +127,62 @@ async function main() {
     assert.deepStrictEqual(lists.body.collections[0].trackIds, ['a', 'b']);
     assert.strictEqual(lists.body.challenges[0].seed, 'HTTP-SEED');
     ok('les routes de collections et défis persistent leurs paramètres');
+
+    const blacklistCreated = await request('/api/blacklist', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        targetType: 'artist', targetValue: 'Alpha',
+        durationType: 'parties', durationAmount: 2,
+        modes: ['solo_title', 'classic'], reason: 'Rotation HTTP',
+      }),
+    });
+    assert.strictEqual(blacklistCreated.status, 201);
+    assert.strictEqual(blacklistCreated.body.remainingParties, 2);
+
+    const blacklistPreview = await request('/api/blacklist/preview', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        mode: 'solo_title',
+        rule: {
+          targetType: 'year', targetValue: '2004',
+          durationType: 'days', durationAmount: 1,
+        },
+      }),
+    });
+    assert.strictEqual(blacklistPreview.status, 200);
+    assert.strictEqual(blacklistPreview.body.total, 3);
+    assert.strictEqual(blacklistPreview.body.excluded, 2);
+    assert.strictEqual(blacklistPreview.body.remaining, 1);
+    assert.strictEqual(blacklistPreview.body.reasons[0].reasons.length > 0, true);
+    ok('l’aperçu HTTP cumule les exclusions et annonce les morceaux restants');
+
+    const trackIds = Object.keys(metadataTracks).map(fileName => Buffer.from(fileName).toString('base64url'));
+    const partyCreated = await request('/api/party/create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        mode: 'classic', profileId: 'initial', totalRounds: 2,
+        seed: 'BLACKLIST-HTTP', trackIds,
+      }),
+    });
+    assert.strictEqual(partyCreated.status, 201);
+    const afterPartyBlacklist = await request('/api/blacklist');
+    assert.strictEqual(afterPartyBlacklist.body.rules[0].remainingParties, 1);
+    ok('la création multijoueur applique la blacklist serveur et consomme une partie');
+
+    const lifted = await request(`/api/blacklist/${blacklistCreated.body.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ active: false }),
+    });
+    assert.strictEqual(lifted.status, 200);
+    assert.strictEqual(lifted.body.active, false);
+    const removedRule = await request(`/api/blacklist/${blacklistCreated.body.id}`, { method: 'DELETE' });
+    assert.strictEqual(removedRule.status, 200);
+    assert.strictEqual((await request('/api/blacklist')).body.rules.length, 0);
+    ok('une exclusion peut être levée puis supprimée immédiatement par HTTP');
 
     const exported = await request('/api/player/export');
     assert.strictEqual(exported.status, 200);

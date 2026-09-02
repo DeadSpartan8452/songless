@@ -20,6 +20,7 @@ const partyRounds = require('./lib/party-rounds');
 const partySuggestions = require('./lib/party-suggestions');
 const modeRegistry = require('./lib/mode-registry');
 const antivirus = require('./lib/antivirus');
+const blacklist = require('./lib/blacklist');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -536,6 +537,37 @@ function validPartyTrackIds(values) {
   return valid;
 }
 
+async function tracksFromIds(ids) {
+  const metadata = store.load().tracks;
+  const result = [];
+  for (const trackId of ids) {
+    const resolved = resoudreMorceau(trackId);
+    if (!resolved) continue;
+    result.push(await buildTrack(resolved.fileName, metadata[resolved.fileName]));
+  }
+  return result;
+}
+
+async function allBuiltTracks() {
+  const metadata = store.load().tracks;
+  const result = [];
+  for (const fileName of listAudioFiles()) {
+    result.push(await buildTrack(fileName, metadata[fileName]));
+  }
+  return result;
+}
+
+async function partyTrackIdsAfterBlacklist(values, mode) {
+  const validIds = validPartyTrackIds(values);
+  const built = await tracksFromIds(validIds);
+  const allowed = new Set(blacklist.evaluate(
+    built,
+    playerStore.blacklistRules(),
+    mode
+  ).allowed.map(track => track.id));
+  return validIds.filter(id => allowed.has(id));
+}
+
 async function partyTrackData(trackId) {
   const resolved = resoudreMorceau(trackId);
   if (!resolved || !fs.existsSync(resolved.filePath)) {
@@ -574,7 +606,77 @@ app.get('/api/party/modes', (_req, res) => {
   res.json({ modes: modeRegistry.publicModes() });
 });
 
-app.post('/api/party/create', (req, res) => {
+// ==========================================
+// EXCLUSIONS TEMPORAIRES DE LA BIBLIOTHÈQUE
+// ==========================================
+
+app.get('/api/blacklist', (_req, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.json({
+    rules: playerStore.blacklistRules(),
+    targetTypes: blacklist.TARGET_TYPES,
+    durationTypes: blacklist.DURATION_TYPES,
+    modes: blacklist.MODE_IDS,
+  });
+});
+
+app.post('/api/blacklist/preview', async (req, res) => {
+  try {
+    const existing = playerStore.blacklistRules();
+    let rules = existing;
+    if (req.body && req.body.rule) {
+      const previous = existing.find(rule => rule.id === String(req.body.rule.id || '')) || null;
+      const candidate = blacklist.normalizeRule(req.body.rule, previous);
+      rules = existing.filter(rule => rule.id !== candidate.id).concat(candidate);
+    }
+    const mode = String(req.body && req.body.mode || 'solo_title');
+    const tracks = await allBuiltTracks();
+    const result = blacklist.evaluate(tracks, rules, mode);
+    res.json({
+      total: tracks.length,
+      remaining: result.allowed.length,
+      excluded: result.excluded.length,
+      reasons: result.excluded.slice(0, 20).map(item => ({
+        id: item.track.id,
+        title: item.track.title,
+        reasons: item.rules.map(rule => rule.reason || `${rule.targetType} : ${rule.targetValue}`),
+      })),
+    });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+app.post('/api/blacklist', (req, res) => {
+  try {
+    res.status(201).json(playerStore.createBlacklistRule(req.body || {}));
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+app.put('/api/blacklist/:id', (req, res) => {
+  try {
+    const rule = playerStore.updateBlacklistRule(req.params.id, req.body || {});
+    if (!rule) return res.status(404).json({ error: 'Exclusion introuvable.' });
+    res.json(rule);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+app.delete('/api/blacklist/:id', (req, res) => {
+  if (!playerStore.deleteBlacklistRule(req.params.id)) {
+    return res.status(404).json({ error: 'Exclusion introuvable.' });
+  }
+  res.json({ success: true });
+});
+
+app.post('/api/blacklist/consume', (req, res) => {
+  res.json({ rules: playerStore.consumeBlacklistParty(req.body && req.body.mode) });
+});
+
+app.post('/api/party/create', async (req, res) => {
   try {
     const hostProfile = req.body.profileId ? profileById(req.body.profileId) : {
       id: 'host_player',
@@ -591,13 +693,19 @@ app.post('/api/party/create', (req, res) => {
         || rawSettings['audio-fx'] || (req.body && (req.body.audioFx || req.body.audiofx || req.body.audio_fx))
         || 'none',
     };
+    const partyMode = modeRegistry.normalizeModeId(req.body.mode);
+    const filteredTrackIds = await partyTrackIdsAfterBlacklist(req.body.trackIds, partyMode);
+    if (Array.isArray(req.body.trackIds) && req.body.trackIds.length && filteredTrackIds.length === 0) {
+      throw new Error('Toutes les chansons de cette sélection sont temporairement exclues.');
+    }
     const created = partyStore.create({
       mode: req.body.mode,
       totalRounds: req.body.totalRounds,
       seed: req.body.seed,
       settings: mergedSettings,
-      trackIds: validPartyTrackIds(req.body.trackIds),
+      trackIds: filteredTrackIds,
     });
+    playerStore.consumeBlacklistParty(partyMode);
     const hostPlayer = partyStore.join(created.party.code, hostProfile).player;
     if (hostPlayer) hostPlayer.host = true;
 

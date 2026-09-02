@@ -133,4 +133,29 @@ test('le classement en lot exige un aperçu distinct avant application', () => {
   assert.match(app, /bulkMetadataPreviewToken/);
 });
 
+test('la blacklist exige un aperçu, filtre le solo et reste administrable', () => {
+  const index = read('index.html');
+  const app = read('app.js');
+  for (const id of [
+    'blacklist-target-type',
+    'blacklist-duration-type',
+    'blacklist-modes',
+    'blacklist-preview-btn',
+    'blacklist-add-btn',
+    'blacklist-rules',
+  ]) {
+    assert.match(index, new RegExp(`id=["']${id}["']`));
+  }
+  assert.match(app, /blacklistPreviewFingerprint !== blacklistFormFingerprint\(\)/);
+  assert.match(app, /if \(isTrackBlacklisted\(t\)\) return false/);
+  assert.match(app, /data-blacklist-toggle/);
+  assert.match(app, /data-blacklist-delete/);
+});
+
+test('le rendu de bibliothèque accepte les métadonnées numériques', () => {
+  const app = read('app.js');
+  assert.match(app, /return String\(text == null \? '' : text\)/);
+  assert.match(app, /function renderLibraryMetadataFilters\(\) \{\s+const canonicalGenres/);
+});
+
 console.log(`\n${passed} tests statiques d’interface réussis.`);

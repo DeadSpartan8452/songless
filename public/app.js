@@ -47,6 +47,8 @@ const SUPPRESSION_SANS_SAISIE = 5;
 // Bibliothèque : n'afficher que les morceaux marqués « à renommer ».
 let filtreARenommer = false;
 let bulkMetadataPreviewToken = '';
+let blacklistRules = [];
+let blacklistPreviewFingerprint = '';
 let essaisDetail = [];              // [{ type, texte }] de la manche en cours
 let issueManche = null;             // null | 'win' | 'lose'
 let ecouteSeule = false;
@@ -149,6 +151,13 @@ const libraryGenreFilter = document.getElementById('library-genre-filter');
 const libraryGenreDetailFilter = document.getElementById('library-genre-detail-filter');
 const libraryYearFilter = document.getElementById('library-year-filter');
 const libraryFavoriteFilter = document.getElementById('library-favorite-filter');
+const blacklistTargetType = document.getElementById('blacklist-target-type');
+const blacklistTrackValue = document.getElementById('blacklist-track-value');
+const blacklistTargetValue = document.getElementById('blacklist-target-value');
+const blacklistDurationType = document.getElementById('blacklist-duration-type');
+const blacklistDurationAmount = document.getElementById('blacklist-duration-amount');
+const blacklistUntil = document.getElementById('blacklist-until');
+const blacklistReason = document.getElementById('blacklist-reason');
 
 // Éléments Stats
 const statsPlayed = document.getElementById('stats-played');
@@ -216,6 +225,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Configuration des écouteurs de la bibliothèque & upload
   initLibraryEvents();
+  initBlacklistEvents();
 
   // Statistiques : on ancre la session dès l'ouverture pour dater son début
   if (!lireStats('session')) {
@@ -2048,10 +2058,12 @@ function loadLibrary(callback = null) {
   Promise.all([
     fetch('/api/tracks').then(res => res.json()),
     fetch('/api/genres').then(res => res.json()).catch(() => ({ genres: [] })),
+    fetch('/api/blacklist').then(res => res.json()).catch(() => ({ rules: [] })),
   ])
-    .then(([trackData, genreData]) => {
+    .then(([trackData, genreData, blacklistData]) => {
       tracks = trackData;
       allGenres = genreData.genres || [];
+      blacklistRules = Array.isArray(blacklistData.rules) ? blacklistData.rules : [];
       tracksCountSpan.innerText = tracks.length;
 
       rebuildArtists();
@@ -2060,6 +2072,8 @@ function loadLibrary(callback = null) {
       renderGenreSelects();
       renderLibraryMetadataFilters();
       renderLibraryList();
+      renderBlacklistTargetOptions();
+      renderBlacklistRules();
       majBoutonsOptions();
 
       // L'ordre de passage dépend de la seed : on le recalcule à chaque chargement.
@@ -2081,6 +2095,8 @@ function loadLibrary(callback = null) {
       if (!currentTrack && playlist.length > 0) {
         startNewGame();
       }
+
+      consumeBlacklistForSeed();
 
       if (callback) callback();
     })
@@ -2202,6 +2218,293 @@ function renderLibraryList() {
   majCompteurARenommer();
   filterLibraryDisplay();   // la liste vient d'être reconstruite : on réapplique les filtres
   dessinerIcones();
+}
+
+// ==========================================
+// BLACKLIST TEMPORAIRE
+// ==========================================
+
+function blacklistSoloMode() {
+  if (reglages.reponse === 'artiste') return 'solo_artist';
+  if (reglages.reponse === 'annee') return 'solo_year';
+  return 'solo_title';
+}
+
+function blacklistKey(value) {
+  return String(value == null ? '' : value).trim().normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('fr');
+}
+
+function blacklistRuleExpired(rule) {
+  if (!rule || rule.active === false) return false;
+  if (rule.durationType === 'parties') return Number(rule.remainingParties) <= 0;
+  return Boolean(rule.endsAt && new Date(rule.endsAt).getTime() <= Date.now());
+}
+
+function isTrackBlacklisted(track, mode = blacklistSoloMode()) {
+  return blacklistRules.some(rule => {
+    if (!rule || rule.active === false || blacklistRuleExpired(rule)) return false;
+    const modes = Array.isArray(rule.modes) ? rule.modes : ['all'];
+    if (!modes.includes('all') && !modes.includes(mode)) return false;
+    const wanted = blacklistKey(rule.targetValue);
+    const year = Math.floor(Number(track.year) || 0);
+    if (rule.targetType === 'track') return blacklistKey(track.id) === wanted;
+    if (rule.targetType === 'artist') return blacklistKey(track.artist) === wanted;
+    if (rule.targetType === 'genre') return blacklistKey(track.genre) === wanted;
+    if (rule.targetType === 'year') return year > 0 && String(year) === wanted;
+    if (rule.targetType === 'decade') {
+      return year > 0 && String(Math.floor(year / 10) * 10) === wanted.replace(/s$/, '');
+    }
+    if (rule.targetType === 'theme') {
+      return [track.theme, track.genreDetail].concat(Array.isArray(track.tags) ? track.tags : [])
+        .some(value => blacklistKey(value) === wanted);
+    }
+    return false;
+  });
+}
+
+function blacklistModesSelected() {
+  const checked = [...document.querySelectorAll('#blacklist-modes input:checked')]
+    .map(input => input.value);
+  return checked.length ? checked : ['all'];
+}
+
+function blacklistFormPayload() {
+  const type = blacklistTargetType.value;
+  return {
+    targetType: type,
+    targetValue: type === 'track' ? blacklistTrackValue.value : blacklistTargetValue.value.trim(),
+    durationType: blacklistDurationType.value,
+    durationAmount: Number(blacklistDurationAmount.value) || 1,
+    until: blacklistDurationType.value === 'until' && blacklistUntil.value
+      ? new Date(blacklistUntil.value).toISOString() : undefined,
+    modes: blacklistModesSelected(),
+    reason: blacklistReason.value.trim(),
+    active: true,
+  };
+}
+
+function blacklistFormFingerprint() {
+  return JSON.stringify(blacklistFormPayload());
+}
+
+function invalidateBlacklistPreview() {
+  blacklistPreviewFingerprint = '';
+  const preview = document.getElementById('blacklist-preview');
+  const add = document.getElementById('blacklist-add-btn');
+  if (preview) preview.classList.add('hidden');
+  if (add) add.disabled = true;
+}
+
+function renderBlacklistTargetOptions() {
+  if (!blacklistTargetType) return;
+  const type = blacklistTargetType.value;
+  const datalist = document.getElementById('blacklist-values');
+  blacklistTrackValue.classList.toggle('hidden', type !== 'track');
+  blacklistTargetValue.classList.toggle('hidden', type === 'track');
+
+  if (type === 'track') {
+    const keep = blacklistTrackValue.value;
+    blacklistTrackValue.innerHTML = tracks
+      .slice().sort((a, b) => a.title.localeCompare(b.title, 'fr'))
+      .map(track => `<option value="${escapeHtml(track.id)}">${escapeHtml(track.title)} — ${escapeHtml(track.artist)}</option>`)
+      .join('');
+    if ([...blacklistTrackValue.options].some(option => option.value === keep)) {
+      blacklistTrackValue.value = keep;
+    }
+    return;
+  }
+
+  let values = [];
+  if (type === 'artist') values = tracks.map(track => track.artist).filter(Boolean);
+  if (type === 'genre') values = tracks.map(track => track.genre).filter(Boolean);
+  if (type === 'theme') values = tracks.flatMap(track => [track.theme, track.genreDetail]
+    .concat(Array.isArray(track.tags) ? track.tags : [])).filter(Boolean);
+  if (type === 'year') values = tracks.map(track => track.year).filter(Boolean);
+  if (type === 'decade') values = tracks.map(track => track.year).filter(Boolean)
+    .map(year => `${Math.floor(year / 10) * 10}s`);
+  values = [...new Set(values.map(String))].sort((a, b) => a.localeCompare(b, 'fr', { numeric: true }));
+  datalist.innerHTML = values.map(value => `<option value="${escapeHtml(value)}"></option>`).join('');
+  blacklistTargetValue.placeholder = values.length ? `Ex. : ${values[0]}` : 'Saisir une valeur';
+}
+
+function blacklistDurationLabel(rule) {
+  if (rule.durationType === 'parties') {
+    return `${rule.remainingParties} partie${rule.remainingParties > 1 ? 's' : ''} restante${rule.remainingParties > 1 ? 's' : ''}`;
+  }
+  return rule.endsAt
+    ? `jusqu’au ${new Date(rule.endsAt).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' })}`
+    : 'durée inconnue';
+}
+
+function renderBlacklistRules() {
+  const zone = document.getElementById('blacklist-rules');
+  const counter = document.getElementById('blacklist-live-count');
+  if (!zone || !counter) return;
+  const active = blacklistRules.filter(rule => rule.active !== false && !blacklistRuleExpired(rule));
+  counter.innerText = `${active.length} active${active.length > 1 ? 's' : ''}`;
+  if (!blacklistRules.length) {
+    zone.innerHTML = '<div class="blacklist-empty">Aucune exclusion : toute la bibliothèque peut jouer.</div>';
+    return;
+  }
+  const targetLabels = {
+    track: 'Morceau', artist: 'Artiste', genre: 'Genre', theme: 'Thème', year: 'Année', decade: 'Décennie',
+  };
+  zone.innerHTML = blacklistRules.map(rule => `
+    <div class="blacklist-rule${rule.active === false ? ' paused' : ''}" data-blacklist-id="${escapeHtml(rule.id)}">
+      <div class="blacklist-rule-main">
+        <strong>${escapeHtml(targetLabels[rule.targetType] || 'Cible')} · ${escapeHtml(rule.targetValue)}</strong>
+        <span>${escapeHtml(rule.reason || 'Sans motif')} · ${escapeHtml(blacklistDurationLabel(rule))}</span>
+      </div>
+      <div class="blacklist-rule-actions">
+        <button class="ghost-btn small" data-blacklist-toggle="${escapeHtml(rule.id)}">
+          ${rule.active === false ? 'Réactiver' : 'Lever'}
+        </button>
+        <button class="danger-btn-text" data-blacklist-delete="${escapeHtml(rule.id)}" aria-label="Supprimer l’exclusion">×</button>
+      </div>
+    </div>`).join('');
+
+  zone.querySelectorAll('[data-blacklist-toggle]').forEach(button => {
+    button.addEventListener('click', () => toggleBlacklistRule(button.dataset.blacklistToggle));
+  });
+  zone.querySelectorAll('[data-blacklist-delete]').forEach(button => {
+    button.addEventListener('click', () => deleteBlacklistRule(button.dataset.blacklistDelete));
+  });
+}
+
+async function refreshBlacklistRules(render = true) {
+  const response = await fetch('/api/blacklist');
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.error || 'Blacklist inaccessible.');
+  blacklistRules = Array.isArray(data.rules) ? data.rules : [];
+  if (render) renderBlacklistRules();
+  return blacklistRules;
+}
+
+async function previewBlacklistRule() {
+  const preview = document.getElementById('blacklist-preview');
+  const add = document.getElementById('blacklist-add-btn');
+  try {
+    const payload = blacklistFormPayload();
+    if (!payload.targetValue) throw new Error('Choisis une cible.');
+    const response = await fetch('/api/blacklist/preview', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ rule: payload, mode: blacklistSoloMode() }),
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || 'Aperçu impossible.');
+    preview.classList.remove('hidden', 'danger');
+    preview.classList.toggle('danger', data.remaining === 0);
+    preview.innerHTML = `<strong>${data.remaining} morceau${data.remaining > 1 ? 'x' : ''} disponible${data.remaining > 1 ? 's' : ''}</strong>
+      sur ${data.total} · ${data.excluded} écarté${data.excluded > 1 ? 's' : ''} dans le mode solo actuel.`;
+    blacklistPreviewFingerprint = blacklistFormFingerprint();
+    add.disabled = data.remaining === 0;
+  } catch (error) {
+    invalidateBlacklistPreview();
+    showToast(error.message, 'error');
+  }
+}
+
+async function addBlacklistRule() {
+  if (blacklistPreviewFingerprint !== blacklistFormFingerprint()) {
+    invalidateBlacklistPreview();
+    return showToast('Prévisualise à nouveau cette exclusion avant de l’activer.', 'warn');
+  }
+  try {
+    const response = await fetch('/api/blacklist', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(blacklistFormPayload()),
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || 'Activation impossible.');
+    invalidateBlacklistPreview();
+    blacklistReason.value = '';
+    showToast('Exclusion activée immédiatement.', 'ok');
+    loadLibrary();
+  } catch (error) {
+    showToast(error.message, 'error');
+  }
+}
+
+async function toggleBlacklistRule(id) {
+  const rule = blacklistRules.find(item => item.id === id);
+  if (!rule) return;
+  try {
+    const response = await fetch(`/api/blacklist/${encodeURIComponent(id)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ active: rule.active === false }),
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || 'Modification impossible.');
+    await refreshBlacklistRules();
+    rebuildPlaylist();
+    showToast(data.active === false ? 'Exclusion levée.' : 'Exclusion réactivée.', 'ok');
+  } catch (error) {
+    showToast(error.message, 'error');
+  }
+}
+
+async function deleteBlacklistRule(id) {
+  try {
+    const response = await fetch(`/api/blacklist/${encodeURIComponent(id)}`, { method: 'DELETE' });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || 'Suppression impossible.');
+    await refreshBlacklistRules();
+    rebuildPlaylist();
+    showToast('Exclusion supprimée.', 'ok');
+  } catch (error) {
+    showToast(error.message, 'error');
+  }
+}
+
+function consumeBlacklistForSeed() {
+  if (!currentSeed || !blacklistRules.some(rule => rule.active !== false
+    && rule.durationType === 'parties' && !blacklistRuleExpired(rule))) return;
+  const mode = blacklistSoloMode();
+  const key = `songless_blacklist_consumed:${currentSeed}:${mode}`;
+  try {
+    if (sessionStorage.getItem(key)) return;
+    sessionStorage.setItem(key, '1');
+  } catch (_) { /* le serveur reste la source de vérité */ }
+  fetch('/api/blacklist/consume', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ mode }),
+  }).catch(() => {});
+}
+
+function initBlacklistEvents() {
+  if (!blacklistTargetType) return;
+  const form = document.getElementById('blacklist-form');
+  const modes = document.getElementById('blacklist-modes');
+  blacklistTargetType.addEventListener('change', () => {
+    blacklistTargetValue.value = '';
+    renderBlacklistTargetOptions();
+    invalidateBlacklistPreview();
+  });
+  blacklistDurationType.addEventListener('change', () => {
+    const until = blacklistDurationType.value === 'until';
+    document.getElementById('blacklist-amount-field').classList.toggle('hidden', until);
+    document.getElementById('blacklist-until-field').classList.toggle('hidden', !until);
+    invalidateBlacklistPreview();
+  });
+  form.addEventListener('input', invalidateBlacklistPreview);
+  form.addEventListener('change', invalidateBlacklistPreview);
+  modes.addEventListener('change', event => {
+    const input = event.target;
+    if (!(input instanceof HTMLInputElement)) return;
+    const all = modes.querySelector('input[value="all"]');
+    const specifics = [...modes.querySelectorAll('input:not([value="all"])')];
+    if (input === all && all.checked) specifics.forEach(item => { item.checked = false; });
+    if (input !== all && input.checked) all.checked = false;
+    if (![...modes.querySelectorAll('input:checked')].length) all.checked = true;
+    invalidateBlacklistPreview();
+  });
+  document.getElementById('blacklist-preview-btn').addEventListener('click', previewBlacklistRule);
+  document.getElementById('blacklist-add-btn').addEventListener('click', addBlacklistRule);
 }
 
 async function toggleTrackFavorite(track, button) {
@@ -3855,7 +4158,7 @@ function chargerManches() {
 }
 
 /** Applique une nouvelle seed : nouvel ordre, retour au premier morceau. */
-function applySeed(seed, { silent = false } = {}) {
+async function applySeed(seed, { silent = false } = {}) {
   currentSeed = seed;
   playlistIndex = 0;
   // Nouvelle seed = nouvelle partie : ordre et extraits changent, la mémoire
@@ -3863,9 +4166,13 @@ function applySeed(seed, { silent = false } = {}) {
   manches.clear();
   sauverManches();
   saveSessionPosition();
+  try {
+    await refreshBlacklistRules();
+  } catch (_) { /* la dernière copie connue reste utilisable hors ligne */ }
   rebuildPlaylist({ keepCurrent: false });
   updateSessionUI();
   if (playlist.length > 0) startNewGame();
+  consumeBlacklistForSeed();
   if (!silent) showToast(`Nouvelle seed : ${formatSeed(seed)}`);
 }
 
@@ -3879,6 +4186,7 @@ function rebuildPlaylist({ keepCurrent = true } = {}) {
   const shuffled = seededShuffle(base, rngFrom(currentSeed));
 
   playlist = shuffled.filter(t => {
+    if (isTrackBlacklisted(t)) return false;
     if (activeGenres.size > 0 && !activeGenres.has(t.genre || 'Autre')) return false;
     if (activeDecades.size > 0 && !activeDecades.has(decennieDe(t))) return false;
     // Un morceau sans artiste n'est pas jouable en mode « Deviner l'artiste »,
@@ -4217,6 +4525,8 @@ function renderGenreSelects() {
 }
 
 function renderLibraryMetadataFilters() {
+  const canonicalGenres = window.__songlessGenres || [];
+  const names = canonicalGenres.length ? canonicalGenres : allGenres.map(genre => genre.name);
   if (libraryGenreDetailFilter) {
     const keep = libraryGenreDetailFilter.value;
     const details = [...new Set(tracks.map(track => track.genreDetail).filter(Boolean))]
@@ -4878,7 +5188,8 @@ function escapeHtml(text) {
     '"': '&quot;',
     "'": '&#039;'
   };
-  return text.replace(/[&<>"']/g, function(m) { return map[m]; });
+  return String(text == null ? '' : text)
+    .replace(/[&<>"']/g, function(m) { return map[m]; });
 }
 
 function normalizeString(str) {

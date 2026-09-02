@@ -194,6 +194,27 @@ Il ne correspond ni à un fichier absent ni à une erreur de l’application.
 - la TV célèbre une bonne réponse, mais ne diffuse pas l’échec individuel d’un
   joueur pendant que les autres cherchent encore.
 
+### Blacklist temporaire configurable
+
+- cibles morceau, artiste, genre, thème, année et décennie, sans traduction ni
+  modification des métadonnées sources ;
+- durées en parties, heures, jours, semaines ou date de fin ;
+- portée globale ou limitée aux modes solo et multijoueurs choisis ;
+- motif visible, activation immédiate, levée anticipée et suppression ;
+- purge automatique des règles arrivées à échéance ;
+- aperçu serveur obligatoire du nombre de morceaux restant avant création ;
+- filtrage réappliqué par le serveur à la création multijoueur ;
+- consommation solo une seule fois par seed et par mode ;
+- persistance dans la sauvegarde partagée et export/import complet ;
+- tests purs et HTTP sur des fichiers temporaires, sans toucher aux données
+  personnelles ni au port 3000.
+
+Le contrôle Chromium du panneau a découvert puis permis de corriger deux
+régressions de Bibliothèque auparavant invisibles aux tests statiques : une
+liste de genres utilisant une variable hors portée et l’échappement d’une année
+numérique comme du texte. La passe finale à 1440 × 1000 et 390 × 844 ne relève
+aucune erreur console, aucun débordement ou texte coupé, et aucune violation Axe.
+
 ## Points importants à traiter ensuite
 
 ### Architecture

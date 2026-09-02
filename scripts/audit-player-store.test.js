@@ -31,6 +31,13 @@ try {
       playersCount: 1,
       players: [{ nom: 'Alpha', emoji: '🎧', score: 5, rank: 1 }],
     }],
+    blacklist: [{
+      id: 'bl_test', targetType: 'genre', targetValue: 'Rock',
+      durationType: 'until', durationAmount: 1,
+      endsAt: '2099-09-02T12:00:00.000Z', modes: ['solo_title'],
+      reason: 'Test stockage', active: true,
+      createdAt: '2026-09-02T12:00:00.000Z', updatedAt: '2026-09-02T12:00:00.000Z',
+    }],
   }), 'utf8');
 
   process.env.SONGLESS_DATA_FILE = dataFile;
@@ -42,6 +49,13 @@ try {
   assert.strictEqual(loaded[0].id, 'ph_test');
   assert.strictEqual(loaded[0].winner.nom, 'Alpha');
   ok('l’historique multijoueur survit au chargement');
+
+  assert.strictEqual(store.blacklistRules().length, 1);
+  assert.strictEqual(store.blacklistRules()[0].reason, 'Test stockage');
+  const pausedRule = store.updateBlacklistRule('bl_test', { active: false });
+  assert.strictEqual(pausedRule.active, false);
+  assert.strictEqual(store.updateBlacklistRule('absente', { active: false }), null);
+  ok('la blacklist survit au chargement et permet une levée anticipée');
 
   const alpha = store.upsertProfile({
     id: 'alpha<>',
@@ -175,6 +189,8 @@ try {
   assert.deepStrictEqual(restored.collections[0].trackIds, ['titre-a', 'titre-b']);
   assert.strictEqual(restored.collections[0].updatedAt, beforeBackup.collections[0].updatedAt);
   assert.strictEqual(restored.partyHistory[0].id, 'ph_test');
+  assert.strictEqual(restored.blacklist[0].id, 'bl_test');
+  assert.strictEqual(restored.blacklist[0].active, false);
   ok('une sauvegarde exportée restaure profils, listes, statistiques et historique');
 
   assert.strictEqual(store.deleteProfile('beta'), true);

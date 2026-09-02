@@ -1232,6 +1232,212 @@ code {
   display: none !important;
 }
 
+/* Blacklist : une console de rotation compacte, plus proche d'un rack audio
+   que d'un formulaire administratif. Le liseré ambre signale une restriction
+   sans employer le rouge réservé aux erreurs et suppressions. */
+.blacklist-card {
+  position: relative;
+  overflow: hidden;
+  border-color: rgba(245, 158, 11, 0.34);
+  background:
+    linear-gradient(145deg, rgba(245, 158, 11, 0.055), transparent 46%),
+    var(--card-bg);
+}
+
+.blacklist-card::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: linear-gradient(#f59e0b, #a855f7 70%, transparent);
+}
+
+.section-kicker {
+  display: block;
+  margin-bottom: 5px;
+  color: #fbbf24;
+  font-size: 0.67rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.blacklist-live-count {
+  flex: 0 0 auto;
+  padding: 5px 9px;
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  border-radius: 999px;
+  color: #fcd34d;
+  background: rgba(245, 158, 11, 0.08);
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.blacklist-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.blacklist-form label,
+.blacklist-modes label {
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.blacklist-form label > span {
+  display: block;
+  margin: 0 0 6px 2px;
+}
+
+.blacklist-form small {
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.blacklist-form input,
+.blacklist-form select {
+  width: 100%;
+  min-height: 42px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text);
+  background: #0b0b0f;
+  padding: 9px 11px;
+  font: inherit;
+}
+
+.blacklist-reason-field {
+  grid-column: 1 / -1;
+}
+
+.blacklist-modes {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px 10px;
+  margin: 16px 0;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.18);
+}
+
+.blacklist-modes legend {
+  padding: 0 6px;
+  color: var(--text);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.blacklist-modes label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.blacklist-modes input {
+  accent-color: #f59e0b;
+}
+
+.blacklist-preview {
+  margin: 12px 0;
+  padding: 12px 14px;
+  border: 1px solid rgba(16, 185, 129, 0.34);
+  border-radius: 12px;
+  background: rgba(16, 185, 129, 0.075);
+  color: #a7f3d0;
+  font-size: 0.84rem;
+  line-height: 1.45;
+}
+
+.blacklist-preview.danger {
+  border-color: rgba(255, 107, 107, 0.45);
+  background: rgba(255, 107, 107, 0.08);
+  color: #fecaca;
+}
+
+.blacklist-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.blacklist-rules {
+  display: grid;
+  gap: 9px;
+  margin-top: 18px;
+}
+
+.blacklist-rule {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px 14px;
+  align-items: center;
+  padding: 11px 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.blacklist-rule.paused {
+  opacity: 0.58;
+}
+
+.blacklist-rule-main strong,
+.blacklist-rule-main span {
+  display: block;
+}
+
+.blacklist-rule-main strong {
+  color: var(--text);
+  font-size: 0.88rem;
+}
+
+.blacklist-rule-main span {
+  margin-top: 3px;
+  color: var(--text-muted);
+  font-size: 0.74rem;
+}
+
+.blacklist-rule-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.blacklist-rule-actions button {
+  min-height: 34px;
+  padding: 6px 9px;
+}
+
+.blacklist-empty {
+  padding: 12px;
+  color: var(--text-muted);
+  text-align: center;
+  font-size: 0.8rem;
+}
+
+@media (max-width: 620px) {
+  .blacklist-form,
+  .blacklist-modes {
+    grid-template-columns: 1fr;
+  }
+
+  .blacklist-reason-field {
+    grid-column: auto;
+  }
+
+  .blacklist-actions {
+    flex-direction: column;
+  }
+
+  .blacklist-actions button {
+    width: 100%;
+  }
+}
+
 /* Scrollbar Customization */
 ::-webkit-scrollbar {
   width: 6px;

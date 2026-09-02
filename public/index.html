@@ -785,6 +785,88 @@
             <div class="download-log hidden" id="playlist-log"></div>
           </div>
 
+          <!-- Exclusions temporaires -->
+          <div class="download-card blacklist-card" id="blacklist-card">
+            <div class="download-head">
+              <div>
+                <span class="section-kicker">Rotation musicale</span>
+                <h3><i data-lucide="shield-ban"></i> Blacklist temporaire</h3>
+              </div>
+              <span class="blacklist-live-count" id="blacklist-live-count">0 active</span>
+            </div>
+            <p class="download-hint">
+              Écarte provisoirement un morceau, un artiste ou toute une famille musicale.
+              Songless montre toujours combien de titres resteront avant d’activer la règle.
+            </p>
+
+            <div class="blacklist-form" id="blacklist-form">
+              <label>
+                <span>Cible</span>
+                <select id="blacklist-target-type">
+                  <option value="track">Morceau</option>
+                  <option value="artist">Artiste</option>
+                  <option value="genre">Genre</option>
+                  <option value="theme">Thème / sous-genre</option>
+                  <option value="year">Année</option>
+                  <option value="decade">Décennie</option>
+                </select>
+              </label>
+              <label class="blacklist-target-field">
+                <span>Valeur</span>
+                <select id="blacklist-track-value" aria-label="Morceau à exclure"></select>
+                <input class="hidden" id="blacklist-target-value" list="blacklist-values"
+                       maxlength="300" placeholder="Choisir une valeur">
+                <datalist id="blacklist-values"></datalist>
+              </label>
+              <label>
+                <span>Durée</span>
+                <select id="blacklist-duration-type">
+                  <option value="parties">Parties</option>
+                  <option value="hours">Heures</option>
+                  <option value="days">Jours</option>
+                  <option value="weeks">Semaines</option>
+                  <option value="until">Jusqu’à une date</option>
+                </select>
+              </label>
+              <label id="blacklist-amount-field">
+                <span>Quantité</span>
+                <input type="number" id="blacklist-duration-amount" min="1" max="9999" value="3">
+              </label>
+              <label class="hidden" id="blacklist-until-field">
+                <span>Date de fin</span>
+                <input type="datetime-local" id="blacklist-until">
+              </label>
+              <label class="blacklist-reason-field">
+                <span>Motif <small>(facultatif)</small></span>
+                <input type="text" id="blacklist-reason" maxlength="240"
+                       placeholder="Ex. : trop entendue ce soir">
+              </label>
+            </div>
+
+            <fieldset class="blacklist-modes" id="blacklist-modes">
+              <legend>Où appliquer l’exclusion ?</legend>
+              <label><input type="checkbox" value="all" checked> Tous les modes</label>
+              <label><input type="checkbox" value="solo_title"> Solo · titre</label>
+              <label><input type="checkbox" value="solo_artist"> Solo · artiste</label>
+              <label><input type="checkbox" value="solo_year"> Solo · année</label>
+              <label><input type="checkbox" value="classic"> Multi · classique</label>
+              <label><input type="checkbox" value="buzzer"> Multi · buzzer</label>
+              <label><input type="checkbox" value="royale"> Multi · royale</label>
+              <label><input type="checkbox" value="duel"> Multi · duel</label>
+            </fieldset>
+
+            <div class="blacklist-preview hidden" id="blacklist-preview" role="status"></div>
+            <div class="blacklist-actions">
+              <button class="ghost-btn accent" id="blacklist-preview-btn">
+                <i data-lucide="scan-search"></i> Prévisualiser
+              </button>
+              <button class="cta-btn" id="blacklist-add-btn" disabled>
+                <i data-lucide="shield-check"></i> Activer l’exclusion
+              </button>
+            </div>
+            <div class="blacklist-rules" id="blacklist-rules"></div>
+          </div>
+
           <!-- Diagnostic -->
           <div class="download-card">
             <div class="download-head">

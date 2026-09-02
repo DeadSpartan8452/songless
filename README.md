@@ -51,6 +51,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "<ch
 | Télécommande Kahoot sur téléphone | `Songless (telephone).bat` + bouton 📱 |
 | Détection de doublons | automatique au téléchargement + `tools/dedupe.js` |
 | Diagnostic de la bibliothèque | onglet **Bibliothèque** → « État de la bibliothèque » |
+| Exclusions temporaires par morceau, artiste, genre ou période | onglet **Bibliothèque** → « Blacklist temporaire » |
 
 ---
 
@@ -533,7 +534,25 @@ pastille.
 
 ---
 
-## 8. Statistiques et résumé partageable
+## 8. Blacklist temporaire
+
+Onglet **Bibliothèque** → « Blacklist temporaire ». Choisis une cible, une
+durée et les modes concernés, puis clique sur **Prévisualiser**. Songless indique
+combien de morceaux resteront ; l’activation reste bloquée tant que cet aperçu
+n’a pas été produit pour les valeurs actuelles.
+
+Une exclusion peut viser un morceau, un artiste, un genre, un thème ou
+sous-genre, une année ou une décennie. Elle dure un nombre de parties, quelques
+heures, jours ou semaines, ou jusqu’à une date précise. Le bouton **Lever** la
+désactive immédiatement sans l’effacer ; le bouton × la supprime. Les règles
+expirées disparaissent automatiquement.
+
+Le filtrage est également vérifié par le serveur lors d’une soirée
+multijoueur : un téléphone ne peut pas réintroduire un morceau exclu.
+
+---
+
+## 9. Statistiques et résumé partageable
 
 L'onglet **Statistiques** ajoute, sous les compteurs habituels :
 
@@ -565,6 +584,7 @@ Le bouton **Partager** en fin de manche copie la même chose.
 server.js              serveur Express (API + site)
 lib/
   mode-registry.js      registre unique des modes et de leurs capacités
+  blacklist.js          validation, expiration et filtrage des exclusions
   party-access.js       jetons temporaires TV et télécommande administrateur
   party-answers.js      validation commune des titres, artistes et années
   party-buzzer.js       verrou, délai et pénalités du mode Buzzer
@@ -575,7 +595,7 @@ lib/
   party-royale.js       vies, éliminations et duel final Battle Royale
   party-suggestions.js  autocomplétion sûre des réponses de soirée
   party-teams.js        équipes, capitaines, demandes et assignations hôte
-  player-store.js       profils, statistiques, listes et sauvegardes partagés
+  player-store.js       profils, statistiques, listes, blacklist et sauvegardes
   party.js              salons, manches, buzzers et scores temporaires
   antivirus.js          analyse Defender avant installation d'un fichier
   titles.js            nettoyage, translittération, genres, alias
