@@ -247,7 +247,7 @@
       ? window.songlessTrophies.getUnlockedIds()
       : []);
     const unlockedCount = unlockedIds.size;
-    const totalCount = allTrophies.length || 105;
+    const totalCount = allTrophies.length || 205;
     const percent = Math.min(100, Math.round((unlockedCount / totalCount) * 100));
 
     byId('palmares-count-label').innerText = `${unlockedCount} / ${totalCount} (${percent}%)`;
@@ -256,18 +256,19 @@
     byId('palmares-trophies-list').innerHTML = allTrophies.length
       ? allTrophies.map(t => {
           const unlocked = unlockedIds.has(t.id);
+          const hiddenLocked = Boolean(t.hidden && !unlocked);
           return `
             <div class="trophy-item-mobile ${unlocked ? 'unlocked' : 'locked'}">
-              <span class="trophy-mobile-icon">${t.icon || '🏆'}</span>
+              <span class="trophy-mobile-icon">${hiddenLocked ? '🔒' : (t.icon || '🏆')}</span>
               <div class="trophy-mobile-info">
-                <div class="trophy-mobile-title">${escapeHtml(t.name || t.id)}</div>
-                <div class="trophy-mobile-desc">${escapeHtml(t.desc || '')}</div>
+                <div class="trophy-mobile-title">${hiddenLocked ? 'Succès secret' : escapeHtml(t.name || t.id)}</div>
+                <div class="trophy-mobile-desc">${hiddenLocked ? 'Condition cachée jusqu’au déblocage.' : escapeHtml(t.desc || '')}</div>
               </div>
               <span class="trophy-mobile-status">${unlocked ? '✓ Débloqué' : '🔒'}</span>
             </div>
           `;
         }).join('')
-      : '<div class="wait-note">105 trophées à débloquer au fil des soirées !</div>';
+      : '<div class="wait-note">205 trophées à débloquer au fil des soirées !</div>';
 
     sheet.classList.remove('hidden');
   }
@@ -1421,11 +1422,20 @@
     const me = currentPlayer();
     const won = Boolean(me && me.correct);
     if (won && window.songlessTrophies) {
-      window.songlessTrophies.unlock('party_win_round');
-      if (state.mode === 'buzzer') window.songlessTrophies.unlock('party_buzz_win');
-      if (state.mode === 'royale') window.songlessTrophies.unlock('battle_royale_round');
-      if (state.mode === 'duel') window.songlessTrophies.unlock('battle_duel_round');
+      if (state.mode === 'buzzer') window.songlessTrophies.unlock('party_buzzer_win');
       if (me.attempts && me.attempts.length === 1) window.songlessTrophies.unlock('speed_first');
+    }
+    if (window.songlessTrophies && typeof window.songlessTrophies.record === 'function') {
+      const attempts = me && Array.isArray(me.attempts) ? me.attempts.length : 0;
+      window.songlessTrophies.record('round', {
+        win: won,
+        firstTry: Boolean(won && attempts === 1),
+        late: Boolean(won && attempts >= 5),
+        mode: state.mode || 'classic',
+        special: state.mode !== 'classic',
+        trackKey: `${state.revealedTrack.title || ''}|${state.revealedTrack.artist || ''}`,
+        artist: state.revealedTrack.artist || '',
+      }, `${state.code}:${state.round}`);
     }
     const verdict = won
       ? '<span class="round-result-icon" aria-hidden="true">🏆</span><span class="correct">Gagné !</span>'
@@ -1456,12 +1466,17 @@
       const myRank = rankByProfileId.get(state.viewerProfileId) || 0;
       const medal = myRank === 1 ? '🥇 1er' : myRank === 2 ? '🥈 2e' : myRank === 3 ? '🥉 3e' : `${myRank}e`;
       if (myRank === 1 && window.songlessTrophies) {
-        window.songlessTrophies.unlock('party_first_place');
+        window.songlessTrophies.unlock('party_podium_gold');
         if (state.mode === 'royale') window.songlessTrophies.unlock('battle_royale_win');
-        if (state.mode === 'duel') window.songlessTrophies.unlock('battle_duel_win');
+        if (state.mode === 'duel') window.songlessTrophies.unlock('duel_win');
       }
-      if (sorted.length >= 4 && window.songlessTrophies) {
-        window.songlessTrophies.unlock('party_full_house');
+      if (window.songlessTrophies && typeof window.songlessTrophies.record === 'function') {
+        window.songlessTrophies.record('party_finished', {
+          mode: state.mode || 'classic',
+          win: myRank === 1,
+          rank: myRank,
+          playerCount: sorted.length,
+        }, state.code);
       }
       let badgesHtml = '';
       if (me && me.accolades) {

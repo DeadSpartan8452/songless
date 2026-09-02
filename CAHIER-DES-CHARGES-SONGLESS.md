@@ -9,7 +9,9 @@ Projet : application locale `songless-local`, sans publication ni dépôt public
 Songless doit devenir une régie de blind test complète, utilisable aussi bien seul
 que pendant une soirée :
 
-- le PC qui lance `Songless.bat` reste l’autorité technique et de sécurité ;
+- l’appareil qui lance Songless avec le lanceur officiel — `Songless.bat` sur
+  Windows ou l’application Songless sur téléphone — devient l’autorité technique
+  et de sécurité de son instance ;
 - un écran de télévision peut afficher une vue spectaculaire, sans commande
   sensible ;
 - un téléphone administrateur peut piloter la partie après autorisation explicite
@@ -26,9 +28,12 @@ spectacle et les contrôleurs la rapidité.
 
 ## 2. Principes non négociables
 
-1. **Autorité locale** : seul le processus lancé par `Songless.bat` peut créer une
-   partie avec les pleins pouvoirs, modifier la bibliothèque, importer ou supprimer
-   des données, gérer les profils et déléguer une télécommande administrateur.
+1. **Autorité locale** : seul le processus lancé par le lanceur officiel peut créer
+   une partie avec les pleins pouvoirs, modifier la bibliothèque, importer ou
+   supprimer des données, gérer les profils et déléguer une télécommande
+   administrateur. Sur Windows, ce lanceur reste `Songless.bat`. Sur téléphone,
+   il s’agit d’une application installable Songless : Android ne peut pas exécuter
+   directement un fichier `.bat`.
 2. **Délégation limitée** : le téléphone administrateur reçoit un jeton temporaire,
    révocable et limité aux commandes de la partie. Il ne reçoit jamais le jeton
    hôte principal et n’accède pas aux fichiers ni aux réglages sensibles.
@@ -57,6 +62,91 @@ spectacle et les contrôleurs la rapidité.
 - possède toutes les commandes de manche ;
 - gère fichiers, profils, sauvegardes, métadonnées et diagnostic ;
 - reste le seul détenteur du secret hôte principal.
+
+### 3.1 bis Téléphone hôte autonome
+
+Le téléphone doit pouvoir remplacer entièrement le PC hôte, sans PC allumé sur le
+réseau. L’expérience porte le même nom « Songless », même si Android utilise une
+application installable et non le fichier Windows `Songless.bat`.
+
+- le lanceur mobile démarre et arrête une instance Songless locale sur le téléphone ;
+- Songless détecte le type d’appareil et ouvre automatiquement une interface admin
+  tactile, responsive et fonctionnellement équivalente à celle du PC ;
+- l’hôte mobile peut sélectionner la bibliothèque musicale autorisée par Android,
+  gérer profils et sauvegardes, choisir les modes, créer la partie et commander
+  chaque manche ;
+- un écran « Inviter et afficher » montre en grand les QR codes Joueur, TV et
+  Télécommande, les adresses LAN utiles et l’état des connexions ;
+- le téléphone peut ouvrir localement la vue TV ou fournir son QR à un autre écran ;
+- le serveur reste actif écran verrouillé ou application en arrière-plan dans les
+  limites autorisées par Android, avec notification persistante explicite ;
+- une fermeture ou un redémarrage restaure proprement la partie et les jetons encore
+  valides, sans dupliquer le serveur ;
+- le mode local et LAN fonctionne sans Internet.
+
+La preuve d’autorité n’est pas la simple présence d’un fichier, falsifiable depuis
+un navigateur. Le lanceur qui crée l’instance génère et conserve un secret hôte ou
+une clé d’appareil dans le stockage sécurisé du système. L’interface ouverte par ce
+lanceur reçoit une session admin locale liée à cette instance ; aucun autre onglet,
+appareil ou fichier copié ne devient administrateur automatiquement.
+
+Contraintes de réalisation mobile :
+
+- une PWA seule n’est retenue que si elle peut réellement héberger le serveur,
+  accéder durablement aux morceaux et survivre à l’arrière-plan ; sinon utiliser
+  une application Android native ou un conteneur embarquant le runtime nécessaire ;
+- accès aux morceaux via le sélecteur de dossiers Android, sans exiger de terminal ;
+- aucune clé durable en clair dans les fichiers partagés ;
+- contrôle réel sur le POCO X5 Pro 5G : lancement, arrière-plan, reprise, QR,
+  connexion d’un joueur et d’une TV, console sans erreur et test de permissions.
+
+### 3.1 ter Distribution transférable et auto-installation
+
+Songless doit pouvoir être remis à une autre personne sous la forme d’un kit complet,
+copiable par clé USB, partage de fichiers ou téléchargement privé. Deux parcours sont
+acceptés : application portable contenant déjà ses dépendances, ou installateur qui
+déploie automatiquement Songless et son runtime sur l’appareil cible.
+
+Il n’existe pas de format d’exécutable unique accepté à la fois par Windows, Android,
+macOS, Linux et iOS. Le livrable prend donc la forme d’un **kit multi-plateforme** avec
+un point d’entrée clair qui détecte le système lorsqu’il le peut et sélectionne le bon
+paquet :
+
+- Windows : installateur ou application portable signée, lancement en un clic ;
+- Android : APK ou paquet équivalent signé, sans terminal ni commande à saisir ;
+- macOS : application signée et notarisation prévue avant toute affirmation de
+  compatibilité publique ;
+- Linux : AppImage ou paquet autonome avec dépendances contrôlées ;
+- iPhone/iPad : application signée distribuée par un canal autorisé par Apple ; un
+  `.exe`, un `.bat` ou un APK ne peut pas y être installé directement ;
+- navigateur seul : reste utilisable comme joueur, TV ou télécommande, mais n’est
+  déclaré hôte autonome que si les capacités serveur, fichiers et arrière-plan sont
+  réellement disponibles.
+
+Le lanceur ou l’installateur doit :
+
+1. détecter le système, l’architecture et les capacités disponibles ;
+2. installer ou extraire uniquement les fichiers nécessaires dans un dossier dédié ;
+3. créer les dossiers de données, vérifier les droits d’accès et demander à
+   l’utilisateur de choisir sa bibliothèque musicale ;
+4. ne jamais inclure automatiquement la bibliothèque musicale personnelle dans le
+   paquet transféré ;
+5. démarrer Songless, vérifier sa santé et ouvrir l’interface adaptée à l’appareil ;
+6. proposer réparation, mise à jour et désinstallation sans effacer les données sans
+   confirmation explicite ;
+7. fonctionner hors ligne après installation pour les fonctions locales et LAN ;
+8. produire un diagnostic lisible si la plateforme n’est pas prise en charge.
+
+Le lancement officiel constitue la racine de confiance parce que le processus crée
+une **nouvelle clé d’instance** protégée par le système et remet une session admin à
+son interface locale. L’exécutable lui-même n’est ni un mot de passe ni un jeton :
+une copie du kit permet d’administrer la nouvelle installation créée sur l’appareil,
+mais ne donne aucun pouvoir sur une autre instance Songless. Les fichiers musicaux,
+profils et secrets d’un hôte ne sont jamais transférés implicitement.
+
+Critères de livraison du kit : installation neuve, second lancement sans doublon,
+réparation, conservation des données, désinstallation, fonctionnement hors ligne,
+permissions négatives et test réel sur chaque couple système/architecture annoncé.
 
 ### 3.2 Téléphone administrateur
 
@@ -485,6 +575,11 @@ une base reproductible sans erreur.
 - lobby et appairage ;
 - synchronisation de phase et reprise après coupure ;
 - validation visuelle multi-écrans.
+- lanceur Android permettant d’héberger Songless sans PC ;
+- interface admin tactile complète et écran centralisé des QR codes ;
+- identité d’hôte liée à l’instance lancée et protégée par le stockage sécurisé du
+  téléphone ;
+- tests réels d’arrière-plan, reprise et réseau local sur le téléphone cible.
 
 ### Phase 4 — unifier les modes existants
 
@@ -535,6 +630,10 @@ et permissions. Aucun mode ne sera laissé « PC uniquement » en attente.
 - parcours complet local, LAN et Internet ;
 - contrôle visuel de tous les écrans ;
 - documentation simple pour l’utilisateur non technique.
+- fabrication du kit multi-plateforme transférable et des installateurs autonomes ;
+- installation, réparation, mise à jour et désinstallation testées sans terminal ;
+- matrice de compatibilité publiée uniquement pour les plateformes réellement
+  exécutées et validées.
 
 ## 13. Critères de livraison
 
@@ -571,7 +670,7 @@ Une phase est terminée uniquement si :
 | 4 — Modes existants | En cours | Duel final Battle Royale à deux survivants, persistance du vrai vainqueur et interfaces PC/TV/télécommande/téléphone validées | Unification complète des autres modes et de leurs fins de partie |
 | 5 — Bibliothèque | Très avancée | Audit des 1 687 fichiers, favoris unifiés, sous-genres et années avec provenance/confiance, filtres précis, aperçus obligatoires avant application des années ou genres en lot, blacklist temporaire, mesure d’encodage et dimensions de pochettes, comparateur réversible de doublons et indice de qualité explicable | Compléter et valider manuellement les années et genres encore incertains |
 | 6 — Nouveaux modes | Livrée | Confiance, Coopération, Intrus, Enchères, Joker, Missions secrètes et Handicap intelligent livrés côté serveur, PC, contrôleur et TV, avec tests de règles, permissions et contrôle visuel Playwright/Axe | — |
-| 7 — Personnalité | Non commencée | Catalogue existant inchangé à 105 succès | **100 nouveaux succès : 0/100**, titres de podium : 0/50, Portal et easter eggs |
+| 7 — Personnalité | En cours | Catalogue porté de 105 à 205 succès : **100/100 nouveaux succès** déclaratifs, persistants, dédupliqués et contrôlés sur PC/téléphone ; succès secrets masqués avant déblocage | Titres de podium : 0/50, Portal, cartes souvenir et autres easter eggs |
 | 8 — Finition | Non commencée | — | Parcours complets, charge, permissions, visuel et documentation finale |
 
 Un élément n’est considéré comme livré que s’il respecte les critères de la

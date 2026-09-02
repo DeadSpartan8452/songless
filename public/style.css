@@ -2554,7 +2554,7 @@ code {
 .trophy-card.locked {
   background: rgba(255, 255, 255, 0.02);
   border: 1px solid rgba(255, 255, 255, 0.07);
-  opacity: 0.6;
+  opacity: 1;
 }
 
 .trophy-card-header {
@@ -2582,8 +2582,11 @@ code {
 
 .trophy-card.locked .trophy-status-pill {
   background: rgba(255, 255, 255, 0.05);
-  color: var(--text-muted);
+  color: #a1a1aa;
 }
+
+#trophies-modal .modal-card-large { max-width: 980px !important; }
+.trophy-card.locked .trophy-card-desc { color: #a1a1aa; }
 
 .trophy-card-name {
   font-size: 0.92rem;

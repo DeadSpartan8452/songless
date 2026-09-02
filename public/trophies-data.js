@@ -151,6 +151,113 @@ const SONGLESS_TROPHIES = [
   { id: 'secret_completionist', cat: 'secrets', icon: '💎', name: 'Maître Absolu de Songless', desc: 'Débloquer au moins 50 trophées dans votre galerie.' }
 ];
 
+// Extension déclarative : chaque condition est évaluée par trophies.js à partir
+// d'un événement de jeu dédupliqué. Les séries restent lisibles et testables sans
+// disperser cent conditions dans les interfaces.
+const EXPANSION_THRESHOLDS = [1, 3, 5, 10, 20, 35, 50, 75, 100, 150];
+
+function trophySeries(config) {
+  return config.names.map((name, index) => {
+    const target = (config.thresholds || EXPANSION_THRESHOLDS)[index];
+    return {
+      id: `${config.prefix}_${target}`,
+      cat: config.cat,
+      icon: config.icon,
+      name,
+      desc: config.description(target),
+      hidden: Boolean(config.hiddenFrom !== undefined && index >= config.hiddenFrom),
+      rule: {
+        event: config.event || 'round',
+        target,
+        ...(config.where ? { where: config.where } : {}),
+        ...(config.distinct ? { distinct: config.distinct } : {}),
+      },
+    };
+  });
+}
+
+const SONGLESS_TROPHY_EXPANSION = [
+  ...trophySeries({
+    prefix: 'journey_rounds', cat: 'genre', icon: '🎧',
+    names: ['Premier Signal', 'Trois Petits Tours', 'Échauffement Terminé', 'Dix sur Dix', 'Rituel d’Écoute', 'Oreilles Rodées', 'Demi-Centaine Sonore', 'Longue Fréquence', 'Club des Cent', 'Mémoire Vivante'],
+    description: n => `Terminer ${n} manche${n > 1 ? 's' : ''}, quel que soit le résultat.`,
+  }),
+  ...trophySeries({
+    prefix: 'journey_wins', cat: 'accuracy', icon: '🏅',
+    names: ['Déclic Musical', 'Triplé Gagnant', 'Main Chaude', 'Tableau à Deux Chiffres', 'Habitué du Verdict', 'Collection de Victoires', 'Cinquante Bonnes Ondes', 'Précision Durable', 'Cent Fois Juste', 'Monument du Blind Test'],
+    description: n => `Cumuler ${n} bonne${n > 1 ? 's' : ''} réponse${n > 1 ? 's' : ''}.`,
+    where: { win: true },
+  }),
+  ...trophySeries({
+    prefix: 'mastery_first_try', cat: 'speed', icon: '⚡',
+    thresholds: [1, 2, 3, 5, 8, 12, 20, 30, 50, 75], hiddenFrom: 8,
+    names: ['Sans Échauffement', 'Double Éclair', 'Réflexe Confirmé', 'Main sur le Buzzer', 'Instant Reconnaissable', 'Oreille Haute Tension', 'Vingt Départs Parfaits', 'Foudre Régulière', 'Cinquante Instants', 'Avant Même le Refrain'],
+    description: n => `Trouver ${n} morceau${n > 1 ? 's' : ''} dès la première tentative.`,
+    where: { win: true, firstTry: true },
+  }),
+  ...trophySeries({
+    prefix: 'mastery_clutch', cat: 'accuracy', icon: '🧗',
+    thresholds: [1, 2, 3, 5, 8, 12, 20, 30, 50, 75], hiddenFrom: 8,
+    names: ['Au Dernier Moment', 'Deuxième Souffle', 'Jamais Fini', 'Roi du Rattrapage', 'Nerfs Solides', 'Toujours une Chance', 'Vingt Retours', 'Spécialiste du Fil', 'Cinquante Sauvetages', 'L’Art de Patienter'],
+    description: n => `Réussir ${n} manche${n > 1 ? 's' : ''} à la cinquième tentative ou après.`,
+    where: { win: true, late: true },
+  }),
+  ...trophySeries({
+    prefix: 'party_sessions', cat: 'party', icon: '🎉',
+    thresholds: [1, 2, 3, 5, 10, 20, 35, 50, 75, 100],
+    names: ['Première Soirée', 'On Remet Ça', 'Trilogie entre Amis', 'Table Habituelle', 'Dix Nuits Songless', 'Salon Régulier', 'Agenda Musical', 'Cinquante Réunions', 'Maison Toujours Pleine', 'Cent Soirées Plus Tard'],
+    description: n => `Terminer ${n} soirée${n > 1 ? 's' : ''} multijoueur.`,
+    event: 'party_finished',
+  }),
+  ...trophySeries({
+    prefix: 'library_tracks', cat: 'genre', icon: '💿',
+    thresholds: [2, 5, 10, 20, 35, 50, 75, 100, 150, 250], hiddenFrom: 9,
+    names: ['Deux Faces du Disque', 'Mini Playlist', 'Dix Morceaux Croisés', 'Rayon Personnel', 'Sélection Éclectique', 'Cinquante Pistes', 'Grande Rotation', 'Jukebox des Cent', 'Archives Sonores', 'Bibliothèque sans Fin'],
+    description: n => `Jouer au moins ${n} morceaux différents.`,
+    distinct: 'trackKey',
+  }),
+  ...trophySeries({
+    prefix: 'library_artists', cat: 'genre', icon: '🎙️',
+    thresholds: [2, 5, 10, 20, 30, 40, 50, 75, 100, 150], hiddenFrom: 9,
+    names: ['Premier Duo d’Artistes', 'Petite Affiche', 'Festival Maison', 'Vingt Voix', 'Programmateur Curieux', 'Quarante Univers', 'Tour du Monde Musical', 'Affiche XXL', 'Cent Scènes', 'Passeport Sonore'],
+    description: n => `Rencontrer ${n} artiste${n > 1 ? 's' : ''} différent${n > 1 ? 's' : ''} au fil des manches.`,
+    distinct: 'artist',
+  }),
+  ...trophySeries({
+    prefix: 'specialist_rounds', cat: 'secrets', icon: '🧪',
+    thresholds: [1, 3, 5, 10, 20, 35, 50, 75, 100, 150], hiddenFrom: 7,
+    names: ['Hors des Sentiers Battus', 'Curiosité Confirmée', 'Goût du Piment', 'Explorateur de Modes', 'Laboratoire Sonore', 'Collectionneur de Variantes', 'Cinquante Expériences', 'Dossier Confidentiel', 'Sujet d’Étude', 'Variable Inconnue'],
+    description: n => `Gagner ${n} manche${n > 1 ? 's' : ''} avec un mode ou un réglage spécial.`,
+    where: { win: true, special: true },
+  }),
+];
+
+const MODE_TROPHIES = [
+  ['classic', '🎯', 'Retour aux Sources', 'Sans Artifice'],
+  ['buzzer', '🔔', 'Doigt sur le Buzzer', 'Maître de la Cloche'],
+  ['royale', '👑', 'Entrée dans l’Arène', 'Couronne Méritée'],
+  ['duel', '🥊', 'Face à Face', 'Corde Conquise'],
+  ['confidence', '🎲', 'Mise Annoncée', 'Confiance Rentable'],
+  ['cooperation', '🤝', 'Même Équipe', 'Victoire Partagée'],
+  ['intruder', '🕵️', 'Premier Suspect', 'Intrus Démasqué'],
+  ['auction', '🔨', 'Première Enchère', 'Adjugé, Trouvé'],
+  ['joker', '🃏', 'Carte en Main', 'Atout Gagnant'],
+  ['missions', '🕶️', 'Sous Couverture', 'Mission Accomplie'],
+].flatMap(([mode, icon, playName, winName]) => [
+  {
+    id: `mode_${mode}_play`, cat: mode === 'royale' || mode === 'duel' ? 'battle' : 'party',
+    icon, name: playName, desc: `Participer à une manche en mode ${mode}.`,
+    rule: { event: 'round', target: 1, where: { mode } },
+  },
+  {
+    id: `mode_${mode}_win`, cat: mode === 'royale' || mode === 'duel' ? 'battle' : 'party',
+    icon, name: winName, desc: `Remporter une manche en mode ${mode}.`,
+    rule: { event: 'round', target: 1, where: { mode, win: true } },
+  },
+]);
+
+SONGLESS_TROPHIES.push(...SONGLESS_TROPHY_EXPANSION, ...MODE_TROPHIES);
+
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = { SONGLESS_TROPHIES };
 }

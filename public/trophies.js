@@ -2,7 +2,9 @@
 
 (function () {
   const STORAGE_UNLOCKED = 'songless_unlocked_trophies_v1';
+  const STORAGE_PROGRESS = 'songless_trophy_progress_v2';
   let unlockedTrophies = new Set(readUnlocked());
+  let trophyProgress = readProgress();
   let currentFilter = 'all';
 
   function readUnlocked() {
@@ -18,6 +20,71 @@
     try {
       localStorage.setItem(STORAGE_UNLOCKED, JSON.stringify([...unlockedTrophies]));
     } catch (_) {}
+  }
+
+  function readProgress() {
+    try {
+      const value = JSON.parse(localStorage.getItem(STORAGE_PROGRESS) || '{}');
+      return {
+        values: value && typeof value.values === 'object' ? value.values : {},
+        distinct: value && typeof value.distinct === 'object' ? value.distinct : {},
+        seen: Array.isArray(value && value.seen) ? value.seen.slice(-1000) : [],
+      };
+    } catch (_) {
+      return { values: {}, distinct: {}, seen: [] };
+    }
+  }
+
+  function saveProgress() {
+    try {
+      localStorage.setItem(STORAGE_PROGRESS, JSON.stringify(trophyProgress));
+    } catch (_) {}
+  }
+
+  function matchesRule(detail, where) {
+    return Object.entries(where || {}).every(([key, expected]) => {
+      const actual = detail && detail[key];
+      if (expected && typeof expected === 'object') {
+        if (Array.isArray(expected.in) && !expected.in.includes(actual)) return false;
+        if (expected.gte !== undefined && Number(actual) < Number(expected.gte)) return false;
+        if (expected.lte !== undefined && Number(actual) > Number(expected.lte)) return false;
+        return true;
+      }
+      return actual === expected;
+    });
+  }
+
+  function record(event, detail = {}, eventId = '') {
+    if (!event || typeof SONGLESS_TROPHIES === 'undefined') return [];
+    const seenKey = eventId ? `${event}:${eventId}` : '';
+    if (seenKey && trophyProgress.seen.includes(seenKey)) return [];
+    if (seenKey) {
+      trophyProgress.seen.push(seenKey);
+      if (trophyProgress.seen.length > 1000) trophyProgress.seen.shift();
+    }
+
+    const ready = [];
+    for (const trophy of SONGLESS_TROPHIES) {
+      const rule = trophy && trophy.rule;
+      if (!rule || rule.event !== event || unlockedTrophies.has(trophy.id)) continue;
+      if (!matchesRule(detail, rule.where)) continue;
+      let progress;
+      if (rule.distinct) {
+        const raw = String(detail && detail[rule.distinct] || '').trim();
+        const values = new Set(Array.isArray(trophyProgress.distinct[trophy.id])
+          ? trophyProgress.distinct[trophy.id] : []);
+        if (raw) values.add(raw.toLocaleLowerCase('fr-FR'));
+        trophyProgress.distinct[trophy.id] = [...values].slice(-500);
+        progress = values.size;
+      } else {
+        progress = (Number(trophyProgress.values[trophy.id]) || 0) + 1;
+        trophyProgress.values[trophy.id] = progress;
+      }
+      if (progress >= Number(rule.target || 1)) ready.push(trophy.id);
+    }
+    saveProgress();
+    ready.forEach(id => unlock(id));
+    return ready;
   }
 
   function playTrophyChime() {
@@ -97,7 +164,7 @@
 
   function syncTrophyCountBadge() {
     const badges = document.querySelectorAll('.trophies-count-badge');
-    const total = typeof SONGLESS_TROPHIES !== 'undefined' ? SONGLESS_TROPHIES.length : 105;
+    const total = typeof SONGLESS_TROPHIES !== 'undefined' ? SONGLESS_TROPHIES.length : 205;
     badges.forEach(b => {
       b.innerText = `${unlockedTrophies.size}/${total}`;
     });
@@ -124,6 +191,18 @@
   function evaluateRound(context) {
     if (!context || !context.track) return;
     const { isWin, attempt, durIndex, mode, speed, way, start, preset, fx, roundDuration } = context;
+    const normalizedMode = ['titre', 'artiste', 'annee'].includes(mode) ? 'classic' : mode;
+    record('round', {
+      win: Boolean(isWin),
+      firstTry: Boolean(isWin && (attempt === 1 || durIndex === 0)),
+      late: Boolean(isWin && (Number(attempt) >= 5 || Number(durIndex) >= 4)),
+      mode: normalizedMode || 'classic',
+      special: normalizedMode !== 'classic' || preset === 'hardcore'
+        || way === 'inverse' || (fx && fx !== 'none') || Number(speed) !== 1
+        || (start && start !== 'seed'),
+      trackKey: `${context.track.title || ''}|${context.track.artist || ''}`,
+      artist: context.track.artist || '',
+    });
 
     // Time of day checks
     const hour = new Date().getHours();
@@ -261,17 +340,30 @@
     const grid = document.getElementById('trophies-grid');
     if (!grid || typeof SONGLESS_TROPHIES === 'undefined') return;
 
+    const filterLabels = {
+      all: 'Tous', speed: '⚡ Rapidité', accuracy: '🎯 Précision', time: '📅 Époques',
+      genre: '🎸 Genres', audio: '🎛️ Audio FX', battle: '⚔️ Duels',
+      party: '🎉 Soirées', secrets: '🔮 Secrets',
+    };
+    document.querySelectorAll('[data-trophy-filter]').forEach(button => {
+      const filter = button.getAttribute('data-trophy-filter') || 'all';
+      const count = filter === 'all' ? SONGLESS_TROPHIES.length
+        : SONGLESS_TROPHIES.filter(trophy => trophy.cat === filter).length;
+      button.innerText = `${filterLabels[filter] || filter} (${count})`;
+    });
+
     const list = SONGLESS_TROPHIES.filter(t => currentFilter === 'all' || t.cat === currentFilter);
     grid.innerHTML = list.map(t => {
       const isUnlocked = unlockedTrophies.has(t.id);
+      const hiddenLocked = Boolean(t.hidden && !isUnlocked);
       return `
         <div class="trophy-card${isUnlocked ? ' unlocked' : ' locked'}" data-trophy-id="${t.id}">
           <div class="trophy-card-header">
             <span class="trophy-card-icon">${isUnlocked ? t.icon : '🔒'}</span>
             <span class="trophy-status-pill">${isUnlocked ? 'Débloqué ✓' : 'Verrouillé'}</span>
           </div>
-          <strong class="trophy-card-name">${escapeHtml(t.name)}</strong>
-          <p class="trophy-card-desc">${escapeHtml(t.desc)}</p>
+          <strong class="trophy-card-name">${hiddenLocked ? 'Succès secret' : escapeHtml(t.name)}</strong>
+          <p class="trophy-card-desc">${hiddenLocked ? 'Condition cachée jusqu’au déblocage.' : escapeHtml(t.desc)}</p>
         </div>
       `;
     }).join('');
@@ -323,10 +415,11 @@
 
   window.songlessTrophies = {
     unlock,
+    record,
     evaluateRound,
     openTrophiesModal,
     getUnlockedIds: () => [...unlockedTrophies],
     getUnlockedCount: () => unlockedTrophies.size,
-    getTotalCount: () => (typeof SONGLESS_TROPHIES !== 'undefined' ? SONGLESS_TROPHIES.length : 105),
+    getTotalCount: () => (typeof SONGLESS_TROPHIES !== 'undefined' ? SONGLESS_TROPHIES.length : 205),
   };
 })();

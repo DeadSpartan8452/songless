@@ -48,8 +48,8 @@
 
       <div class="header-tools">
         <!-- Trophées et succès -->
-        <button class="ghost-btn trophies-header-btn" id="trophies-btn" title="Galerie des 105 Trophées & Succès">
-          <span class="trophies-icon">🏆</span> <span class="trophies-count-badge">0/105</span>
+        <button class="ghost-btn trophies-header-btn" id="trophies-btn" title="Galerie des 205 Trophées & Succès">
+          <span class="trophies-icon">🏆</span> <span class="trophies-count-badge">0/205</span>
         </button>
 
         <!-- Profil actif : chaque joueur de la maison a ses propres stats -->
@@ -1309,18 +1309,18 @@
     </div>
   </div>
 
-  <!-- Modal Galerie des 105 Trophées -->
+  <!-- Modal Galerie des 205 Trophées -->
   <div class="modal-overlay hidden" id="trophies-modal">
     <div class="modal-card modal-card-large">
       <div class="modal-head-with-icon">
         <span class="modal-badge-icon">🏆</span>
         <div>
-          <h3>Galerie des Trophées (<span class="trophies-count-badge">0/105</span>)</h3>
+          <h3>Galerie des Trophées (<span class="trophies-count-badge">0/205</span>)</h3>
           <p class="modal-file">Succès et médailles à débloquer en jouant en solo ou en soirée.</p>
         </div>
       </div>
       <div class="genre-panel-head" id="trophies-filter-chips">
-        <button class="chip-action active" data-trophy-filter="all">Tous (105)</button>
+        <button class="chip-action active" data-trophy-filter="all">Tous (205)</button>
         <button class="chip-action" data-trophy-filter="speed">⚡ Rapidité (15)</button>
         <button class="chip-action" data-trophy-filter="accuracy">🎯 Précision (15)</button>
         <button class="chip-action" data-trophy-filter="time">🕰️ Époques (12)</button>
@@ -1330,7 +1330,8 @@
         <button class="chip-action" data-trophy-filter="party">🎉 Soirées (13)</button>
         <button class="chip-action" data-trophy-filter="secrets">🔮 Secrets (12)</button>
       </div>
-      <div class="trophies-grid" id="trophies-grid"></div>
+      <div class="trophies-grid" id="trophies-grid" tabindex="0"
+           aria-label="Liste défilante des trophées"></div>
       <div class="modal-actions">
         <button class="ghost-btn" id="trophies-close-btn">Fermer</button>
       </div>
