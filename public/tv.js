@@ -25,7 +25,8 @@
       rank.textContent = String(index + 1).padStart(2, '0');
       name.textContent = `${player.emoji || '🎧'} ${player.nom || 'Joueur'}`;
       const stake = player.confidence && player.confidence.preview;
-      points.textContent = `${Number(player.score) || 0} PT${stake ? ` · ×${stake.multiplier}` : ''}`;
+      const coop = player.cooperation;
+      points.textContent = `${Number(player.score) || 0} PT${stake ? ` · ×${stake.multiplier}` : ''}${coop ? ` · +${Number(coop.contribution) || 0} ÉQUIPE` : ''}`;
       item.append(rank, name, points);
       return item;
     }));
@@ -56,9 +57,13 @@
         ? finalNames.join(' contre ')
         : state.mode === 'buzzer' ? 'Buzzez maintenant.'
           : state.mode === 'confidence' ? 'À quel point êtes-vous sûrs ?'
+            : state.mode === 'cooperation' ? 'Une équipe. Un objectif.'
             : 'Qui reconnaît ce morceau ?');
+      const coop = state.cooperation;
       setText('hero-subtitle', finalDuel && finalDuel.active
         ? `${finalScore} · premier à ${finalDuel.targetWins}. Une égalité ne rapporte rien.`
+        : coop
+          ? `${Number(coop.sharedPoints) || 0} / ${Number(coop.targetPoints) || 0} points · série ${Number(coop.streak) || 0}/${Number(coop.targetStreak) || 0} · ${'♥'.repeat(Number(coop.lives) || 0)}${'♡'.repeat(Math.max(0, 3 - (Number(coop.lives) || 0)))}`
         : 'Titre, artiste ou année : la régie attend vos réponses.');
     } else if (state.status === 'reveal' && state.revealedTrack) {
       setText('eyebrow', finalDuel && finalDuel.roundResult === 'transition' ? '⚔️ DUEL FINAL' : 'RÉPONSE');
@@ -71,10 +76,15 @@
     } else if (state.status === 'finished') {
       const winner = (state.players || []).find(player => player.profileId === state.winnerProfileId)
         || [...(state.players || [])].sort((a, b) => Number(b.score) - Number(a.score))[0];
-      setText('eyebrow', 'VERDICT FINAL');
-      setText('hero-title', winner ? `${winner.emoji || '🏆'} ${winner.nom}` : 'Fin de partie');
+      const collective = state.mode === 'cooperation' && state.cooperation;
+      setText('eyebrow', collective ? 'VERDICT COLLECTIF' : 'VERDICT FINAL');
+      setText('hero-title', collective
+        ? collective.result === 'won' ? 'OBJECTIF ATTEINT.' : 'DÉFI MANQUÉ.'
+        : winner ? `${winner.emoji || '🏆'} ${winner.nom}` : 'Fin de partie');
       const stats = winner && winner.confidence && winner.confidence.stats;
-      setText('hero-subtitle', winner
+      setText('hero-subtitle', collective
+        ? `${Number(collective.sharedPoints) || 0}/${Number(collective.targetPoints) || 0} points · meilleure série ${Number(collective.bestStreak) || 0}/${Number(collective.targetStreak) || 0}.`
+        : winner
         ? stats
           ? `${Number(winner.score) || 0} points · audace ×${Number(stats.audacity).toFixed(2)} · précision ${Number(stats.precision) || 0} % · rentabilité ${Number(stats.profitability) >= 0 ? '+' : ''}${Number(stats.profitability) || 0}.`
           : `${Number(winner.score) || 0} points — quelle machine.`

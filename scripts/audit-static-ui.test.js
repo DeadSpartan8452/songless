@@ -185,4 +185,16 @@ test('le mode Confiance reste pilotable sur PC, contrôleur et TV', () => {
   assert.match(tv, /stake\.multiplier/);
 });
 
+test('le mode Coopération montre objectif, rôle et contribution sur les trois écrans', () => {
+  const controller = read('controller.js');
+  const expansions = read('expansions.js');
+  const tv = read('tv.js');
+  assert.match(controller, /cooperation-role/);
+  assert.match(controller, /playerCoop\.contribution/);
+  assert.match(expansions, /party-cooperation-progress/);
+  assert.match(expansions, /Objectif collectif atteint/);
+  assert.match(tv, /VERDICT COLLECTIF/);
+  assert.match(tv, /ÉQUIPE/);
+});
+
 console.log(`\n${passed} tests statiques d’interface réussis.`);

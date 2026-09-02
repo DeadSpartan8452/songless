@@ -570,7 +570,7 @@ Une phase est terminée uniquement si :
 | 3 — TV/admin | Première version | `tv.html`, `remote.html`, boutons d’appairage et commandes limitées | Essais réels TV/téléphone, reprise après coupure et finitions |
 | 4 — Modes existants | En cours | Duel final Battle Royale à deux survivants, persistance du vrai vainqueur et interfaces PC/TV/télécommande/téléphone validées | Unification complète des autres modes et de leurs fins de partie |
 | 5 — Bibliothèque | Très avancée | Audit des 1 687 fichiers, favoris unifiés, sous-genres et années avec provenance/confiance, filtres précis, aperçus obligatoires avant application des années ou genres en lot, blacklist temporaire, mesure d’encodage et dimensions de pochettes, comparateur réversible de doublons et indice de qualité explicable | Compléter et valider manuellement les années et genres encore incertains |
-| 6 — Nouveaux modes | Non commencée | — | Confiance, Coopération, Intrus, Enchères, Joker, Missions et handicap |
+| 6 — Nouveaux modes | En cours | Confiance et Coopération livrés côté serveur, PC, contrôleur et TV, avec tests de règles, permissions et contrôle visuel Playwright/Axe | Intrus, Enchères, Joker, Missions et handicap |
 | 7 — Personnalité | Non commencée | Catalogue existant inchangé à 105 succès | **100 nouveaux succès : 0/100**, titres de podium : 0/50, Portal et easter eggs |
 | 8 — Finition | Non commencée | — | Parcours complets, charge, permissions, visuel et documentation finale |
 
@@ -581,7 +581,8 @@ section 13. Une présence dans le présent document signifie « demandé », pas
 ## 16. État initial constaté avant audit approfondi
 
 - le dépôt contient actuellement 105 trophées ;
-- les modes multijoueurs visibles sont Classique, Buzzer, Battle Royale et Duel ;
+- les modes multijoueurs visibles sont Classique, Buzzer, Battle Royale, Duel,
+  Confiance et Coopération ;
 - le mode Survie à trois vies existe en solo et en multijoueur ;
 - les contrôleurs utilisent déjà des jetons joueur et les commandes hôte un jeton
   distinct ;

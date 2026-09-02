@@ -608,7 +608,7 @@
   function applyPartySettings(settings) {
     const mode = partyState ? partyState.mode : 'classic';
     const value = normalizedPartyOptions(mode, settings);
-    if (['classic', 'confidence'].includes(mode)) {
+    if (['classic', 'confidence', 'cooperation'].includes(mode)) {
       durations = Array.isArray(value.paliers) ? [...value.paliers] : (PALIERS_PRESETS[value.difficulty] || PALIERS_PRESETS.normal);
       reglages.paliers = [...durations];
       reglages.preset = value.difficulty || 'normal';
@@ -1239,7 +1239,7 @@
             ${renderLiveStepPills(player, partyState)}
           </div>
           <span class="party-answer">${partyAnswerLabel(player)} · session ${Number(player.session && player.session.correct) || 0}/${Number(player.session && player.session.rounds) || 0}</span>
-          <span class="party-score">${Number(player.score) || 0} pt<small>${Number(player.globalStats && player.globalStats.wins) || 0} victoire${Number(player.globalStats && player.globalStats.wins) > 1 ? 's' : ''} globale${Number(player.globalStats && player.globalStats.wins) > 1 ? 's' : ''}</small></span>
+          <span class="party-score">${Number(player.score) || 0} pt<small>${player.cooperation ? `+${Number(player.cooperation.contribution) || 0} pts pour l’équipe` : `${Number(player.globalStats && player.globalStats.wins) || 0} victoire${Number(player.globalStats && player.globalStats.wins) > 1 ? 's' : ''} globale${Number(player.globalStats && player.globalStats.wins) > 1 ? 's' : ''}`}</small></span>
         </div>`;
     }).join('');
     renderPartyChat();
@@ -1538,6 +1538,12 @@
     const clutchWinner = [...players].sort((a, b) => (b.accolades && b.accolades.clutchWins || 0) - (a.accolades && a.accolades.clutchWins || 0))[0];
     const guessWinner = [...players].sort((a, b) => (b.accolades && b.accolades.totalGuesses || 0) - (a.accolades && a.accolades.totalGuesses || 0))[0];
     const firstGuesser = [...players].sort((a, b) => (b.accolades && b.accolades.firstCorrectCount || 0) - (a.accolades && a.accolades.firstCorrectCount || 0))[0];
+    const coop = partyState.cooperation;
+    const cooperationSummary = partyState.mode === 'cooperation' && coop
+      ? `<div class="party-cooperation-final ${coop.result === 'won' ? 'won' : 'lost'}">
+          <strong>${coop.result === 'won' ? '🤝 Objectif collectif atteint !' : '💔 Défi collectif manqué'}</strong>
+          <span>${Number(coop.sharedPoints) || 0}/${Number(coop.targetPoints) || 0} pts · meilleure série ${Number(coop.bestStreak) || 0}/${Number(coop.targetStreak) || 0} · ${Number(coop.lives) || 0} vie${Number(coop.lives) > 1 ? 's' : ''}</span>
+        </div>` : '';
 
     container.innerHTML = `
       <div class="podium-card">
@@ -1545,6 +1551,7 @@
           <span class="podium-crown">👑</span>
           <h3>Podium de la soirée</h3>
         </div>
+        ${cooperationSummary}
 
         ${sortedTeams.length ? `
           <div class="team-podium-section">
@@ -1639,6 +1646,9 @@
               const confidenceTag = partyState.mode === 'confidence' && confidenceStats
                 ? `<span class="player-badge-chip">🎲 ×${Number(confidenceStats.audacity).toFixed(2)} · 🎯 ${Number(confidenceStats.precision) || 0}% · ${Number(confidenceStats.profitability) >= 0 ? '+' : ''}${Number(confidenceStats.profitability) || 0} pt</span>`
                 : '';
+              const cooperationTag = partyState.mode === 'cooperation' && player.cooperation
+                ? `<span class="player-badge-chip">🤝 +${Number(player.cooperation.contribution) || 0} pt · ${Number(player.cooperation.correct) || 0} réponse${Number(player.cooperation.correct) > 1 ? 's' : ''}</span>`
+                : '';
               return `
                 <div class="leaderboard-row${player.profileId === partyState.viewerProfileId ? ' me' : ''}">
                   <div class="leaderboard-rank">${rankEmoji}</div>
@@ -1648,6 +1658,7 @@
                       <span class="leaderboard-name">${escapeHtml(String(player.nom))}${player.host ? ' <small class="host-tag">hôte</small>' : ''}</span>
                       ${badgeTag}
                       ${confidenceTag}
+                      ${cooperationTag}
                     </div>
                   </div>
                   <div class="leaderboard-stats">
@@ -1675,7 +1686,7 @@
       return `Trouvé ! (${count}e essai${pts ? ` · +${pts} pt` : ''})`;
     }
     if (player.finished) return 'Essais terminés ❌';
-    if (partyState && ['classic', 'confidence'].includes(partyState.mode)
+    if (partyState && ['classic', 'confidence', 'cooperation'].includes(partyState.mode)
         && partyState.status === 'round') {
       const paliers = partyState.paliers || [0.2, 0.7, 2.5, 5, 9, 15];
       const attemptIdx = Number(player.currentAttempt) || 0;
@@ -1705,7 +1716,7 @@
     const threshold = Number(votes.threshold) || 1;
     let buttonsHtml = '';
 
-    if (['classic', 'confidence'].includes(partyState.mode)
+    if (['classic', 'confidence', 'cooperation'].includes(partyState.mode)
         && votes.nextStep && votes.nextStep.nextDuration) {
       buttonsHtml += `
         <button class="party-vote${votes.nextStep.voted ? ' voted' : ''}"
@@ -1808,7 +1819,9 @@
       && Number(partyState.serverNow) < Number(partyState.playback.startedAt);
     const confidenceKey = me && me.confidence
       ? `${me.confidence.preview.multiplier}:${me.confidence.lastDelta}` : '';
-    const signature = `${partyState.status}:${partyState.round}:${partyState.mode}:${waitingForStart ? 'wait' : 'go'}:${me ? me.currentAttempt : 0}:${me ? me.found : false}:${me ? me.finished : false}:${me ? me.answer : ''}:${me ? me.lastAnswer : ''}:${me ? me.buzzerBlockedSeconds : 0}:${confidenceKey}:${buzzer.activeProfileId || ''}:${buzzer.solvedByProfileId || ''}:${buzzer.solvedByProfileId && Number(buzzer.answerSecondsRemaining) > 0 ? 'paused' : 'played'}`;
+    const cooperationKey = partyState.cooperation
+      ? `${partyState.cooperation.sharedPoints}:${partyState.cooperation.streak}:${partyState.cooperation.lives}` : '';
+    const signature = `${partyState.status}:${partyState.round}:${partyState.mode}:${waitingForStart ? 'wait' : 'go'}:${me ? me.currentAttempt : 0}:${me ? me.found : false}:${me ? me.finished : false}:${me ? me.answer : ''}:${me ? me.lastAnswer : ''}:${me ? me.buzzerBlockedSeconds : 0}:${confidenceKey}:${cooperationKey}:${buzzer.activeProfileId || ''}:${buzzer.solvedByProfileId || ''}:${buzzer.solvedByProfileId && Number(buzzer.answerSecondsRemaining) > 0 ? 'paused' : 'played'}`;
     const currentInput = byId('party-answer-input');
     const hadFocus = currentInput && document.activeElement === currentInput;
     const previousVal = currentInput ? currentInput.value : '';
@@ -1943,9 +1956,18 @@
             <span>Perte max −${Number(confidenceState.preview.maximumLoss) || 0} pts</span>
           </div>
         </fieldset>` : '';
+    const coop = partyState.cooperation;
+    const playerCoop = me && me.cooperation;
+    const cooperationHtml = partyState.mode === 'cooperation' && coop && playerCoop
+      ? `<div class="party-cooperation-card">
+          <div class="party-cooperation-role"><span>${playerCoop.role.emoji}</span><div><strong>${escapeHtml(playerCoop.role.label)}</strong><small>${escapeHtml(playerCoop.role.description)}</small></div></div>
+          <div class="party-cooperation-progress"><span style="width:${Number(coop.progress) || 0}%"></span></div>
+          <div class="party-cooperation-numbers"><strong>${Number(coop.sharedPoints) || 0} / ${Number(coop.targetPoints) || 0} pts</strong><span>${'💖'.repeat(Number(coop.lives) || 0)}${'🖤'.repeat(Math.max(0, 3 - (Number(coop.lives) || 0)))} · série ${Number(coop.streak) || 0}/${Number(coop.targetStreak) || 0} · toi +${Number(playerCoop.contribution) || 0}</span></div>
+        </div>` : '';
     return `
       <div class="party-answer-block">
         ${confidenceHtml}
+        ${cooperationHtml}
         <div class="party-search-box">
           <span class="party-search-icon" aria-hidden="true">⌕</span>
           <input id="party-answer-input" maxlength="200" placeholder="${placeholder}"
@@ -2560,12 +2582,16 @@
       }
       list.innerHTML = history.map(item => {
         const dateStr = item.date ? new Date(item.date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
+        const modeLabel = {
+          buzzer: '🔔 Buzzer', royale: '👑 Battle Royale', duel: '🥊 Duel',
+          confidence: '🎲 Confiance', cooperation: '🤝 Coopération',
+        }[item.mode] || '🎯 Réponses simultanées';
         return `
           <div class="party-history-card">
             <div class="history-card-header">
               <div>
                 <span class="history-card-date">📅 ${dateStr}</span>
-                <span class="history-card-mode">${item.mode === 'buzzer' ? '🔔 Buzzer' : '🎯 Réponses simultanées'} · ${item.totalRounds} manches</span>
+                <span class="history-card-mode">${modeLabel} · ${item.totalRounds} manches</span>
               </div>
               <span class="history-players-count">👥 ${item.playersCount || (item.players && item.players.length) || 0} joueurs</span>
             </div>
@@ -2573,6 +2599,10 @@
               ${item.winner ? `
                 <div class="history-winner-badge">
                   <span>👑 Vainqueur : <strong>${escapeHtml(item.winner.emoji || '🎧')} ${escapeHtml(item.winner.nom)}</strong> (${item.winner.score} pts)</span>
+                </div>` : ''}
+              ${item.collective ? `
+                <div class="history-winner-badge">
+                  <span>${item.collective.result === 'won' ? '🤝 Objectif atteint' : '💔 Défi manqué'} : <strong>${Number(item.collective.sharedPoints) || 0}/${Number(item.collective.targetPoints) || 0} pts</strong> · série ${Number(item.collective.bestStreak) || 0}</span>
                 </div>` : ''}
               ${item.winningTeam ? `
                 <div class="history-team-badge" style="border-color: ${safeTeamColor(item.winningTeam.color, '#a855f7')};">

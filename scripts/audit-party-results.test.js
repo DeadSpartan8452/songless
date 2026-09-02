@@ -58,4 +58,18 @@ const tied = partyHistoryEntry({
 assert.deepStrictEqual(tied.players.map(player => player.rank), [1, 1, 3]);
 ok('les égalités ordinaires conservent le même rang');
 
+const collective = partyHistoryEntry({
+  code: 'COOPS', mode: 'cooperation', round: 5, winnerProfileId: null,
+  cooperation: { result: 'won', sharedPoints: 7200, targetPoints: 7000, bestStreak: 4 },
+  players: [
+    { profileId: 'one', nom: 'Oreille', emoji: '👂', score: 1500 },
+    { profileId: 'two', nom: 'Ancre', emoji: '🛡️', score: 900 },
+  ],
+});
+assert.strictEqual(collective.winner, null);
+assert.deepStrictEqual(collective.collective, {
+  result: 'won', sharedPoints: 7200, targetPoints: 7000, bestStreak: 4,
+});
+ok('la coopération enregistre un résultat collectif sans faux vainqueur individuel');
+
 console.log(`\n${passed} tests de résultats multijoueurs réussis.`);

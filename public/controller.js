@@ -424,6 +424,12 @@
         <div class="tutorial-rule"><span>📈</span><p>Une bonne réponse multiplie tes points par ta mise.</p></div>
         <div class="tutorial-rule"><span>🛡️</span><p>Une erreur peut coûter des points, mais jamais plus de <strong>30 % de ton score</strong>.</p></div>
         <div class="tutorial-rule"><span>👀</span><p>Le gain possible et la perte maximale sont affichés <strong>avant l’envoi</strong>.</p></div>`
+      : current.mode === 'cooperation'
+      ? `
+        <div class="tutorial-rule"><span>🤝</span><p>Vous poursuivez <strong>le même objectif de points et de série</strong>.</p></div>
+        <div class="tutorial-rule"><span>💖</span><p>L’équipe partage <strong>3 vies</strong>. Une manche sans bonne réponse peut en coûter une.</p></div>
+        <div class="tutorial-rule"><span>🎭</span><p>Ton rôle donne un bonus positif selon le moment où tu trouves.</p></div>
+        <div class="tutorial-rule"><span>🏅</span><p>Le résultat est collectif, mais chaque contribution reste visible.</p></div>`
       : `
         <div class="tutorial-rule"><span>🎧</span><p>Écoute l’extrait sur ton téléphone ou le PC, puis écris <strong>${answerLabel}</strong>.</p></div>
         <div class="tutorial-rule"><span>📨</span><p><strong>Envoie une seule réponse</strong>, puis attends la révélation de l’hôte.</p></div>
@@ -441,7 +447,8 @@
       : current.mode === 'buzzer'
         ? 'Mode Buzzer'
         : current.mode === 'royale' ? 'Battle Royale'
-          : current.mode === 'confidence' ? 'Mode Confiance' : 'Réponses simultanées';
+          : current.mode === 'confidence' ? 'Mode Confiance'
+            : current.mode === 'cooperation' ? 'Mode Coopération' : 'Réponses simultanées';
     byId('tutorial-gate').classList.remove('hidden');
   }
 
@@ -746,6 +753,11 @@
       badge.innerHTML = `<span>🎲 Confiance · mise ×${Number(stake) || 1}</span>`;
       badge.className = 'mobile-mode-badge confidence';
       badge.classList.remove('hidden');
+    } else if (state.mode === 'cooperation') {
+      const coop = state.cooperation || {};
+      badge.innerHTML = `<span>🤝 ${Number(coop.sharedPoints) || 0}/${Number(coop.targetPoints) || 0} · ${'💖'.repeat(Number(coop.lives) || 0)}${'🖤'.repeat(Math.max(0, 3 - (Number(coop.lives) || 0)))}</span>`;
+      badge.className = 'mobile-mode-badge cooperation';
+      badge.classList.remove('hidden');
     } else {
       badge.classList.add('hidden');
     }
@@ -952,7 +964,9 @@
       ? Math.max(0, Math.ceil((Number(state.playback.startedAt) - Number(state.serverNow)) / 1000)) : 0;
     const confidenceKey = me && me.confidence
       ? `${me.confidence.preview.multiplier}:${me.confidence.lastDelta}` : '';
-    const signature = `${state.status}:${state.round}:${state.mode}:${startsIn > 0 ? 'wait' : 'go'}:${me ? me.currentAttempt : 0}:${me ? me.found : false}:${me ? me.finished : false}:${me ? me.answer : ''}:${me ? me.lastAnswer : ''}:${me ? me.buzzPosition : ''}:${me ? me.buzzerBlockedSeconds : 0}:${confidenceKey}:${buzzer.activeProfileId || ''}:${buzzer.solvedByProfileId || ''}:${buzzer.solvedByProfileId && Number(buzzer.answerSecondsRemaining) > 0 ? 'paused' : 'played'}`;
+    const cooperationKey = state.cooperation
+      ? `${state.cooperation.sharedPoints}:${state.cooperation.streak}:${state.cooperation.lives}` : '';
+    const signature = `${state.status}:${state.round}:${state.mode}:${startsIn > 0 ? 'wait' : 'go'}:${me ? me.currentAttempt : 0}:${me ? me.found : false}:${me ? me.finished : false}:${me ? me.answer : ''}:${me ? me.lastAnswer : ''}:${me ? me.buzzPosition : ''}:${me ? me.buzzerBlockedSeconds : 0}:${confidenceKey}:${cooperationKey}:${buzzer.activeProfileId || ''}:${buzzer.solvedByProfileId || ''}:${buzzer.solvedByProfileId && Number(buzzer.answerSecondsRemaining) > 0 ? 'paused' : 'played'}`;
     
     const currentInput = byId('answer-input');
     const hadFocus = currentInput && document.activeElement === currentInput;
@@ -1118,9 +1132,18 @@
             <span>Perte max −${Number(confidenceState.preview.maximumLoss) || 0} pts</span>
           </div>
         </fieldset>` : '';
+    const coop = state.cooperation;
+    const playerCoop = me && me.cooperation;
+    const cooperationHtml = state.mode === 'cooperation' && coop && playerCoop
+      ? `<div class="cooperation-card">
+          <div class="cooperation-role"><span>${playerCoop.role.emoji}</span><div><strong>${escapeHtml(playerCoop.role.label)}</strong><small>${escapeHtml(playerCoop.role.description)}</small></div></div>
+          <div class="cooperation-progress"><span style="width:${Number(coop.progress) || 0}%"></span></div>
+          <div class="cooperation-numbers"><strong>${Number(coop.sharedPoints) || 0} / ${Number(coop.targetPoints) || 0} pts</strong><span>Série ${Number(coop.streak) || 0}/${Number(coop.targetStreak) || 0} · contribution +${Number(playerCoop.contribution) || 0}</span></div>
+        </div>` : '';
     return `
       <div class="answer-block">
         ${confidenceHtml}
+        ${cooperationHtml}
         <div class="answer-search">
           <span class="answer-search-icon" aria-hidden="true">⌕</span>
           <input id="answer-input" class="answer-input" maxlength="200"
@@ -1272,11 +1295,18 @@
             <span>🎯 Précision <strong>${Number(confidenceStats.precision) || 0} %</strong></span>
             <span>📈 Rentabilité <strong>${Number(confidenceStats.profitability) >= 0 ? '+' : ''}${Number(confidenceStats.profitability) || 0} pts</strong></span>
           </div>` : '';
+      const coop = state.cooperation;
+      const cooperationHtml = state.mode === 'cooperation' && coop
+        ? `<div class="cooperation-final ${coop.result === 'won' ? 'won' : 'lost'}">
+            <strong>${coop.result === 'won' ? '🤝 Objectif collectif atteint !' : '💔 Défi collectif manqué'}</strong>
+            <span>${Number(coop.sharedPoints) || 0}/${Number(coop.targetPoints) || 0} pts · meilleure série ${Number(coop.bestStreak) || 0}</span>
+          </div>` : '';
       podiumHeader = `
         <div class="controller-podium">
           <div class="podium-rank-highlight">🏆 Tu termines <strong>${medal}</strong> avec <strong>${Number(me ? me.score : 0)} pts</strong></div>
           ${badgesHtml ? `<div class="controller-badges-row">${badgesHtml}</div>` : ''}
           ${confidenceHtml}
+          ${cooperationHtml}
         </div>
       `;
     }
@@ -1288,7 +1318,7 @@
           <div class="rank-row${item.profileId === state.viewerProfileId ? ' me' : ''}">
             <span>${rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : rank}</span>
             <span>${escapeHtml(item.emoji || '🎧')} ${escapeHtml(item.nom)}</span>
-            <span class="rank-score">${Number(item.score) || 0}<small>${Number(item.session && item.session.correct) || 0}/${Number(item.session && item.session.rounds) || 0}</small></span>
+            <span class="rank-score">${Number(item.score) || 0}<small>${item.cooperation ? `+${Number(item.cooperation.contribution) || 0} équipe` : `${Number(item.session && item.session.correct) || 0}/${Number(item.session && item.session.rounds) || 0}`}</small></span>
           </div>`;
         }).join('')
       : '<div class="wait-note">Aucun joueur n’a encore rejoint.</div>');
