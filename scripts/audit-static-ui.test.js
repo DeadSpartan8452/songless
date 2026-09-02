@@ -92,4 +92,21 @@ test('le renommage post-révélation reste absent des interfaces distantes', () 
   assert.doesNotMatch(distant, /edit-current-track-btn|Renommer cette chanson/);
 });
 
+test('les filtres de bibliothèque couvrent genre précis, année et favoris sans renommer', () => {
+  const index = read('index.html');
+  const app = read('app.js');
+  for (const id of [
+    'library-genre-filter',
+    'library-genre-detail-filter',
+    'library-year-filter',
+    'library-favorite-filter',
+  ]) {
+    assert.match(index, new RegExp(`id=["']${id}["']`));
+  }
+  assert.match(app, /data-genre-detail/);
+  assert.match(app, /data-year/);
+  assert.match(app, /data-favorite/);
+  assert.doesNotMatch(app, /filterLibraryDisplay[\s\S]*?patch\.title/);
+});
+
 console.log(`\n${passed} tests statiques d’interface réussis.`);

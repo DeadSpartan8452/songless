@@ -145,6 +145,9 @@ const downloadBtn = document.getElementById('download-btn');
 const downloadLog = document.getElementById('download-log');
 const toolsState = document.getElementById('tools-state');
 const libraryGenreFilter = document.getElementById('library-genre-filter');
+const libraryGenreDetailFilter = document.getElementById('library-genre-detail-filter');
+const libraryYearFilter = document.getElementById('library-year-filter');
+const libraryFavoriteFilter = document.getElementById('library-favorite-filter');
 
 // Éléments Stats
 const statsPlayed = document.getElementById('stats-played');
@@ -2053,6 +2056,7 @@ function loadLibrary(callback = null) {
       renderGenreChips();
       renderDecadeChips();
       renderGenreSelects();
+      renderLibraryMetadataFilters();
       renderLibraryList();
       majBoutonsOptions();
 
@@ -2123,6 +2127,9 @@ function renderLibraryList() {
       .map(value => escapeHtml(value)).join(' · ');
 
     item.setAttribute('data-genre', track.genre || 'Autre');
+    item.setAttribute('data-genre-detail', track.genreDetail || '');
+    item.setAttribute('data-year', track.year || '');
+    item.setAttribute('data-favorite', track.favorite ? '1' : '0');
     item.setAttribute('data-review', track.needsReview ? '1' : '0');
     item.innerHTML = `
       <div class="preview-progress" aria-hidden="true"><span></span></div>
@@ -2207,11 +2214,14 @@ async function toggleTrackFavorite(track, button) {
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Erreur');
     track.favorite = favorite;
+    const item = button.closest('.track-item');
+    if (item) item.setAttribute('data-favorite', favorite ? '1' : '0');
     button.classList.toggle('active', favorite);
     button.setAttribute('aria-pressed', String(favorite));
     button.title = favorite ? 'Retirer des coups de cœur' : 'Ajouter aux coups de cœur';
     button.setAttribute('aria-label',
       `${favorite ? 'Retirer' : 'Ajouter'} ${track.title} ${favorite ? 'des' : 'aux'} coups de cœur`);
+    filterLibraryDisplay();
   } catch (e) {
     showToast(`Impossible de modifier le coup de cœur : ${e.message}`, 'error');
   } finally {
@@ -2367,6 +2377,9 @@ function deleteMultipleTracks(ids) {
 function filterLibraryDisplay() {
   const query = librarySearch.value.trim().toLowerCase();
   const genre = libraryGenreFilter ? libraryGenreFilter.value : '';
+  const genreDetail = libraryGenreDetailFilter ? libraryGenreDetailFilter.value : '';
+  const yearFilter = libraryYearFilter ? libraryYearFilter.value : '';
+  const favoriteFilter = libraryFavoriteFilter ? libraryFavoriteFilter.value : '';
   const items = tracksListContainer.querySelectorAll('.track-item');
 
   let visibles = 0;
@@ -2374,19 +2387,33 @@ function filterLibraryDisplay() {
     const title = item.getAttribute('data-title');
     const artist = item.getAttribute('data-artist');
     const itemGenre = item.getAttribute('data-genre') || 'Autre';
+    const itemGenreDetail = item.getAttribute('data-genre-detail') || '';
+    const itemYear = Number(item.getAttribute('data-year')) || null;
+    const itemFavorite = item.getAttribute('data-favorite') === '1';
 
-    const matchesText = title.includes(query) || artist.includes(query);
+    const matchesText = title.includes(query) || artist.includes(query)
+      || itemGenreDetail.toLowerCase().includes(query);
     const matchesGenre = !genre || itemGenre === genre;
+    const matchesGenreDetail = !genreDetail || itemGenreDetail === genreDetail;
+    const matchesYear = !yearFilter
+      || (yearFilter === 'missing' && !itemYear)
+      || (yearFilter.startsWith('decade:') && itemYear
+        && Math.floor(itemYear / 10) * 10 === Number(yearFilter.slice(7)));
+    const matchesFavorite = !favoriteFilter
+      || (favoriteFilter === 'favorite' && itemFavorite)
+      || (favoriteFilter === 'regular' && !itemFavorite);
     const matchesReview = !filtreARenommer || item.getAttribute('data-review') === '1';
 
-    const visible = matchesText && matchesGenre && matchesReview;
+    const visible = matchesText && matchesGenre && matchesGenreDetail
+      && matchesYear && matchesFavorite && matchesReview;
     item.classList.toggle('hidden', !visible);
     if (visible) visibles++;
   });
 
   // Le compteur du titre suit ce qui est réellement affiché : sinon « Musiques
   // installées (1564) » au-dessus de 12 lignes filtrées prête à confusion.
-  const filtreActif = query || genre || filtreARenommer;
+  const filtreActif = query || genre || genreDetail || yearFilter
+    || favoriteFilter || filtreARenommer;
   tracksCountSpan.innerText = filtreActif ? `${visibles} / ${tracks.length}` : tracks.length;
 }
 
@@ -4085,6 +4112,30 @@ function renderGenreSelects() {
   }
 }
 
+function renderLibraryMetadataFilters() {
+  if (libraryGenreDetailFilter) {
+    const keep = libraryGenreDetailFilter.value;
+    const details = [...new Set(tracks.map(track => track.genreDetail).filter(Boolean))]
+      .sort((a, b) => a.localeCompare(b, 'fr'));
+    libraryGenreDetailFilter.innerHTML = '<option value="">Tous les sous-genres</option>'
+      + details.map(detail => `<option value="${escapeHtml(detail)}">${escapeHtml(detail)}</option>`).join('');
+    libraryGenreDetailFilter.value = details.includes(keep) ? keep : '';
+  }
+
+  if (libraryYearFilter) {
+    const keep = libraryYearFilter.value;
+    const decades = [...new Set(tracks.map(track => track.year)
+      .filter(Boolean).map(year => Math.floor(year / 10) * 10))]
+      .sort((a, b) => b - a);
+    const missing = tracks.filter(track => !track.year).length;
+    libraryYearFilter.innerHTML = '<option value="">Toutes les années</option>'
+      + decades.map(decade => `<option value="decade:${decade}">${decade}–${decade + 9}</option>`).join('')
+      + (missing ? `<option value="missing">Année manquante (${missing})</option>` : '');
+    libraryYearFilter.value = keep === 'missing' || decades.some(d => keep === `decade:${d}`)
+      ? keep : '';
+  }
+}
+
 // ==========================================
 // TÉLÉCHARGEMENT AUTOMATIQUE
 // ==========================================
@@ -4121,6 +4172,9 @@ function initDownloadEvents() {
   if (libraryGenreFilter) {
     libraryGenreFilter.addEventListener('change', filterLibraryDisplay);
   }
+  [libraryGenreDetailFilter, libraryYearFilter, libraryFavoriteFilter]
+    .filter(Boolean)
+    .forEach(select => select.addEventListener('change', filterLibraryDisplay));
 }
 
 let downloadApprovalBusy = false;
