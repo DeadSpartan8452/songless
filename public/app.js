@@ -17,7 +17,7 @@ let currentTrackOffset = 0;
 let victoryAutoPlay = false;
 
 // Contexte serveur : mode réseau local, et droit d'écrire ou non.
-let contexte = { lan: false, local: true, readOnly: false, url: null };
+let contexte = { lan: false, local: true, mobileHost: false, readOnly: false, url: null };
 
 // Les gestionnaires JavaScript écrits directement dans le HTML sont bloqués
 // par notre politique de sécurité. On traite donc les pochettes cassées avec
@@ -4296,6 +4296,11 @@ function initContexte() {
   requete
     .then(info => {
       contexte = info;
+      if (info.mobileHost) {
+        document.body.classList.add('mobile-host');
+        const mobileNote = document.getElementById('mobile-host-note');
+        if (mobileNote) mobileNote.classList.remove('hidden');
+      }
       if (info.readOnly) {
         document.body.classList.add('lecture-seule');
         if (info.canAdd) document.body.classList.add('ajout-distance');
@@ -4328,14 +4333,15 @@ function initPhoneModal() {
     const urls = (contexte.urls && contexte.urls.length > 0)
       ? contexte.urls
       : (contexte.url ? [contexte.url] : []);
-    const listeUrls = urls
-      .map((url, index) => `
-        <p class="share-preview">
-          <a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">
-            ${escapeHtml(url)}
-          </a>
-        </p>`)
-      .join('');
+    const listeUrls = urls.length ? `
+      <div class="phone-address-list" aria-label="Adresses Wi-Fi de Songless">
+        ${urls.map((url, index) => `
+          <a class="phone-address" href="${escapeHtml(url)}"
+             target="_blank" rel="noopener noreferrer">
+            <span>Adresse Wi-Fi${urls.length > 1 ? ` ${index + 1}` : ''}</span>
+            <strong>${escapeHtml(url)}</strong>
+          </a>`).join('')}
+      </div>` : '';
 
     if (!contexte.lan) {
       zone.innerHTML = `
@@ -4574,7 +4580,10 @@ function initDownloadEvents() {
     .then(r => r.json())
     .then(state => {
       if (!toolsState) return;
-      if (state.ok) {
+      if (state.mobileHost && !state.ok) {
+        toolsState.innerHTML = '<span class="pending">Prévu pour Android</span>';
+        downloadBtn.disabled = true;
+      } else if (state.ok) {
         toolsState.innerHTML = '<span class="ok">yt-dlp + ffmpeg prêts</span>';
       } else {
         toolsState.innerHTML = `<span class="ko">manquant : ${escapeHtml(state.missing.join(', '))}</span>`;

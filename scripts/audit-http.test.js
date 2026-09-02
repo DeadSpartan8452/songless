@@ -102,6 +102,7 @@ async function main() {
     const localContext = await request(LOCAL, '/api/context');
     assert.strictEqual(localContext.status, 200);
     assert.strictEqual(localContext.body.local, true);
+    assert.strictEqual(localContext.body.mobileHost, false);
     assert.strictEqual(localContext.body.canEditProfiles, true);
     assert.strictEqual(localContext.body.readOnly, false);
     ok('le port local reconnaît le PC hôte');
@@ -190,6 +191,22 @@ async function main() {
     assert.strictEqual(remoteAdminAccess.body.urls.internet.includes(create.body.hostToken), false);
     ok('le PC génère des accès TV et télécommande séparés');
 
+    const tvQrRoute = `/api/party/${encodeURIComponent(create.body.code)}/access-qr.svg`
+      + `?hostToken=${encodeURIComponent(create.body.hostToken)}`
+      + `&accessToken=${encodeURIComponent(tvAccess.body.accessToken)}`
+      + '&role=tv';
+    const tvQr = await request(LOCAL, tvQrRoute);
+    assert.strictEqual(tvQr.status, 200);
+    assert.match(tvQr.response.headers.get('content-type') || '', /image\/svg\+xml/);
+    assert.match(tvQr.text, /<svg/);
+
+    const wrongRoleQr = await request(LOCAL, tvQrRoute.replace('&role=tv', '&role=remote_admin'));
+    assert.strictEqual(wrongRoleQr.status, 403);
+
+    const remoteTvQr = await request(REMOTE, tvQrRoute);
+    assert.strictEqual(remoteTvQr.status, 403);
+    ok('les QR de rôle exigent le bon accès et restent réservés à l’hôte local');
+
     const tvPage = await request(REMOTE, '/tv.html');
     const remoteAdminPage = await request(REMOTE, '/remote.html');
     assert.strictEqual(tvPage.status, 200);
@@ -267,6 +284,8 @@ async function main() {
       `/api/party/${encodeURIComponent(code)}?accessToken=${encodeURIComponent(tvAccess.body.accessToken)}`
     );
     assert.strictEqual(revokedTvState.status, 403);
+    const revokedTvQr = await request(LOCAL, tvQrRoute);
+    assert.strictEqual(revokedTvQr.status, 403);
     ok('un accès TV révoqué cesse immédiatement de fonctionner');
 
     const noInvite = await request(REMOTE, `/api/party/${encodeURIComponent(code)}`);

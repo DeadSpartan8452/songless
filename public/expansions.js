@@ -1231,6 +1231,43 @@
         : 'Téléphone connecté au même Wi-Fi';
     }
 
+    const deviceQrGrid = byId('party-device-qr-grid');
+    const deviceQrCards = [];
+    const accessLabels = {
+      tv: ['📺 Écran TV', 'Affichage seul, sans commande'],
+      remote_admin: ['🎛️ Télécommande admin', 'Commandes temporaires de la partie'],
+    };
+    for (const role of ['tv', 'remote_admin']) {
+      const grant = party.accessGrants && party.accessGrants[role];
+      if (!grant || !grant.url) continue;
+      let accessUrl;
+      try {
+        const parsed = new URL(grant.url, window.location.origin);
+        if (!['http:', 'https:'].includes(parsed.protocol)) continue;
+        accessUrl = parsed.href;
+      } catch (_) { continue; }
+      const accessToken = new URL(accessUrl).searchParams.get('access');
+      if (!accessToken) continue;
+      const qrSource = `/api/party/${encodeURIComponent(party.code)}/access-qr.svg`
+        + `?hostToken=${encodeURIComponent(party.hostToken)}`
+        + `&accessToken=${encodeURIComponent(accessToken)}`
+        + `&role=${encodeURIComponent(role)}`;
+      const [title, description] = accessLabels[role];
+      deviceQrCards.push(`
+        <article class="party-device-qr-card">
+          <img src="${escapeHtml(qrSource)}" alt="QR code ${escapeHtml(title)}">
+          <div>
+            <strong>${escapeHtml(title)}</strong>
+            <small>${escapeHtml(description)} · valable 3 h</small>
+            <a href="${escapeHtml(accessUrl)}" target="_blank" rel="noopener noreferrer">Ouvrir ce rôle</a>
+          </div>
+        </article>`);
+    }
+    if (deviceQrGrid) {
+      deviceQrGrid.classList.toggle('hidden', deviceQrCards.length === 0);
+      deviceQrGrid.innerHTML = deviceQrCards.join('');
+    }
+
     renderPartyPodium(partyState);
     renderPartyTeams();
     renderPartyModifier();
@@ -2415,6 +2452,7 @@
       [role]: { id: result.id, expiresAt: result.expiresAt, url },
     };
     saveParty();
+    renderParty();
     const label = role === 'tv' ? 'Lien TV' : 'Lien de télécommande admin';
     try {
       await navigator.clipboard.writeText(url);

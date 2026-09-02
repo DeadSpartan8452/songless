@@ -284,6 +284,70 @@ body.lecture-seule #refresh-library-btn {
   overflow-y: auto;
 }
 
+.mobile-host-note {
+  margin: 0 0 20px;
+  padding: 16px 18px;
+  border: 1px solid rgba(168, 85, 247, .42);
+  border-left: 4px solid var(--accent);
+  border-radius: 12px;
+  background: rgba(168, 85, 247, .08);
+}
+
+.mobile-host-note strong {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--text);
+}
+
+.mobile-host-note p {
+  margin: 0;
+  color: var(--text-muted);
+  line-height: 1.55;
+}
+
+.mobile-host .desktop-downloader-only {
+  display: none;
+}
+
+.mobile-host .desktop-library-intro {
+  display: none;
+}
+
+.mobile-host .mobile-library-intro {
+  display: block;
+}
+
+.phone-address-list {
+  display: grid;
+  gap: 10px;
+  margin: 14px 0;
+}
+
+.phone-address {
+  display: grid;
+  gap: 4px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg);
+  color: var(--text);
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+
+.phone-address span {
+  color: var(--text-muted);
+  font-size: .72rem;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.phone-address strong {
+  color: var(--accent);
+  font-size: .88rem;
+}
+
 /* ---------------------------------------------------------------- profils */
 
 .profile-list {

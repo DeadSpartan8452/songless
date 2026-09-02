@@ -34,6 +34,7 @@ const PUBLIC_PORT = Number(process.env.SONGLESS_PUBLIC_PORT) || 3001;
 const PUBLIC_URL = /^https:\/\/[a-z0-9.-]+(?::\d+)?$/i.test(String(process.env.SONGLESS_PUBLIC_URL || '').replace(/\/$/, ''))
   ? String(process.env.SONGLESS_PUBLIC_URL).replace(/\/$/, '') : '';
 const INSTANCE_SECRET_PROVIDED = Boolean(process.env.SONGLESS_INSTANCE_SECRET);
+const MOBILE_HOST = process.env.SONGLESS_MOBILE_HOST === '1';
 const instanceAuth = instanceAuthModule.create(process.env.SONGLESS_INSTANCE_SECRET, {
   allowLocalForTests: process.env.SONGLESS_TEST_ALLOW_LOCAL_ADMIN === '1',
 });
@@ -399,6 +400,7 @@ app.get('/api/context', (req, res) => {
   const paired = local || lanPaired || invitationFromRequest(req);
   res.json({
     deviceLocal: estMachineLocale(req),
+    mobileHost: MOBILE_HOST,
     lan: LAN,
     local,
     paired,
@@ -901,6 +903,35 @@ app.get('/api/party/:code', (req, res) => {
     req.query.hostToken,
     req.query.accessToken || req.get('X-Songless-Access')
   ));
+});
+
+/** QR d'un rôle temporaire, régénéré uniquement pour l'hôte local. */
+app.get('/api/party/:code/access-qr.svg', async (req, res) => {
+  const party = partyStore.get(req.params.code);
+  if (!party || !estLocal(req)) {
+    return res.status(403).json({ error: 'QR code réservé à l’hôte local.' });
+  }
+  const state = partyStore.publicState(party, null, req.query.hostToken);
+  const role = partyStore.accessRole(party, req.query.accessToken);
+  if (!state.isHost || !['tv', 'remote_admin'].includes(role) || role !== req.query.role) {
+    return res.status(403).json({ error: 'Accès temporaire invalide ou expiré.' });
+  }
+  const base = PUBLIC_URL || urlLan();
+  const accessUrl = partyAccessUrl(base, party, {
+    role,
+    accessToken: req.query.accessToken,
+  });
+  if (!accessUrl) return res.status(404).json({ error: 'Adresse réseau indisponible.' });
+  try {
+    const svg = await QRCode.toString(accessUrl, {
+      type: 'svg', errorCorrectionLevel: 'M', margin: 2, width: 240,
+    });
+    res.type('image/svg+xml');
+    res.set('Cache-Control', 'no-store');
+    res.send(svg);
+  } catch (_) {
+    res.status(500).json({ error: 'QR code impossible à produire.' });
+  }
 });
 
 app.get('/api/party/:code/audio', (req, res) => {
@@ -1525,7 +1556,7 @@ function ouvrirFlux(res) {
 
 // Route: État des outils externes (yt-dlp / ffmpeg)
 app.get('/api/download/status', (req, res) => {
-  res.json(downloader.checkTools());
+  res.json({ ...downloader.checkTools(), mobileHost: MOBILE_HOST });
 });
 
 app.post('/api/preflight', async (req, res) => {

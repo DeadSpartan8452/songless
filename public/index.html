@@ -390,6 +390,7 @@
                 <button class="ghost-btn" id="party-create-remote">🎛️ Créer la télécommande admin</button>
                 <small>Liens temporaires de 3 h, remplacés à chaque nouvelle création.</small>
               </div>
+              <div class="party-device-qr-grid hidden" id="party-device-qr-grid"></div>
               <a class="party-join-link hidden" id="party-internet-link"
                  target="_blank" rel="noopener noreferrer"></a>
             </div>
@@ -722,11 +723,21 @@
         <div class="library-container">
           <div class="library-header">
             <h2>Gérer votre Bibliothèque Musicale</h2>
-            <p>Glissez-déposez des fichiers audio ci-dessous, ou ajoutez-les directement dans le dossier <code>musiques</code> de votre ordinateur.</p>
+            <p class="desktop-library-intro">Glissez-déposez des fichiers audio ci-dessous, ou ajoutez-les directement dans le dossier <code>musiques</code> de votre ordinateur.</p>
+            <p class="mobile-library-intro hidden">Ajoutez des fichiers audio depuis le stockage de ce téléphone. Ils restent enregistrés localement sur cet appareil.</p>
+          </div>
+
+          <div class="mobile-host-note hidden" id="mobile-host-note" role="status">
+            <strong>Bibliothèque de ce téléphone</strong>
+            <p>
+              Les morceaux resteront sur cet appareil. L’import local sera activé
+              dès que le contrôle antivirus Android intégré sera prêt ; Songless
+              refuse jusque-là les fichiers non vérifiés.
+            </p>
           </div>
 
           <!-- Téléchargement automatique -->
-          <div class="download-card">
+          <div class="download-card desktop-downloader-only">
             <div class="download-head">
               <h3><i data-lucide="download-cloud"></i> Télécharger une musique</h3>
               <span class="tools-state" id="tools-state"></span>
@@ -762,7 +773,7 @@
           </div>
 
           <!-- Import d'une playlist entière -->
-          <div class="download-card">
+          <div class="download-card desktop-downloader-only">
             <div class="download-head">
               <h3><i data-lucide="list-plus"></i> Importer une playlist</h3>
             </div>

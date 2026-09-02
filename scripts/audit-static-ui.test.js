@@ -92,6 +92,28 @@ test('le renommage post-révélation reste absent des interfaces distantes', () 
   assert.doesNotMatch(distant, /edit-current-track-btn|Renommer cette chanson/);
 });
 
+test('le panneau téléphone centralise les QR TV et télécommande de façon sûre', () => {
+  const index = read('index.html');
+  const expansions = read('expansions.js');
+  assert.match(index, /id="party-device-qr-grid"/);
+  assert.match(expansions, /for \(const role of \['tv', 'remote_admin'\]\)/);
+  assert.match(expansions, /\/api\/party\/\$\{encodeURIComponent\(party\.code\)\}\/access-qr\.svg/);
+  assert.match(expansions, /\['http:', 'https:'\]\.includes\(parsed\.protocol\)/);
+  assert.match(expansions, /if \(deviceQrGrid\)/);
+});
+
+test('l’hôte Android reçoit des textes de bibliothèque adaptés à sa plateforme', () => {
+  const index = read('index.html');
+  const app = read('app.js');
+  assert.match(index, /id="mobile-host-note"/);
+  assert.match(index, /mobile-library-intro hidden/);
+  assert.match(index, /<!-- Import d'une playlist entière -->\s*<div class="download-card desktop-downloader-only">/);
+  assert.match(index, /<!-- Diagnostic de bibliothèque -->\s*<div class="download-card">/);
+  assert.match(app, /if \(info\.mobileHost\)/);
+  assert.match(app, /Prévu pour Android/);
+  assert.match(app, /phone-address-list/);
+});
+
 test('les filtres de bibliothèque couvrent genre précis, année et favoris sans renommer', () => {
   const index = read('index.html');
   const app = read('app.js');
