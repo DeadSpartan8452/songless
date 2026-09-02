@@ -173,4 +173,16 @@ test('le comparateur de doublons reste manuel, réversible et sans suppression',
   assert.doesNotMatch(comparison, /fetch\(`?\/api\/tracks\/[^\n]+DELETE|Supprimer le fichier/);
 });
 
+test('le mode Confiance reste pilotable sur PC, contrôleur et TV', () => {
+  const controller = read('controller.js');
+  const expansions = read('expansions.js');
+  const tv = read('tv.js');
+  assert.match(controller, /data-confidence/);
+  assert.match(controller, /potentialGain/);
+  assert.match(controller, /maximumLoss/);
+  assert.match(expansions, /data-party-confidence/);
+  assert.match(expansions, /profitability/);
+  assert.match(tv, /stake\.multiplier/);
+});
+
 console.log(`\n${passed} tests statiques d’interface réussis.`);

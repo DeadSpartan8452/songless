@@ -24,7 +24,8 @@
       points.className = 'points';
       rank.textContent = String(index + 1).padStart(2, '0');
       name.textContent = `${player.emoji || '🎧'} ${player.nom || 'Joueur'}`;
-      points.textContent = `${Number(player.score) || 0} PT`;
+      const stake = player.confidence && player.confidence.preview;
+      points.textContent = `${Number(player.score) || 0} PT${stake ? ` · ×${stake.multiplier}` : ''}`;
       item.append(rank, name, points);
       return item;
     }));
@@ -53,7 +54,9 @@
       setText('eyebrow', finalDuel && finalDuel.active ? '⚔️ DUEL FINAL' : 'À VOUS DE JOUER');
       setText('hero-title', finalDuel && finalDuel.active
         ? finalNames.join(' contre ')
-        : state.mode === 'buzzer' ? 'Buzzez maintenant.' : 'Qui reconnaît ce morceau ?');
+        : state.mode === 'buzzer' ? 'Buzzez maintenant.'
+          : state.mode === 'confidence' ? 'À quel point êtes-vous sûrs ?'
+            : 'Qui reconnaît ce morceau ?');
       setText('hero-subtitle', finalDuel && finalDuel.active
         ? `${finalScore} · premier à ${finalDuel.targetWins}. Une égalité ne rapporte rien.`
         : 'Titre, artiste ou année : la régie attend vos réponses.');
@@ -70,7 +73,12 @@
         || [...(state.players || [])].sort((a, b) => Number(b.score) - Number(a.score))[0];
       setText('eyebrow', 'VERDICT FINAL');
       setText('hero-title', winner ? `${winner.emoji || '🏆'} ${winner.nom}` : 'Fin de partie');
-      setText('hero-subtitle', winner ? `${Number(winner.score) || 0} points — quelle machine.` : 'Merci d’avoir joué.');
+      const stats = winner && winner.confidence && winner.confidence.stats;
+      setText('hero-subtitle', winner
+        ? stats
+          ? `${Number(winner.score) || 0} points · audace ×${Number(stats.audacity).toFixed(2)} · précision ${Number(stats.precision) || 0} % · rentabilité ${Number(stats.profitability) >= 0 ? '+' : ''}${Number(stats.profitability) || 0}.`
+          : `${Number(winner.score) || 0} points — quelle machine.`
+        : 'Merci d’avoir joué.');
     } else {
       setText('eyebrow', 'ÉCRAN SPECTATEUR');
       setText('hero-title', 'Préparez vos oreilles.');

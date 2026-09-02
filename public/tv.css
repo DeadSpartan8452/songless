@@ -48,7 +48,7 @@ h1 { font: 900 clamp(3.2rem, 8.5vw, 9.5rem)/.84 Impact, Haettenschweiler, sans-s
 
 .scoreboard { width: min(94vw, 1250px); justify-self: end; border-top: 1px solid #ffffff30; padding-top: 1.4vh; }
 .scoreboard-head { display: flex; justify-content: space-between; color: var(--muted); font-weight: 900; letter-spacing: .18em; font-size: clamp(.65rem, 1.1vw, 1rem); }
-ol { list-style: none; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 1vw; padding: 0; margin: 1vh 0 0; }
+ol { list-style: none; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap: 1vw; padding: 0; margin: 1vh 0 0; }
 li { min-width: 0; border-left: 4px solid var(--signal); background: #ffffff0c; padding: 1vh 1vw; display: grid; grid-template-columns: auto 1fr auto; gap: .6em; align-items: center; }
 li:first-child { background: var(--acid); color: var(--ink); border-color: var(--acid); transform: translateY(-.5vh); }
 .rank { font: 900 1.4em/1 Georgia, serif; }

@@ -418,6 +418,12 @@
         <div class="tutorial-rule"><span>💔</span><p>Une manche ratée retire une vie. À zéro, tu deviens spectateur.</p></div>
         <div class="tutorial-rule"><span>⚔️</span><p>Quand il ne reste que deux survivants, le <strong>duel final</strong> commence automatiquement.</p></div>
         <div class="tutorial-rule"><span>🎧</span><p>Écoute l’extrait puis écris <strong>${answerLabel}</strong>.</p></div>`
+      : current.mode === 'confidence'
+      ? `
+        <div class="tutorial-rule"><span>🎲</span><p>Choisis <strong>×1, ×2 ou ×3</strong> avant chaque réponse.</p></div>
+        <div class="tutorial-rule"><span>📈</span><p>Une bonne réponse multiplie tes points par ta mise.</p></div>
+        <div class="tutorial-rule"><span>🛡️</span><p>Une erreur peut coûter des points, mais jamais plus de <strong>30 % de ton score</strong>.</p></div>
+        <div class="tutorial-rule"><span>👀</span><p>Le gain possible et la perte maximale sont affichés <strong>avant l’envoi</strong>.</p></div>`
       : `
         <div class="tutorial-rule"><span>🎧</span><p>Écoute l’extrait sur ton téléphone ou le PC, puis écris <strong>${answerLabel}</strong>.</p></div>
         <div class="tutorial-rule"><span>📨</span><p><strong>Envoie une seule réponse</strong>, puis attends la révélation de l’hôte.</p></div>
@@ -434,7 +440,8 @@
       ? 'Duel final'
       : current.mode === 'buzzer'
         ? 'Mode Buzzer'
-        : current.mode === 'royale' ? 'Battle Royale' : 'Réponses simultanées';
+        : current.mode === 'royale' ? 'Battle Royale'
+          : current.mode === 'confidence' ? 'Mode Confiance' : 'Réponses simultanées';
     byId('tutorial-gate').classList.remove('hidden');
   }
 
@@ -734,6 +741,11 @@
       badge.innerHTML = '<span>🥊 Mode Duel</span>';
       badge.className = 'mobile-mode-badge duel';
       badge.classList.remove('hidden');
+    } else if (state.mode === 'confidence') {
+      const stake = me && me.confidence ? me.confidence.preview.multiplier : 1;
+      badge.innerHTML = `<span>🎲 Confiance · mise ×${Number(stake) || 1}</span>`;
+      badge.className = 'mobile-mode-badge confidence';
+      badge.classList.remove('hidden');
     } else {
       badge.classList.add('hidden');
     }
@@ -938,7 +950,9 @@
     const buzzer = state.buzzer || {};
     const startsIn = state.playback
       ? Math.max(0, Math.ceil((Number(state.playback.startedAt) - Number(state.serverNow)) / 1000)) : 0;
-    const signature = `${state.status}:${state.round}:${state.mode}:${startsIn > 0 ? 'wait' : 'go'}:${me ? me.currentAttempt : 0}:${me ? me.found : false}:${me ? me.finished : false}:${me ? me.answer : ''}:${me ? me.lastAnswer : ''}:${me ? me.buzzPosition : ''}:${me ? me.buzzerBlockedSeconds : 0}:${buzzer.activeProfileId || ''}:${buzzer.solvedByProfileId || ''}:${buzzer.solvedByProfileId && Number(buzzer.answerSecondsRemaining) > 0 ? 'paused' : 'played'}`;
+    const confidenceKey = me && me.confidence
+      ? `${me.confidence.preview.multiplier}:${me.confidence.lastDelta}` : '';
+    const signature = `${state.status}:${state.round}:${state.mode}:${startsIn > 0 ? 'wait' : 'go'}:${me ? me.currentAttempt : 0}:${me ? me.found : false}:${me ? me.finished : false}:${me ? me.answer : ''}:${me ? me.lastAnswer : ''}:${me ? me.buzzPosition : ''}:${me ? me.buzzerBlockedSeconds : 0}:${confidenceKey}:${buzzer.activeProfileId || ''}:${buzzer.solvedByProfileId || ''}:${buzzer.solvedByProfileId && Number(buzzer.answerSecondsRemaining) > 0 ? 'paused' : 'played'}`;
     
     const currentInput = byId('answer-input');
     const hadFocus = currentInput && document.activeElement === currentInput;
@@ -1051,7 +1065,8 @@
     const threshold = Number(votes.threshold) || 1;
     let buttonsHtml = '';
 
-    if (state.mode === 'classic' && votes.nextStep && votes.nextStep.nextDuration) {
+    if (['classic', 'confidence'].includes(state.mode)
+        && votes.nextStep && votes.nextStep.nextDuration) {
       buttonsHtml += `
         <button type="button" class="vote-btn${votes.nextStep.voted ? ' voted' : ''}"
                 id="vote-step-btn">
@@ -1085,8 +1100,27 @@
     const skipBtnHtml = skipLabel
       ? `<button id="skip-btn" class="secondary-btn skip-btn" type="button">${skipLabel}</button>`
       : '';
+    const me = currentPlayer();
+    const confidenceState = me && me.confidence;
+    const confidenceHtml = state.mode === 'confidence' && confidenceState
+      ? `<fieldset class="confidence-picker">
+          <legend>Ta mise avant de répondre</legend>
+          <div class="confidence-options">
+            ${(state.confidenceLevels || []).map(level => `
+              <button type="button" data-confidence="${level.multiplier}"
+                      class="confidence-option${confidenceState.preview.multiplier === level.multiplier ? ' selected' : ''}"
+                      aria-pressed="${confidenceState.preview.multiplier === level.multiplier}">
+                <span>${level.emoji}</span><strong>×${level.multiplier}</strong><small>${level.label}</small>
+              </button>`).join('')}
+          </div>
+          <div class="confidence-preview" aria-live="polite">
+            <strong>Jusqu’à +${Number(confidenceState.preview.potentialGain) || 0} pts</strong>
+            <span>Perte max −${Number(confidenceState.preview.maximumLoss) || 0} pts</span>
+          </div>
+        </fieldset>` : '';
     return `
       <div class="answer-block">
+        ${confidenceHtml}
         <div class="answer-search">
           <span class="answer-search-icon" aria-hidden="true">⌕</span>
           <input id="answer-input" class="answer-input" maxlength="200"
@@ -1231,10 +1265,18 @@
         if (me.accolades.firstCorrectCount > 0) badgesHtml += `<span class="controller-badge">🚀 Le Rapide (${me.accolades.firstCorrectCount}x 1er)</span>`;
         if (me.accolades.clutchWins > 0) badgesHtml += `<span class="controller-badge">🛡️ Le Survivant (${me.accolades.clutchWins}x au 6e)</span>`;
       }
+      const confidenceStats = me && me.confidence && me.confidence.stats;
+      const confidenceHtml = state.mode === 'confidence' && confidenceStats
+        ? `<div class="confidence-report">
+            <span>🎲 Audace <strong>×${Number(confidenceStats.audacity).toFixed(2)}</strong></span>
+            <span>🎯 Précision <strong>${Number(confidenceStats.precision) || 0} %</strong></span>
+            <span>📈 Rentabilité <strong>${Number(confidenceStats.profitability) >= 0 ? '+' : ''}${Number(confidenceStats.profitability) || 0} pts</strong></span>
+          </div>` : '';
       podiumHeader = `
         <div class="controller-podium">
           <div class="podium-rank-highlight">🏆 Tu termines <strong>${medal}</strong> avec <strong>${Number(me ? me.score : 0)} pts</strong></div>
           ${badgesHtml ? `<div class="controller-badges-row">${badgesHtml}</div>` : ''}
+          ${confidenceHtml}
         </div>
       `;
     }
@@ -1520,6 +1562,12 @@
     if (event.target.closest('#tutorial-close-btn')) closePartyTutorial();
     if (event.target.closest('#buzz-btn')) playerAction('buzz');
     if (event.target.closest('#answer-btn')) submitAnswer();
+    const confidenceBtn = event.target.closest('[data-confidence]');
+    if (confidenceBtn) {
+      playerAction('set-confidence', {
+        multiplier: Number(confidenceBtn.getAttribute('data-confidence')),
+      });
+    }
     if (event.target.closest('#skip-btn')) playerAction('skip');
     if (event.target.closest('#vote-step-btn')) playerAction('vote-next-step');
     if (event.target.closest('#vote-skip-btn')) playerAction('vote-skip');

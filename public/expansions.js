@@ -608,7 +608,7 @@
   function applyPartySettings(settings) {
     const mode = partyState ? partyState.mode : 'classic';
     const value = normalizedPartyOptions(mode, settings);
-    if (mode === 'classic') {
+    if (['classic', 'confidence'].includes(mode)) {
       durations = Array.isArray(value.paliers) ? [...value.paliers] : (PALIERS_PRESETS[value.difficulty] || PALIERS_PRESETS.normal);
       reglages.paliers = [...durations];
       reglages.preset = value.difficulty || 'normal';
@@ -1635,6 +1635,10 @@
               } else if (player.accolades && player.accolades.firstCorrectCount > 0) {
                 badgeTag = `<span class="player-badge-chip">🚀 ${player.accolades.firstCorrectCount}x 1er</span>`;
               }
+              const confidenceStats = player.confidence && player.confidence.stats;
+              const confidenceTag = partyState.mode === 'confidence' && confidenceStats
+                ? `<span class="player-badge-chip">🎲 ×${Number(confidenceStats.audacity).toFixed(2)} · 🎯 ${Number(confidenceStats.precision) || 0}% · ${Number(confidenceStats.profitability) >= 0 ? '+' : ''}${Number(confidenceStats.profitability) || 0} pt</span>`
+                : '';
               return `
                 <div class="leaderboard-row${player.profileId === partyState.viewerProfileId ? ' me' : ''}">
                   <div class="leaderboard-rank">${rankEmoji}</div>
@@ -1643,6 +1647,7 @@
                     <div class="leaderboard-name-block">
                       <span class="leaderboard-name">${escapeHtml(String(player.nom))}${player.host ? ' <small class="host-tag">hôte</small>' : ''}</span>
                       ${badgeTag}
+                      ${confidenceTag}
                     </div>
                   </div>
                   <div class="leaderboard-stats">
@@ -1670,7 +1675,8 @@
       return `Trouvé ! (${count}e essai${pts ? ` · +${pts} pt` : ''})`;
     }
     if (player.finished) return 'Essais terminés ❌';
-    if (partyState && partyState.mode === 'classic' && partyState.status === 'round') {
+    if (partyState && ['classic', 'confidence'].includes(partyState.mode)
+        && partyState.status === 'round') {
       const paliers = partyState.paliers || [0.2, 0.7, 2.5, 5, 9, 15];
       const attemptIdx = Number(player.currentAttempt) || 0;
       const currentDur = paliers[attemptIdx] !== undefined ? paliers[attemptIdx] : paliers[0];
@@ -1699,7 +1705,8 @@
     const threshold = Number(votes.threshold) || 1;
     let buttonsHtml = '';
 
-    if (partyState.mode === 'classic' && votes.nextStep && votes.nextStep.nextDuration) {
+    if (['classic', 'confidence'].includes(partyState.mode)
+        && votes.nextStep && votes.nextStep.nextDuration) {
       buttonsHtml += `
         <button class="party-vote${votes.nextStep.voted ? ' voted' : ''}"
                 id="party-vote-step">
@@ -1799,7 +1806,9 @@
     const buzzer = partyState.buzzer || {};
     const waitingForStart = partyState.playback
       && Number(partyState.serverNow) < Number(partyState.playback.startedAt);
-    const signature = `${partyState.status}:${partyState.round}:${partyState.mode}:${waitingForStart ? 'wait' : 'go'}:${me ? me.currentAttempt : 0}:${me ? me.found : false}:${me ? me.finished : false}:${me ? me.answer : ''}:${me ? me.lastAnswer : ''}:${me ? me.buzzerBlockedSeconds : 0}:${buzzer.activeProfileId || ''}:${buzzer.solvedByProfileId || ''}:${buzzer.solvedByProfileId && Number(buzzer.answerSecondsRemaining) > 0 ? 'paused' : 'played'}`;
+    const confidenceKey = me && me.confidence
+      ? `${me.confidence.preview.multiplier}:${me.confidence.lastDelta}` : '';
+    const signature = `${partyState.status}:${partyState.round}:${partyState.mode}:${waitingForStart ? 'wait' : 'go'}:${me ? me.currentAttempt : 0}:${me ? me.found : false}:${me ? me.finished : false}:${me ? me.answer : ''}:${me ? me.lastAnswer : ''}:${me ? me.buzzerBlockedSeconds : 0}:${confidenceKey}:${buzzer.activeProfileId || ''}:${buzzer.solvedByProfileId || ''}:${buzzer.solvedByProfileId && Number(buzzer.answerSecondsRemaining) > 0 ? 'paused' : 'played'}`;
     const currentInput = byId('party-answer-input');
     const hadFocus = currentInput && document.activeElement === currentInput;
     const previousVal = currentInput ? currentInput.value : '';
@@ -1916,8 +1925,27 @@
     const skipBtnHtml = skipLabel
       ? `<button class="ghost-btn" id="party-skip-btn" type="button">${skipLabel}</button>`
       : '';
+    const me = partyState.players.find(player => player.profileId === partyState.viewerProfileId);
+    const confidenceState = me && me.confidence;
+    const confidenceHtml = partyState.mode === 'confidence' && confidenceState
+      ? `<fieldset class="party-confidence-picker">
+          <legend>Ta mise avant de répondre</legend>
+          <div class="party-confidence-options">
+            ${(partyState.confidenceLevels || []).map(level => `
+              <button type="button" data-party-confidence="${level.multiplier}"
+                      class="party-confidence-option${confidenceState.preview.multiplier === level.multiplier ? ' selected' : ''}"
+                      aria-pressed="${confidenceState.preview.multiplier === level.multiplier}">
+                <span>${level.emoji}</span><strong>×${level.multiplier}</strong><small>${level.label}</small>
+              </button>`).join('')}
+          </div>
+          <div class="party-confidence-preview" aria-live="polite">
+            <strong>Jusqu’à +${Number(confidenceState.preview.potentialGain) || 0} pts</strong>
+            <span>Perte max −${Number(confidenceState.preview.maximumLoss) || 0} pts</span>
+          </div>
+        </fieldset>` : '';
     return `
       <div class="party-answer-block">
+        ${confidenceHtml}
         <div class="party-search-box">
           <span class="party-search-icon" aria-hidden="true">⌕</span>
           <input id="party-answer-input" maxlength="200" placeholder="${placeholder}"
@@ -2436,6 +2464,12 @@
       if (event.target.closest('#party-copy-internet')) copyPartyInvite('internet');
       if (event.target.closest('#party-buzz-btn')) partyPlayerAction('buzz').catch(showPartyError);
       if (event.target.closest('#party-answer-btn')) submitPartyAnswer();
+      const confidenceBtn = event.target.closest('[data-party-confidence]');
+      if (confidenceBtn) {
+        partyPlayerAction('set-confidence', {
+          multiplier: Number(confidenceBtn.getAttribute('data-party-confidence')),
+        }).catch(showPartyError);
+      }
       if (event.target.closest('#party-skip-btn')) partyPlayerAction('skip').catch(showPartyError);
       if (event.target.closest('#party-vote-step')) partyPlayerAction('vote-next-step').catch(showPartyError);
       if (event.target.closest('#party-vote-skip')) partyPlayerAction('vote-skip').catch(showPartyError);
