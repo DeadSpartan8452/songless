@@ -23,6 +23,8 @@
  *   node tools/years.js --limit 100      # s'arrêter après 100 recherches réseau
  *   node tools/years.js --force          # réinterroger ceux qui ont déjà une année
  *   node tools/years.js --cache-only     # hors ligne : n'utilise que le cache
+ *   node tools/years.js --apply .cache/musicbrainz-years-preview.json
+ *                                       # appliquer un aperçu déjà contrôlé
  */
 
 const fs = require('fs');
@@ -30,11 +32,17 @@ const path = require('path');
 
 const T = require('../lib/titles');
 const store = require('../lib/store');
+const trackMetadata = require('../lib/track-metadata');
 
 const ROOT = path.join(__dirname, '..');
-const MUSIC_DIR = path.join(ROOT, 'musiques');
-const CACHE_DIR = path.join(ROOT, '.cache');
+const MUSIC_DIR = process.env.SONGLESS_MUSIC_DIR
+  ? path.resolve(process.env.SONGLESS_MUSIC_DIR)
+  : path.join(ROOT, 'musiques');
+const CACHE_DIR = process.env.SONGLESS_CACHE_DIR
+  ? path.resolve(process.env.SONGLESS_CACHE_DIR)
+  : path.join(ROOT, '.cache');
 const CACHE_FILE = path.join(CACHE_DIR, 'musicbrainz-years.json');
+const PREVIEW_FILE = path.join(CACHE_DIR, 'musicbrainz-years-preview.json');
 
 const USER_AGENT = 'SonglessLocal/1.0 ( https://localhost/songless )';
 const MB_DELAY = 1100;
@@ -51,6 +59,10 @@ const OPT = {
   limit: (() => {
     const i = args.indexOf('--limit');
     return i !== -1 ? parseInt(args[i + 1], 10) : Infinity;
+  })(),
+  apply: (() => {
+    const i = args.indexOf('--apply');
+    return i !== -1 && args[i + 1] ? path.resolve(args[i + 1]) : '';
   })(),
 };
 
@@ -132,7 +144,40 @@ async function chercherAnnee(titre, artiste) {
   return meilleure;
 }
 
+function validerPlan(plan, tracks, presents) {
+  const changes = plan && typeof plan === 'object' ? plan.changes : null;
+  if (!changes || typeof changes !== 'object' || Array.isArray(changes)) {
+    throw new Error('Aperçu invalide : objet changes absent.');
+  }
+  const valid = {};
+  for (const [fileName, entry] of Object.entries(changes).slice(0, 5000)) {
+    if (!Object.hasOwn(tracks, fileName) || !presents.has(fileName)) continue;
+    const year = trackMetadata.validYear(entry && entry.year);
+    if (!year) continue;
+    valid[fileName] = {
+      year,
+      yearSource: 'musicbrainz',
+      yearConfidence: 'medium',
+    };
+  }
+  return valid;
+}
+
+function appliquerApercu(filePath) {
+  const tracks = store.load(true).tracks;
+  const presents = new Set(fs.existsSync(MUSIC_DIR) ? fs.readdirSync(MUSIC_DIR) : []);
+  const plan = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+  const changes = validerPlan(plan, tracks, presents);
+  if (!Object.keys(changes).length) throw new Error('Aucune année valide et applicable dans cet aperçu.');
+  store.setMany(changes);
+  console.log(`${Object.keys(changes).length} années appliquées depuis l'aperçu contrôlé.`);
+}
+
 async function main() {
+  if (OPT.apply) {
+    appliquerApercu(OPT.apply);
+    return;
+  }
   const tracks = store.load(true).tracks;
 
   // On ne travaille que sur ce qui existe encore sur le disque.
@@ -200,12 +245,24 @@ async function main() {
     return;
   }
 
-  store.setMany(maj);
-  console.log(`\n${Object.keys(maj).length} années écrites dans metadata.json.`);
+  fs.mkdirSync(CACHE_DIR, { recursive: true });
+  fs.writeFileSync(PREVIEW_FILE, JSON.stringify({
+    version: 1,
+    createdAt: new Date().toISOString(),
+    source: 'musicbrainz',
+    confidence: 'medium',
+    changes: maj,
+  }, null, 2), 'utf8');
+  console.log(`\nAucune fiche modifiée : aperçu enregistré dans ${PREVIEW_FILE}`);
+  console.log(`Après vérification : node tools/years.js --apply "${PREVIEW_FILE}"`);
 
   // Ce que ça donne : c'est cette répartition qui alimente le filtre décennies.
   const parDecennie = {};
-  for (const e of Object.values(store.load(true).tracks)) {
+  const apercuTracks = { ...tracks };
+  for (const [fichier, patch] of Object.entries(maj)) {
+    apercuTracks[fichier] = { ...apercuTracks[fichier], ...patch };
+  }
+  for (const e of Object.values(apercuTracks)) {
     if (!e.year) continue;
     const d = Math.floor(e.year / 10) * 10;
     parDecennie[d] = (parDecennie[d] || 0) + 1;
@@ -215,14 +272,18 @@ async function main() {
     console.log(`   ${d}s  ${String(n).padStart(5)}`);
   }
 
-  const restants = Object.values(store.load(true).tracks).filter((e) => !e.year).length;
+  const restants = Object.values(apercuTracks).filter((e) => !e.year).length;
   if (restants) {
     console.log(`\n${restants} morceaux restent sans année (introuvables sur MusicBrainz, ou pas encore cherchés).`);
     console.log('Relance la commande pour continuer : le cache reprend où tu en étais.');
   }
 }
 
-main().catch((e) => {
-  console.error('\nÉchec :', e);
-  process.exit(1);
-});
+if (require.main === module) {
+  main().catch((e) => {
+    console.error('\nÉchec :', e);
+    process.exit(1);
+  });
+}
+
+module.exports = { validerPlan };

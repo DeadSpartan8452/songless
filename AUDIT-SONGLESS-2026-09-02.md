@@ -235,6 +235,9 @@ Il ne correspond ni à un fichier absent ni à une erreur de l’application.
 - les pochettes annoncées sont maintenant confrontées à leur signature binaire
   réelle (PNG, JPEG, GIF ou WebP) et le favicon SVG local est contrôlé séparément
   sur les quatre interfaces ;
+- `tools/years.js` n’écrit plus directement : il produit un aperçu JSON, puis
+  exige une seconde commande `--apply` ; l’application est bornée aux fichiers
+  encore présents et ne peut transmettre aucun champ de titre ;
 - la grande majorité des années doit être complétée ;
 - genres et artistes demandent une normalisation avec niveau de confiance ;
 - la qualité d’encodage et les dimensions visuelles des pochettes restent à analyser ;

@@ -557,7 +557,7 @@ Une phase est terminée uniquement si :
 | 2 — Rôles | Avancée | Jetons distincts hôte, joueur, TV et télécommande ; expiration et révocation ; tests négatifs | Reconnexion et validation visuelle réelle |
 | 3 — TV/admin | Première version | `tv.html`, `remote.html`, boutons d’appairage et commandes limitées | Essais réels TV/téléphone, reprise après coupure et finitions |
 | 4 — Modes existants | En cours | Duel final Battle Royale à deux survivants, persistance du vrai vainqueur et interfaces PC/TV/télécommande/téléphone validées | Unification complète des autres modes et de leurs fins de partie |
-| 5 — Bibliothèque | Avancée | Audit des 1 687 fichiers, favoris unifiés, sous-genres et années avec provenance/confiance, filtres précis, protection des variantes et premier indice de qualité explicable | Corrections en lot avec aperçu, validité réelle des pochettes, qualité d’encodage et blacklist configurable |
+| 5 — Bibliothèque | Avancée | Audit des 1 687 fichiers, favoris unifiés, sous-genres et années avec provenance/confiance, filtres précis, aperçu obligatoire avant application des années, validation binaire des pochettes, protection des variantes et indice de qualité explicable | Correction des genres en lot, dimensions/qualité d’encodage et blacklist configurable |
 | 6 — Nouveaux modes | Non commencée | — | Confiance, Coopération, Intrus, Enchères, Joker, Missions et handicap |
 | 7 — Personnalité | Non commencée | Catalogue existant inchangé à 105 succès | **100 nouveaux succès : 0/100**, titres de podium : 0/50, Portal et easter eggs |
 | 8 — Finition | Non commencée | — | Parcours complets, charge, permissions, visuel et documentation finale |
