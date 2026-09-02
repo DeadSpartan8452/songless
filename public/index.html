@@ -888,9 +888,19 @@
               Defender, les téléchargements, le réseau et un salon temporaire avec QR.
               Le salon de test est supprimé automatiquement.
             </p>
-            <button class="cta-btn" id="preflight-btn" type="button">
-              <i data-lucide="shield-check"></i> Tout vérifier
-            </button>
+            <div class="preflight-actions">
+              <button class="cta-btn" id="preflight-btn" type="button">
+                <i data-lucide="shield-check"></i> Tout vérifier
+              </button>
+              <button class="ghost-btn" id="preflight-sound-btn" type="button">
+                <i data-lucide="volume-2"></i> Tester les haut-parleurs
+              </button>
+            </div>
+            <div class="preflight-sound-confirm hidden" id="preflight-sound-confirm">
+              <span>As-tu entendu les deux notes ?</span>
+              <button class="ghost-btn" type="button" data-speaker-result="green">Oui</button>
+              <button class="ghost-btn" type="button" data-speaker-result="blocking">Non</button>
+            </div>
             <div class="preflight-report hidden" id="preflight-report" role="status"
                  aria-live="polite"></div>
           </div>

@@ -512,6 +512,10 @@ body.lecture-seule #refresh-library-btn {
 .preflight-badge.is-blocking { color: #fda4af; border-color: rgba(251, 113, 133, .45); }
 .preflight-badge.is-running { color: #c4b5fd; border-color: rgba(167, 139, 250, .45); }
 .preflight-report { display: grid; gap: 8px; margin-top: 16px; }
+.preflight-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.preflight-sound-confirm { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 12px; padding: 10px 12px; border: 1px solid rgba(167, 139, 250, .3); border-radius: 12px; }
+.preflight-sound-confirm span { margin-right: auto; font-weight: 700; }
+.preflight-sound-confirm button { min-width: 72px; padding: 7px 12px; }
 .preflight-summary { display: flex; flex-wrap: wrap; gap: 8px 18px; padding: 12px 14px; border-radius: 12px; background: rgba(255, 255, 255, .045); }
 .preflight-row { display: grid; grid-template-columns: 30px 1fr; gap: 10px; padding: 12px 14px; border: 1px solid var(--border); border-radius: 12px; background: rgba(0, 0, 0, .12); }
 .preflight-row p { margin: 3px 0 0; color: var(--text-muted); font-size: .84rem; }

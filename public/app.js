@@ -4949,12 +4949,48 @@ const LIBELLES_PROBLEMES = {
 
 let diagnosticEnCours = false;
 let preflightEnCours = false;
+let speakerPreflightStatus = null;
+let lastPreflightReport = null;
 
 function initHealthEvents() {
   const btn = document.getElementById('health-btn');
   if (btn) btn.addEventListener('click', lancerDiagnostic);
   const preflightBtn = document.getElementById('preflight-btn');
   if (preflightBtn) preflightBtn.addEventListener('click', lancerPreflight);
+  const soundBtn = document.getElementById('preflight-sound-btn');
+  if (soundBtn) soundBtn.addEventListener('click', testerHautParleurs);
+  document.querySelectorAll('[data-speaker-result]').forEach(button => {
+    button.addEventListener('click', () => {
+      speakerPreflightStatus = button.dataset.speakerResult;
+      document.getElementById('preflight-sound-confirm').classList.add('hidden');
+      if (lastPreflightReport) afficherPreflight(lastPreflightReport);
+    });
+  });
+}
+
+function testerHautParleurs() {
+  const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+  if (!AudioContextClass) {
+    speakerPreflightStatus = 'blocking';
+    if (lastPreflightReport) afficherPreflight(lastPreflightReport);
+    return;
+  }
+  const context = new AudioContextClass();
+  const gain = context.createGain();
+  gain.gain.setValueAtTime(.0001, context.currentTime);
+  gain.gain.exponentialRampToValueAtTime(.12, context.currentTime + .03);
+  gain.gain.exponentialRampToValueAtTime(.0001, context.currentTime + .7);
+  gain.connect(context.destination);
+  [440, 660].forEach((frequency, index) => {
+    const oscillator = context.createOscillator();
+    oscillator.type = 'sine';
+    oscillator.frequency.value = frequency;
+    oscillator.connect(gain);
+    oscillator.start(context.currentTime + index * .28);
+    oscillator.stop(context.currentTime + .25 + index * .28);
+  });
+  setTimeout(() => context.close().catch(() => {}), 900);
+  document.getElementById('preflight-sound-confirm').classList.remove('hidden');
 }
 
 async function lancerPreflight() {
@@ -4986,10 +5022,23 @@ async function lancerPreflight() {
 function afficherPreflight(report) {
   const labels = { green: 'Prêt', check: 'À vérifier', blocking: 'Bloquant' };
   const icons = { green: '✓', check: '!', blocking: '×' };
+  lastPreflightReport = report;
+  const checks = (Array.isArray(report.checks) ? report.checks : []).map(check => {
+    if (check.id !== 'speakers' || !speakerPreflightStatus) return check;
+    return speakerPreflightStatus === 'green'
+      ? { ...check, status: 'green', detail: 'Les deux notes ont été entendues.', action: '' }
+      : { ...check, status: 'blocking', detail: 'Aucun son n’a été entendu.', action: 'Vérifie le volume et la sortie audio avant la soirée.' };
+  });
+  const rank = { green: 0, check: 1, blocking: 2 };
+  const status = checks.reduce((worst, check) => rank[check.status] > rank[worst] ? check.status : worst, 'green');
+  const summary = {
+    green: checks.filter(check => check.status === 'green').length,
+    check: checks.filter(check => check.status === 'check').length,
+    blocking: checks.filter(check => check.status === 'blocking').length,
+  };
   const badge = document.getElementById('preflight-badge');
-  badge.className = `preflight-badge is-${report.status}`;
-  badge.innerText = labels[report.status] || 'Terminé';
-  const checks = Array.isArray(report.checks) ? report.checks : [];
+  badge.className = `preflight-badge is-${status}`;
+  badge.innerText = labels[status] || 'Terminé';
   const rows = checks.map(check => `
     <div class="preflight-row is-${escapeHtml(check.status)}">
       <span class="preflight-icon" aria-hidden="true">${icons[check.status] || '?'}</span>
@@ -5001,9 +5050,9 @@ function afficherPreflight(report) {
     </div>`).join('');
   document.getElementById('preflight-report').innerHTML = `
     <div class="preflight-summary">
-      <strong>${report.summary.green} prêts</strong>
-      <span>${report.summary.check} à vérifier</span>
-      <span>${report.summary.blocking} bloquants</span>
+      <strong>${summary.green} prêts</strong>
+      <span>${summary.check} à vérifier</span>
+      <span>${summary.blocking} bloquants</span>
     </div>${rows}`;
 }
 

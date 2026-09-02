@@ -491,8 +491,8 @@ Prêt/À vérifier/Bloquant pour Node.js, dépendances, ports, instance, accès 
 un fichier audio, couverture des métadonnées, Defender, ffmpeg, yt-dlp et état
 Tailscale/Funnel selon le mode lancé. Un salon temporaire éprouve la génération
 du QR et la séparation hôte/TV/télécommande avant d’être supprimé. L’API refuse
-les appareils distants. Restent le contrôle sonore interactif des haut-parleurs
-et la validation visuelle finale de ce nouvel écran.
+les appareils distants. Le test sonore interactif joue deux notes et demande une
+confirmation explicite. Reste la validation visuelle finale de ce nouvel écran.
 
 ## 11. Phase zéro — audit complet obligatoire
 
@@ -695,7 +695,7 @@ Une phase est terminée uniquement si :
 | 5 — Bibliothèque | Très avancée | Audit des 1 687 fichiers, favoris unifiés, sous-genres et années avec provenance/confiance, filtres précis, aperçus obligatoires avant application des années ou genres en lot, blacklist temporaire, mesure d’encodage et dimensions de pochettes, comparateur réversible de doublons et indice de qualité explicable | Compléter et valider manuellement les années et genres encore incertains |
 | 6 — Nouveaux modes | Livrée | Confiance, Coopération, Intrus, Enchères, Joker, Missions secrètes et Handicap intelligent livrés côté serveur, PC, contrôleur et TV, avec tests de règles, permissions et contrôle visuel Playwright/Axe | — |
 | 7 — Personnalité | Livrée | Catalogue porté de 105 à 206 succès : **100/100 nouveaux succès** déclaratifs plus le succès secret Portal, persistants, dédupliqués et contrôlés sur PC/téléphone ; succès secrets masqués avant déblocage ; **50/50 titres de podium** factuels et uniques ; Portal déclaratif et anti-spoiler contrôlé sur PC/téléphone/TV ; carte souvenir PNG privée par défaut, copie, téléchargement et animations accessibles contrôlés sur PC/téléphone | — |
-| 8 — Finition | Démarrée | Carte souvenir documentée ; première version fonctionnelle du diagnostic avant soirée avec contrôle d’environnement, bibliothèque, réseau, QR et permissions temporaires | Contrôle sonore et visuel du diagnostic, parcours complets, charge, permissions, visuel et kit multi-plateforme |
+| 8 — Finition | Démarrée | Carte souvenir documentée ; diagnostic avant soirée avec contrôle d’environnement, bibliothèque, réseau, QR, permissions temporaires et test sonore confirmé par l’utilisateur | Contrôle visuel du diagnostic, parcours complets, charge, permissions, visuel et kit multi-plateforme |
 
 Un élément n’est considéré comme livré que s’il respecte les critères de la
 section 13. Une présence dans le présent document signifie « demandé », pas

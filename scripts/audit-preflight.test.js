@@ -38,6 +38,7 @@ async function test(name, fn) {
         tools: { ok: false, missing: ['yt-dlp'] }, partyStore, qrCode: QRCode,
       });
       assert.strictEqual(report.checks.find(item => item.id === 'tools').status, 'check');
+      assert.strictEqual(report.checks.find(item => item.id === 'speakers').status, 'check');
       assert.strictEqual(report.summary.blocking, 0);
       assert.strictEqual(report.status, 'check');
     });
