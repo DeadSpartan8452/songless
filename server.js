@@ -16,6 +16,7 @@ const playerStore = require('./lib/player-store');
 const partyStore = require('./lib/party');
 const partyResults = require('./lib/party-results');
 const partyRounds = require('./lib/party-rounds');
+const partySuggestions = require('./lib/party-suggestions');
 const modeRegistry = require('./lib/mode-registry');
 const antivirus = require('./lib/antivirus');
 
@@ -565,56 +566,6 @@ async function revealCurrentPartyRound(party, requested = {}) {
   });
 }
 
-function editDistanceLimited(left, right, limit = 2) {
-  const a = String(left || '');
-  const b = String(right || '');
-  if (Math.abs(a.length - b.length) > limit) return limit + 1;
-  let previous = Array.from({ length: b.length + 1 }, (_, index) => index);
-  for (let i = 1; i <= a.length; i++) {
-    const current = [i];
-    let rowMin = current[0];
-    for (let j = 1; j <= b.length; j++) {
-      current[j] = Math.min(
-        current[j - 1] + 1,
-        previous[j] + 1,
-        previous[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1)
-      );
-      rowMin = Math.min(rowMin, current[j]);
-    }
-    if (rowMin > limit) return limit + 1;
-    previous = current;
-  }
-  return previous[b.length];
-}
-
-function partySuggestionScore(query, primary, value, artist, originalTitle, aliases) {
-  const q = T.norm(query);
-  const main = T.norm(primary);
-  const full = T.norm(value);
-  const performer = T.norm(artist);
-  const original = T.norm(originalTitle);
-  const other = (aliases || []).map(T.norm).filter(Boolean);
-  const fields = [main, full, performer, original, ...other].filter(Boolean);
-  if (!q || !fields.length) return Infinity;
-  if (fields.includes(q)) return 0;
-  if (main.startsWith(q)) return 1;
-  if (main.split(' ').some(word => word.startsWith(q))) return 2;
-  if (full.startsWith(q)) return 3;
-  if (main.includes(q)) return 4;
-  if (performer.startsWith(q)) return 5;
-  if ([original, ...other].some(field => field.startsWith(q))) return 6;
-  if (fields.some(field => field.includes(q))) return 7;
-  if (q.length < 4) return Infinity;
-  let best = Infinity;
-  for (const field of fields) {
-    for (const candidate of [field, ...field.split(' ')]) {
-      const comparable = candidate.slice(0, q.length + 2);
-      best = Math.min(best, editDistanceLimited(q, comparable, 2));
-    }
-  }
-  return best <= 2 ? 8 + best : Infinity;
-}
-
 app.get('/api/party/modes', (_req, res) => {
   res.set('Cache-Control', 'no-store');
   res.json({ modes: modeRegistry.publicModes() });
@@ -820,61 +771,14 @@ app.get('/api/party/:code/suggestions', (req, res) => {
   }
   if (party.status !== 'round') return res.json({ suggestions: [] });
 
-  const query = String(req.query.q || '').trim().slice(0, 80);
-  if (!T.norm(query)) return res.json({ suggestions: [] });
-
-  const answerMode = party.settings.answer;
-  const metadata = store.load().tracks;
-  const results = [];
-  const seen = new Set();
-  for (const fileName of listAudioFiles()) {
-    const meta = metadata[fileName] || {};
-    const fallback = T.fromFilename(fileName);
-    const title = String(meta.title || fallback.title || '').trim();
-    const artist = String(meta.artist || fallback.artist || '').trim();
-    const year = Number(meta.year) || null;
-    let value = '';
-    let primary = '';
-    let secondary = '';
-
-    const aliases = Array.isArray(meta.aliases) ? meta.aliases : [];
-    const originalTitle = String(meta.originalTitle || '').trim();
-    if (answerMode === 'artiste') {
-      value = artist;
-      primary = artist;
-      secondary = 'Artiste';
-    } else if (answerMode === 'annee') {
-      if (!year) continue;
-      value = String(year);
-      primary = value;
-      secondary = 'Année';
-    } else {
-      value = artist ? `${artist} - ${title}` : title;
-      primary = title;
-      secondary = [artist,
-        originalTitle && T.norm(originalTitle) !== T.norm(title)
-          ? `titre original : ${originalTitle}` : '']
-        .filter(Boolean).join(' · ');
-    }
-
-    const priority = partySuggestionScore(
-      query, primary, value, artist, originalTitle, aliases);
-    const valueKey = T.tightKey(value);
-    if (!valueKey || !Number.isFinite(priority) || seen.has(valueKey)) continue;
-    seen.add(valueKey);
-    results.push({
-      value: value.slice(0, 200),
-      primary: primary.slice(0, 200),
-      secondary: secondary.slice(0, 200),
-      priority,
-    });
-  }
-
-  results.sort((a, b) => a.priority - b.priority
-    || a.primary.length - b.primary.length
-    || a.primary.localeCompare(b.primary, 'fr'));
+  const results = partySuggestions.suggestions({
+    query: req.query.q,
+    answerMode: party.settings.answer,
+    fileNames: listAudioFiles(),
+    metadata: store.load().tracks,
+  });
   res.set('Cache-Control', 'no-store');
-  res.json({ suggestions: results.slice(0, 8).map(({ priority, ...item }) => item) });
+  res.json({ suggestions: results });
 });
 
 app.post('/api/party/:code/command', async (req, res) => {
