@@ -438,4 +438,41 @@ test('deux équipes à égalité conservent exactement le même score', () => {
   assert.deepStrictEqual(state.teams.map(team => team.score), [500, 500]);
 });
 
+test('un easter egg reste serveur jusqu’au verdict et un skip final ne le révèle pas', () => {
+  const ctx = makeParty();
+  partyStore.command(ctx.party, ctx.hostToken, 'start-round', {
+    round: 1,
+    trackId: 'portal-track',
+    answer: { title: 'Bonne réponse', artist: 'Artiste test', mode: 'titre' },
+    easterEgg: {
+      id: 'portal', hint: 'Indice secret', successText: 'Gâteau trouvé',
+      failureText: 'The cake is a lie', revealText: 'Révélation Portal',
+    },
+  });
+  ctx.party.roundStartedAt = Date.now() - 10;
+  ctx.party.playback.startedAt = Date.now() - 10;
+  assert.strictEqual(partyStore.publicState(ctx.party, ctx.first.token, null).easterEgg, null);
+  for (let attempt = 0; attempt < 6; attempt++) {
+    partyStore.playerAction(ctx.party, ctx.first.token, 'skip');
+  }
+  assert.strictEqual(ctx.first.finished, true);
+  assert.strictEqual(partyStore.publicState(ctx.party, ctx.first.token, null).easterEgg, null);
+});
+
+test('un guess true rend l’easter egg public uniquement après la réponse', () => {
+  const ctx = makeParty();
+  partyStore.command(ctx.party, ctx.hostToken, 'start-round', {
+    round: 1,
+    trackId: 'portal-track',
+    answer: { title: 'Bonne réponse', artist: 'Artiste test', mode: 'titre' },
+    easterEgg: { id: 'portal', successText: 'Gâteau trouvé' },
+  });
+  ctx.party.roundStartedAt = Date.now() - 10;
+  ctx.party.playback.startedAt = Date.now() - 10;
+  partyStore.playerAction(ctx.party, ctx.first.token, 'answer', { answer: 'Bonne réponse' });
+  const state = partyStore.publicState(ctx.party, ctx.first.token, null);
+  assert.strictEqual(state.easterEgg.phase, 'success');
+  assert.strictEqual(state.easterEgg.text, 'Gâteau trouvé');
+});
+
 console.log(`\n${passed} tests réussis.`);

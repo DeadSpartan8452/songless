@@ -941,6 +941,7 @@ async function buildTrack(fileName, meta) {
       aliases: meta.aliases || [],
       hasCover: !!meta.hasCover,
       needsReview: !!meta.needsReview,
+      easterEgg: meta.easterEgg || null,
       enriched: true,
     };
   }
@@ -963,6 +964,7 @@ async function buildTrack(fileName, meta) {
     aliases: T.buildAliases(title, `${artist} ${title}`),
     hasCover: tags.hasCover,
     needsReview: T.detectScript(title) !== 'latin',
+    easterEgg: null,
     enriched: false,
   };
 }

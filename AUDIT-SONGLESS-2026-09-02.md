@@ -184,6 +184,16 @@ Il ne correspond ni à un fichier absent ni à une erreur de l’application.
 - captures et rapport reproductible dans le laboratoire visuel isolé, sans
   écriture dans les profils ou métadonnées personnels.
 
+### Garde-fou easter eggs
+
+- la définition reste exclusivement côté serveur avant le verdict autorisé ;
+- un succès individuel autorise l’effet après `guess true` ;
+- un échec ne l’autorise qu’après la dernière vraie tentative ;
+- un `skip`, y compris au dernier palier, ne produit jamais `guess false` ;
+- le futur mode Indice possède une exception explicite et isolée ;
+- la TV célèbre une bonne réponse, mais ne diffuse pas l’échec individuel d’un
+  joueur pendant que les autres cherchent encore.
+
 ## Points importants à traiter ensuite
 
 ### Architecture

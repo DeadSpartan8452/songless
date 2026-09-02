@@ -569,6 +569,7 @@ lib/
   party-answers.js      validation commune des titres, artistes et années
   party-buzzer.js       verrou, délai et pénalités du mode Buzzer
   party-duel.js         calcul de la corde en duel individuel ou par équipes
+  party-easter-eggs.js  révélation anti-spoiler après verdict joueur
   party-rounds.js       préparation et révélation des manches côté serveur
   party-results.js      classement et persistance des résultats multijoueurs
   party-royale.js       vies, éliminations et duel final Battle Royale
