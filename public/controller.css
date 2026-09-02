@@ -127,10 +127,22 @@ h2 { margin: 0 0 14px; font-size: 1.05rem; }
 .gift-status.success { color: var(--ok); }
 .gift-status.error { color: var(--bad); }
 
-.room-head { display: flex; justify-content: space-between; align-items: center; }
+.room-head {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 8px 12px;
+  align-items: center;
+}
 .room-head .eyebrow { display: block; margin-bottom: 2px; }
 #room-code { font-size: 1.45rem; letter-spacing: .13em; }
-.room-actions { display: flex; gap: 12px; align-items: center; }
+.room-actions {
+  display: flex;
+  grid-column: 1 / -1;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  justify-content: flex-end;
+}
 .text-btn { border: 0; color: var(--muted); background: transparent; text-decoration: underline; }
 .room-actions .text-btn {
   min-height: 40px;
@@ -559,8 +571,8 @@ h2 { margin: 0 0 14px; font-size: 1.05rem; }
 
 /* Réactions rapides en bas */
 .mobile-quick-reactions {
-  display: flex;
-  justify-content: center;
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 8px;
   margin-top: 10px;
   padding: 6px;
@@ -569,10 +581,12 @@ h2 { margin: 0 0 14px; font-size: 1.05rem; }
 }
 
 .mobile-quick-reactions .reaction-btn {
+  min-width: 0;
+  width: 100%;
   background: rgba(255, 255, 255, 0.08);
   border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 10px;
-  padding: 6px 12px;
+  padding: 6px 4px;
   font-size: 1.35rem;
   cursor: pointer;
   touch-action: manipulation;
@@ -822,8 +836,10 @@ h2 { margin: 0 0 14px; font-size: 1.05rem; }
 
 .mobile-mode-badge {
   display: inline-flex;
+  justify-self: end;
   align-items: center;
   gap: 4px;
+  max-width: 100%;
   font-size: 0.75rem;
   font-weight: 700;
   padding: 2px 8px;
@@ -831,6 +847,8 @@ h2 { margin: 0 0 14px; font-size: 1.05rem; }
   background: rgba(234, 179, 8, 0.15);
   border: 1px solid rgba(234, 179, 8, 0.4);
   color: #fde047;
+  text-align: center;
+  white-space: normal;
 }
 
 .mobile-mode-badge.royale {
@@ -1297,3 +1315,8 @@ h2 { margin: 0 0 14px; font-size: 1.05rem; }
   margin-top: 10px;
 }
 
+.mobile-mode-badge.final-duel {
+  border-color: #f59e0b;
+  background: linear-gradient(110deg, rgba(245, 158, 11, .22), rgba(139, 92, 246, .2));
+  color: #fde68a;
+}

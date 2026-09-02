@@ -15,10 +15,18 @@
     state = next;
     setText('party-code', next.code);
     setText('connection', 'Télécommande connectée · accès temporaire');
-    setText('round-label', next.status === 'lobby' ? 'SALON' : `MANCHE ${next.round}${next.infinite ? '' : ` / ${next.totalRounds}`}`);
+    const finalDuel = next.finalDuel;
+    const finalScore = finalDuel
+      ? (finalDuel.contenders || []).map(item => Number(item.wins) || 0).join(' — ')
+      : '';
+    setText('round-label', finalDuel && finalDuel.active
+      ? 'DUEL FINAL'
+      : next.status === 'lobby' ? 'SALON' : `MANCHE ${next.round}${next.infinite ? '' : ` / ${next.totalRounds}`}`);
     if (next.status === 'round') {
-      setText('state-title', 'Ça joue');
-      setText('state-detail', 'Les réponses sont ouvertes.');
+      setText('state-title', finalDuel && finalDuel.active ? '⚔️ Duel final' : 'Ça joue');
+      setText('state-detail', finalDuel && finalDuel.active
+        ? `${finalScore} · premier à ${finalDuel.targetWins}.`
+        : 'Les réponses sont ouvertes.');
     } else if (next.status === 'reveal') {
       setText('state-title', next.revealedTrack && next.revealedTrack.title || 'Réponse révélée');
       setText('state-detail', next.revealedTrack && next.revealedTrack.artist || 'Prêt pour la suite.');

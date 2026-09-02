@@ -106,9 +106,11 @@ contenu TV, gestion des équipes, compatibilité locale et compatibilité distan
 10. Jeu en équipes.
 11. Contraintes et effets de manche existants.
 
-Le mode Survie existe déjà. Il doit être fiabilisé, pas recréé. Dans les modes à
-vies, un duel final ne se déclenche que lorsqu’il reste exactement deux joueurs
-vivants. Il ne s’applique pas aux classements ordinaires sans élimination.
+Le mode Survie existe déjà. Il doit être fiabilisé, pas recréé. Son duel final
+automatique est livré : après une partie ayant compté au moins trois survivants,
+il se déclenche lorsqu’il reste exactement deux joueurs vivants. Le premier à
+deux manches gagnées remporte la partie ; les égalités ne donnent aucun point.
+Il ne s’applique pas aux classements ordinaires sans élimination.
 
 ### 4.2 Nouveaux modes validés
 
@@ -516,10 +518,10 @@ Une phase est terminée uniquement si :
 | Phase | État | Réalisé | Reste principal |
 |---|---|---|---|
 | 0 — Audit | Validée | Audit moteur, HTTP, bibliothèque, encodage, sécurité et contrôle Playwright/Axe multi-écrans | Rejouer administrativement les trois lanceurs sur une instance fraîche |
-| 1 — Moteur | En cours | Tests reproductibles, playlist serveur et registre unique des quatre modes avec capacités PC/TV/téléphone | Découpage progressif des gros fichiers et centralisation des fins de partie |
+| 1 — Moteur | En cours | Tests reproductibles, playlist serveur, registre unique des quatre modes et fin de partie Battle Royale décidée côté serveur | Découpage progressif des gros fichiers et centralisation des autres fins de partie |
 | 2 — Rôles | Avancée | Jetons distincts hôte, joueur, TV et télécommande ; expiration et révocation ; tests négatifs | Reconnexion et validation visuelle réelle |
 | 3 — TV/admin | Première version | `tv.html`, `remote.html`, boutons d’appairage et commandes limitées | Essais réels TV/téléphone, reprise après coupure et finitions |
-| 4 — Modes existants | Non commencée | Corrections ponctuelles Survie et confidentialité | Unification complète et duel final à deux survivants |
+| 4 — Modes existants | En cours | Duel final Battle Royale à deux survivants, persistance du vrai vainqueur et interfaces PC/TV/télécommande/téléphone validées | Unification complète des autres modes et de leurs fins de partie |
 | 5 — Bibliothèque | Commencée | Audit des 1 687 fichiers et protection des variantes contre les faux doublons | Genres, années, pochettes, qualité et blacklist configurable |
 | 6 — Nouveaux modes | Non commencée | — | Confiance, Coopération, Intrus, Enchères, Joker, Missions et handicap |
 | 7 — Personnalité | Non commencée | Catalogue existant inchangé à 105 succès | **100 nouveaux succès : 0/100**, titres de podium : 0/50, Portal et easter eggs |

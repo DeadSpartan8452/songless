@@ -605,7 +605,7 @@ code {
   text-align: center;
 }
 
-.result-header h3 {
+.result-header h2 {
   font-size: 2rem;
   color: var(--cta);
 }

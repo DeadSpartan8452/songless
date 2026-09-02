@@ -337,3 +337,18 @@ body.lecture-seule .local-only { display: none !important; }
   color: var(--text-muted);
   line-height: 1.45;
 }
+
+.party-final-duel-banner {
+  display: grid;
+  gap: .25rem;
+  margin: 1rem 0;
+  padding: 1rem 1.1rem;
+  border: 1px solid #f59e0b;
+  border-radius: 14px;
+  background: linear-gradient(110deg, rgba(245, 158, 11, .2), rgba(168, 85, 247, .14));
+  box-shadow: 0 0 28px rgba(245, 158, 11, .12);
+}
+
+.party-final-duel-banner strong { color: #fbbf24; letter-spacing: .12em; }
+.party-final-duel-banner span { font-weight: 800; }
+.party-final-duel-banner small { color: var(--text-muted); }

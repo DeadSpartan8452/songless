@@ -43,7 +43,8 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "<ch
 | Parties de 5, 10, 20 ou 50 morceaux | onglet **Modes** |
 | Entraînement intelligent sur les morceaux à revoir | onglet **Modes** |
 | Collections et défis rejouables | onglet **Modes** |
-| Soirée multijoueur classique ou buzzer | onglet **Modes** |
+| Soirée multijoueur : Classique, Buzzer, Battle Royale ou Duel | onglet **Modes** |
+| Duel final automatique entre les deux derniers survivants | mode **Battle Royale** |
 | Export/import complet des données de jeu | onglet **Modes** |
 | Statistiques par genre et par artiste | onglet **Statistiques** |
 | Résumé de partie à partager | bouton « Partager » en fin de manche |
@@ -71,6 +72,11 @@ numérique, ni bibliothèque, ni réglages. Il peut toutefois offrir une musique
 par son titre, une URL ou un fichier audio. Il ne peut ni consulter, éditer ou
 supprimer les morceaux, ni créer une collection ou commander la partie. Le PC
 reste l'unique hôte et diffuse la musique.
+
+En Battle Royale, si la partie a compté au moins trois survivants, le passage à
+deux survivants déclenche automatiquement un duel final. Le premier à gagner
+deux manches remporte la partie ; une manche où les deux joueurs trouvent ou
+échouent ensemble ne donne aucun point et est rejouée.
 
 En ligne de commande : `node server.js --lan`.
 

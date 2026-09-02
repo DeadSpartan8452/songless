@@ -32,8 +32,17 @@
   }
 
   function render(state) {
+    const finalDuel = state.finalDuel;
+    const finalists = finalDuel ? (finalDuel.contenders || []).map(entry => ({
+      ...entry,
+      player: (state.players || []).find(player => player.profileId === entry.profileId),
+    })) : [];
+    const finalNames = finalists.map(item => item.player ? item.player.nom : 'Finaliste');
+    const finalScore = finalists.map(item => Number(item.wins) || 0).join(' — ');
     setText('party-code', state.code);
-    setText('round-label', state.status === 'lobby'
+    setText('round-label', finalDuel && finalDuel.active
+      ? 'DUEL FINAL'
+      : state.status === 'lobby'
       ? 'SALON OUVERT'
       : state.status === 'finished'
         ? 'SOIRÉE TERMINÉE'
@@ -41,15 +50,24 @@
     const hero = byId('hero');
     hero.className = `hero ${state.status}`;
     if (state.status === 'round') {
-      setText('eyebrow', 'À VOUS DE JOUER');
-      setText('hero-title', state.mode === 'buzzer' ? 'Buzzez maintenant.' : 'Qui reconnaît ce morceau ?');
-      setText('hero-subtitle', 'Titre, artiste ou année : la régie attend vos réponses.');
+      setText('eyebrow', finalDuel && finalDuel.active ? '⚔️ DUEL FINAL' : 'À VOUS DE JOUER');
+      setText('hero-title', finalDuel && finalDuel.active
+        ? finalNames.join(' contre ')
+        : state.mode === 'buzzer' ? 'Buzzez maintenant.' : 'Qui reconnaît ce morceau ?');
+      setText('hero-subtitle', finalDuel && finalDuel.active
+        ? `${finalScore} · premier à ${finalDuel.targetWins}. Une égalité ne rapporte rien.`
+        : 'Titre, artiste ou année : la régie attend vos réponses.');
     } else if (state.status === 'reveal' && state.revealedTrack) {
-      setText('eyebrow', 'RÉPONSE');
-      setText('hero-title', state.revealedTrack.title || 'Morceau révélé');
-      setText('hero-subtitle', state.revealedTrack.artist || 'Artiste inconnu');
+      setText('eyebrow', finalDuel && finalDuel.roundResult === 'transition' ? '⚔️ DUEL FINAL' : 'RÉPONSE');
+      setText('hero-title', finalDuel && finalDuel.roundResult === 'transition'
+        ? finalNames.join(' contre ')
+        : state.revealedTrack.title || 'Morceau révélé');
+      setText('hero-subtitle', finalDuel
+        ? `${finalScore} · premier à ${finalDuel.targetWins}.`
+        : state.revealedTrack.artist || 'Artiste inconnu');
     } else if (state.status === 'finished') {
-      const winner = [...(state.players || [])].sort((a, b) => Number(b.score) - Number(a.score))[0];
+      const winner = (state.players || []).find(player => player.profileId === state.winnerProfileId)
+        || [...(state.players || [])].sort((a, b) => Number(b.score) - Number(a.score))[0];
       setText('eyebrow', 'VERDICT FINAL');
       setText('hero-title', winner ? `${winner.emoji || '🏆'} ${winner.nom}` : 'Fin de partie');
       setText('hero-subtitle', winner ? `${Number(winner.score) || 0} points — quelle machine.` : 'Merci d’avoir joué.');

@@ -397,7 +397,14 @@
       annee: 'l’année (à deux ans près)',
     }[(current.settings || {}).answer] || 'le titre de la musique';
     const points = Number((current.settings || {}).points) || 1000;
-    const modeRules = current.mode === 'buzzer'
+    const finalDuel = current.finalDuel && current.finalDuel.active;
+    const modeRules = finalDuel
+      ? `
+        <div class="tutorial-rule"><span>⚔️</span><p>Vous êtes les <strong>deux derniers survivants</strong>.</p></div>
+        <div class="tutorial-rule"><span>2️⃣</span><p>Le premier à gagner <strong>${Number(current.finalDuel.targetWins) || 2} manches</strong> remporte la partie.</p></div>
+        <div class="tutorial-rule"><span>🤝</span><p>Si vous trouvez ou ratez tous les deux, <strong>personne ne marque</strong> et le duel continue.</p></div>
+        <div class="tutorial-rule"><span>🎧</span><p>Réponds normalement avec <strong>${answerLabel}</strong>.</p></div>`
+      : current.mode === 'buzzer'
       ? `
         <div class="tutorial-rule"><span>🎧</span><p>Le son démarre <strong>en même temps</strong> sur ton téléphone et le PC.</p></div>
         <div class="tutorial-rule"><span>🔴</span><p><strong>Buzze en premier.</strong><br>Quand quelqu’un buzze, les autres attendent.</p></div>
@@ -405,18 +412,29 @@
         <div class="tutorial-rule"><span>⏳</span><p><strong>Mauvaise réponse :</strong> toi seul es bloqué 3 secondes. À partir de la 3ᵉ erreur, tu perds aussi 10 % des points de la manche.</p></div>
         <div class="tutorial-rule"><span>🗳️</span><p>Vote pour <strong>passer</strong> le morceau.</p></div>
         <div class="tutorial-rule"><span>⭐</span><p>Une bonne réponse rapporte <strong>${points} points</strong>.</p></div>`
+      : current.mode === 'royale'
+      ? `
+        <div class="tutorial-rule"><span>👑</span><p>Tu commences avec <strong>3 vies</strong>.</p></div>
+        <div class="tutorial-rule"><span>💔</span><p>Une manche ratée retire une vie. À zéro, tu deviens spectateur.</p></div>
+        <div class="tutorial-rule"><span>⚔️</span><p>Quand il ne reste que deux survivants, le <strong>duel final</strong> commence automatiquement.</p></div>
+        <div class="tutorial-rule"><span>🎧</span><p>Écoute l’extrait puis écris <strong>${answerLabel}</strong>.</p></div>`
       : `
         <div class="tutorial-rule"><span>🎧</span><p>Écoute l’extrait sur ton téléphone ou le PC, puis écris <strong>${answerLabel}</strong>.</p></div>
         <div class="tutorial-rule"><span>📨</span><p><strong>Envoie une seule réponse</strong>, puis attends la révélation de l’hôte.</p></div>
         <div class="tutorial-rule"><span>🗳️</span><p>Vote pour <strong>passer</strong> le morceau.</p></div>
         <div class="tutorial-rule"><span>⭐</span><p>Une réponse rapide rapporte davantage, jusqu’à <strong>${points} points</strong>.</p></div>`;
-    const infiniteRule = current.infinite
+    const infiniteRule = finalDuel
+      ? '<div class="tutorial-rule"><span>🏁</span><p>Le nombre de manches s’adapte jusqu’à la victoire.</p></div>'
+      : current.infinite
       ? '<div class="tutorial-rule"><span>∞</span><p><strong>Mode infini :</strong> les manches continuent jusqu’à ce que l’hôte termine la partie.</p></div>'
       : `<div class="tutorial-rule"><span>🏁</span><p>La partie dure <strong>${Number(current.totalRounds) || 1} manches</strong>.</p></div>`;
 
     byId('tutorial-content').innerHTML = modeRules + infiniteRule;
-    byId('tutorial-title').innerText = current.mode === 'buzzer'
-      ? 'Mode Buzzer' : 'Réponses simultanées';
+    byId('tutorial-title').innerText = finalDuel
+      ? 'Duel final'
+      : current.mode === 'buzzer'
+        ? 'Mode Buzzer'
+        : current.mode === 'royale' ? 'Battle Royale' : 'Réponses simultanées';
     byId('tutorial-gate').classList.remove('hidden');
   }
 
@@ -698,7 +716,12 @@
     if (!badge || !state) return;
     const me = currentPlayer();
     if (state.mode === 'royale') {
-      if (me && me.isGhost) {
+      const finalDuel = state.finalDuel;
+      if (finalDuel && (finalDuel.active || finalDuel.winnerProfileId)) {
+        const scores = (finalDuel.contenders || []).map(item => Number(item.wins) || 0).join(' — ');
+        badge.innerHTML = `<span>⚔️ DUEL FINAL · ${escapeHtml(scores)}</span>`;
+        badge.className = 'mobile-mode-badge final-duel';
+      } else if (me && me.isGhost) {
         badge.innerHTML = '<span>👻 Fantôme / Spectateur</span>';
         badge.className = 'mobile-mode-badge ghost';
       } else {
@@ -896,7 +919,8 @@
       window.songlessTrophies.unlock('party_first_join');
       const sorted = [...(state.players || [])].sort((a, b) => (b.score || 0) - (a.score || 0));
       const me = currentPlayer();
-      if (me && sorted[0] && sorted[0].profileId === me.profileId) {
+      const winnerProfileId = state.winnerProfileId || (sorted[0] && sorted[0].profileId);
+      if (me && winnerProfileId === me.profileId) {
         window.songlessTrophies.unlock('party_podium_gold');
         if (state.mode === 'royale') window.songlessTrophies.unlock('battle_royale_win');
         if (state.mode === 'duel') window.songlessTrophies.unlock('duel_win');
@@ -1144,10 +1168,15 @@
   }
 
   function renderRanking() {
-    const sorted = [...state.players].sort((a, b) => (Number(b.score) || 0) - (Number(a.score) || 0) || a.nom.localeCompare(b.nom));
+    const sorted = [...state.players].sort((a, b) => {
+      if (state.winnerProfileId && a.profileId === state.winnerProfileId) return -1;
+      if (state.winnerProfileId && b.profileId === state.winnerProfileId) return 1;
+      return (Number(b.score) || 0) - (Number(a.score) || 0) || a.nom.localeCompare(b.nom);
+    });
     const rankByProfileId = new Map(sorted.map(item => [
       item.profileId,
-      1 + sorted.filter(other => (Number(other.score) || 0) > (Number(item.score) || 0)).length,
+      state.winnerProfileId ? sorted.indexOf(item) + 1
+        : 1 + sorted.filter(other => (Number(other.score) || 0) > (Number(item.score) || 0)).length,
     ]));
     const me = currentPlayer();
     let podiumHeader = '';

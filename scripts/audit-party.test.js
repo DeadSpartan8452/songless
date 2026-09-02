@@ -200,6 +200,66 @@ test('un joueur éliminé ne peut plus répondre', () => {
   );
 });
 
+test('la Battle Royale déclenche un duel final à deux survivants', () => {
+  const ctx = makeParty('royale');
+  const third = partyStore.join(
+    ctx.party.code,
+    profile('p3', 'Charlie')
+  ).player;
+  third.lives = 1;
+  startRound(ctx, 1);
+  partyStore.playerAction(ctx.party, ctx.first.token, 'answer', {
+    answer: 'Bonne réponse',
+  });
+  partyStore.playerAction(ctx.party, ctx.second.token, 'answer', {
+    answer: 'Bonne réponse',
+  });
+  partyStore.command(ctx.party, ctx.hostToken, 'reveal', { reason: 'manual' });
+
+  assert.strictEqual(third.isGhost, true);
+  assert.strictEqual(ctx.party.finalDuel.active, true);
+  assert.deepStrictEqual(
+    ctx.party.finalDuel.contenders.map(item => item.profileId),
+    ['p1', 'p2']
+  );
+  assert.strictEqual(ctx.party.finalDuel.targetWins, 2);
+});
+
+test('le duel final rejoue les égalités et termine à deux points', () => {
+  const ctx = makeParty('royale');
+  const third = partyStore.join(
+    ctx.party.code,
+    profile('p3', 'Charlie')
+  ).player;
+  third.lives = 1;
+
+  startRound(ctx, 1);
+  partyStore.playerAction(ctx.party, ctx.first.token, 'answer', { answer: 'Bonne réponse' });
+  partyStore.playerAction(ctx.party, ctx.second.token, 'answer', { answer: 'Bonne réponse' });
+  partyStore.command(ctx.party, ctx.hostToken, 'reveal', { reason: 'manual' });
+
+  startRound(ctx, 2);
+  partyStore.playerAction(ctx.party, ctx.first.token, 'answer', { answer: 'Bonne réponse' });
+  partyStore.command(ctx.party, ctx.hostToken, 'reveal', { reason: 'manual' });
+  assert.strictEqual(ctx.party.finalDuel.contenders[0].wins, 1);
+  assert.strictEqual(ctx.party.status, 'reveal');
+
+  startRound(ctx, 3);
+  partyStore.playerAction(ctx.party, ctx.first.token, 'answer', { answer: 'Bonne réponse' });
+  partyStore.playerAction(ctx.party, ctx.second.token, 'answer', { answer: 'Bonne réponse' });
+  partyStore.command(ctx.party, ctx.hostToken, 'reveal', { reason: 'manual' });
+  assert.strictEqual(ctx.party.finalDuel.tiedRounds, 1);
+  assert.strictEqual(ctx.party.finalDuel.roundResult, 'both_correct');
+
+  startRound(ctx, 4);
+  partyStore.playerAction(ctx.party, ctx.first.token, 'answer', { answer: 'Bonne réponse' });
+  partyStore.command(ctx.party, ctx.hostToken, 'reveal', { reason: 'manual' });
+  assert.strictEqual(ctx.party.status, 'finished');
+  assert.strictEqual(ctx.party.finishReason, 'final_duel');
+  assert.strictEqual(ctx.party.winnerProfileId, 'p1');
+  assert.strictEqual(ctx.party.finalDuel.winnerProfileId, 'p1');
+});
+
 test('une couleur d’équipe invalide est neutralisée', () => {
   const ctx = makeParty();
   partyStore.command(ctx.party, ctx.hostToken, 'host-create-team', {

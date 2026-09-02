@@ -562,10 +562,12 @@ function serverRoundOffset(party, track) {
 
 async function startNextPartyRound(party) {
   if (!party.trackIds.length) throw new Error('La playlist serveur de cette partie est vide.');
-  if (!party.infinite && party.round >= party.totalRounds) {
+  const finalDuelActive = Boolean(party.finalDuel && party.finalDuel.active);
+  if (!party.infinite && !finalDuelActive && party.round >= party.totalRounds) {
     throw new Error('Toutes les manches prévues ont déjà été jouées.');
   }
-  const index = party.infinite ? party.round % party.trackIds.length : party.round;
+  const index = party.infinite || finalDuelActive
+    ? party.round % party.trackIds.length : party.round;
   const trackId = party.trackIds[index];
   const data = await partyTrackData(trackId);
   data.answer.mode = party.settings.answer;
@@ -928,14 +930,20 @@ app.post('/api/party/:code/command', async (req, res) => {
     } else {
       partyStore.command(party, req.body.hostToken, req.body.action, req.body.data);
     }
-    if (req.body.action === 'finish' && !party.statsCommitted) {
-      const saved = playerStore.recordPartySessions(party.players);
+    if (party.status === 'finished' && !party.statsCommitted) {
+      const saved = playerStore.recordPartySessions(party.players, party.winnerProfileId);
       for (const result of saved) {
         const player = party.players.find(item => item.profileId === result.id);
         if (player) player.globalStats = result.multiplayer;
       }
-      const sortedPlayers = [...party.players].sort((a, b) => b.score - a.score);
-      const topWinner = sortedPlayers[0];
+      const sortedPlayers = [...party.players].sort((a, b) => {
+        if (party.winnerProfileId && a.profileId === party.winnerProfileId) return -1;
+        if (party.winnerProfileId && b.profileId === party.winnerProfileId) return 1;
+        return b.score - a.score;
+      });
+      const topWinner = party.winnerProfileId
+        ? party.players.find(player => player.profileId === party.winnerProfileId)
+        : sortedPlayers[0];
       const teams = (party.teams || []).map(t => {
         const mems = party.players.filter(p => p.teamId === t.id);
         const score = mems.reduce((s, p) => s + (p.score || 0), 0);
@@ -953,7 +961,9 @@ app.post('/api/party/:code/command', async (req, res) => {
           nom: p.nom,
           emoji: p.emoji,
           score: p.score,
-          rank: 1 + sortedPlayers.filter(other => other.score > p.score).length,
+          rank: party.winnerProfileId
+            ? sortedPlayers.indexOf(p) + 1
+            : 1 + sortedPlayers.filter(other => other.score > p.score).length,
           teamId: p.teamId,
         })),
       });

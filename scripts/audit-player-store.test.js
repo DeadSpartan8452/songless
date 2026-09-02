@@ -98,6 +98,21 @@ try {
   assert.strictEqual(betaAfter.multiplayer.wins, 0);
   ok('les statistiques multijoueur sont cumulées sans créer de profil fantôme');
 
+  store.recordPartySessions([
+    { profileId: 'alpha', score: 2000, sessionRounds: 2 },
+    { profileId: 'beta', score: 100, sessionRounds: 2 },
+  ], 'beta');
+  const afterFinalDuel = store.publicState();
+  assert.strictEqual(
+    afterFinalDuel.profiles.find(profile => profile.id === 'alpha').multiplayer.wins,
+    1
+  );
+  assert.strictEqual(
+    afterFinalDuel.profiles.find(profile => profile.id === 'beta').multiplayer.wins,
+    1
+  );
+  ok('le vainqueur explicite du duel final reçoit la victoire malgré un score inférieur');
+
   const withLists = store.replaceLists({
     collections: [{
       id: 'collection<>1',

@@ -1176,7 +1176,9 @@
     byId('party-setup').classList.add('hidden');
     byId('party-room').classList.remove('hidden');
     byId('party-code').innerText = partyState.code;
-    byId('party-round-label').innerText = partyState.status === 'finished'
+    byId('party-round-label').innerText = partyState.finalDuel && partyState.finalDuel.active
+      ? '⚔️ Duel final'
+      : partyState.status === 'finished'
       ? 'Partie terminée'
       : partyState.status === 'lobby'
         ? 'Salon'
@@ -1221,6 +1223,7 @@
     renderPartyPodium(partyState);
     renderPartyTeams();
     renderPartyModifier();
+    renderPartyFinalDuel();
     renderPartyReactions();
     renderPartyDuel(partyState);
 
@@ -1245,13 +1248,32 @@
     byId('party-host-actions').classList.toggle('hidden', !partyState.isHost);
     byId('party-round-btn').disabled = partyRoundStarting
       || partyState.status === 'round' || partyState.status === 'finished';
-    byId('party-round-btn').innerText = !partyState.infinite
+    byId('party-round-btn').innerText = partyState.finalDuel && partyState.finalDuel.active
+      ? 'Manche de duel suivante'
+      : !partyState.infinite
       && partyState.round >= partyState.totalRounds
       ? 'Terminer la partie'
       : partyState.round > 0 ? 'Manche suivante' : 'Lancer la manche';
     byId('party-reveal-btn').disabled = partyState.status !== 'round';
     renderPlayerActions();
     renderPartyVotes();
+  }
+
+  function renderPartyFinalDuel() {
+    const banner = byId('party-final-duel-banner');
+    const duel = partyState && partyState.finalDuel;
+    if (!banner || !duel) {
+      if (banner) banner.classList.add('hidden');
+      return;
+    }
+    const contenders = (duel.contenders || []).map(entry => ({
+      ...entry,
+      player: (partyState.players || []).find(player => player.profileId === entry.profileId),
+    }));
+    const names = contenders.map(item => escapeHtml(item.player ? item.player.nom : 'Finaliste'));
+    const score = contenders.map(item => Number(item.wins) || 0).join(' — ');
+    banner.innerHTML = `<strong>⚔️ DUEL FINAL</strong><span>${names.join(' contre ')} · ${score}</span><small>Premier à ${Number(duel.targetWins) || 2} bonnes réponses. En cas d’égalité, personne ne marque.</small>`;
+    banner.classList.remove('hidden');
   }
 
   function renderPartyDuel(partyState) {
@@ -1426,7 +1448,11 @@
 
   function generatePartySouvenirText(partyState) {
     if (!partyState) return '';
-    const sorted = [...partyState.players].sort((a, b) => (Number(b.score) || 0) - (Number(a.score) || 0));
+    const sorted = [...partyState.players].sort((a, b) => {
+      if (partyState.winnerProfileId && a.profileId === partyState.winnerProfileId) return -1;
+      if (partyState.winnerProfileId && b.profileId === partyState.winnerProfileId) return 1;
+      return (Number(b.score) || 0) - (Number(a.score) || 0);
+    });
     const winner = sorted[0];
     const teams = partyState.teams || [];
     const winningTeam = teams.length ? [...teams].sort((a, b) => (b.score || 0) - (a.score || 0))[0] : null;
@@ -1985,11 +2011,12 @@
 
   async function startPartyRound() {
     if (!partyState || !partyState.isHost) return;
-    if (!partyState.infinite && partyState.round >= partyState.totalRounds) {
+    const finalDuelActive = Boolean(partyState.finalDuel && partyState.finalDuel.active);
+    if (!partyState.infinite && !finalDuelActive && partyState.round >= partyState.totalRounds) {
       return partyCommand('finish').catch(showPartyError);
     }
     const ids = party.trackIds || [];
-    const trackIndex = partyState.infinite && ids.length
+    const trackIndex = (partyState.infinite || finalDuelActive) && ids.length
       ? partyState.round % ids.length
       : partyState.round;
     const trackId = ids[trackIndex] || (playlist[trackIndex] && playlist[trackIndex].id);
