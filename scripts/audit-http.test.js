@@ -111,7 +111,7 @@ async function main() {
     assert.strictEqual(modes.status, 200);
     assert.deepStrictEqual(
       modes.body.modes.map(mode => mode.id),
-      ['classic', 'buzzer', 'royale', 'duel', 'confidence', 'cooperation', 'intruder', 'auction']
+      ['classic', 'buzzer', 'royale', 'duel', 'confidence', 'cooperation', 'intruder', 'auction', 'joker']
     );
     assert.strictEqual(modes.body.modes.every(mode => (
       mode.surfaces.includes('tv') && mode.surfaces.includes('controller')

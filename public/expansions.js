@@ -1905,11 +1905,13 @@
       ? `${me.confidence.preview.multiplier}:${me.confidence.lastDelta}` : '';
     const cooperationKey = partyState.cooperation
       ? `${partyState.cooperation.sharedPoints}:${partyState.cooperation.streak}:${partyState.cooperation.lives}` : '';
+    const jokerKey = me && me.joker
+      ? `${me.joker.multiplier}:${me.joker.inventory.map(item => item.remaining).join(',')}:${partyState.joker && partyState.joker.event ? partyState.joker.event.createdAt : ''}` : '';
     const intruderKey = partyState.intruderChallenge
       ? `${partyState.intruderChallenge.id}:${partyState.intruderChallenge.answerId || ''}` : '';
     const auctionKey = partyState.auction
       ? `${partyState.auction.phase}:${partyState.auction.activeProfileId || ''}:${(partyState.auction.bids || []).map(bid => `${bid.profileId}:${bid.submitted}`).join(',')}` : '';
-    const signature = `${partyState.status}:${partyState.round}:${partyState.mode}:${waitingForStart ? 'wait' : 'go'}:${me ? me.currentAttempt : 0}:${me ? me.found : false}:${me ? me.finished : false}:${me ? me.answer : ''}:${me ? me.lastAnswer : ''}:${me ? me.buzzerBlockedSeconds : 0}:${confidenceKey}:${cooperationKey}:${intruderKey}:${auctionKey}:${buzzer.activeProfileId || ''}:${buzzer.solvedByProfileId || ''}:${buzzer.solvedByProfileId && Number(buzzer.answerSecondsRemaining) > 0 ? 'paused' : 'played'}`;
+    const signature = `${partyState.status}:${partyState.round}:${partyState.mode}:${waitingForStart ? 'wait' : 'go'}:${me ? me.currentAttempt : 0}:${me ? me.found : false}:${me ? me.finished : false}:${me ? me.answer : ''}:${me ? me.lastAnswer : ''}:${me ? me.buzzerBlockedSeconds : 0}:${confidenceKey}:${cooperationKey}:${jokerKey}:${intruderKey}:${auctionKey}:${buzzer.activeProfileId || ''}:${buzzer.solvedByProfileId || ''}:${buzzer.solvedByProfileId && Number(buzzer.answerSecondsRemaining) > 0 ? 'paused' : 'played'}`;
     const currentInput = byId('party-answer-input');
     const hadFocus = currentInput && document.activeElement === currentInput;
     const previousVal = currentInput ? currentInput.value : '';
@@ -2068,10 +2070,25 @@
           <div class="party-cooperation-progress"><span style="width:${Number(coop.progress) || 0}%"></span></div>
           <div class="party-cooperation-numbers"><strong>${Number(coop.sharedPoints) || 0} / ${Number(coop.targetPoints) || 0} pts</strong><span>${'💖'.repeat(Number(coop.lives) || 0)}${'🖤'.repeat(Math.max(0, 3 - (Number(coop.lives) || 0)))} · série ${Number(coop.streak) || 0}/${Number(coop.targetStreak) || 0} · toi +${Number(playerCoop.contribution) || 0}</span></div>
         </div>` : '';
+    const playerJoker = me && me.joker;
+    const jokerEvent = partyState.joker && partyState.joker.event;
+    const eventPlayer = jokerEvent && partyState.players.find(player => (
+      player.profileId === jokerEvent.profileId));
+    const jokerHtml = partyState.mode === 'joker' && playerJoker
+      ? `<div class="party-joker-panel">
+          ${jokerEvent ? `<div class="party-joker-event">${jokerEvent.emoji} ${escapeHtml(eventPlayer ? eventPlayer.nom : 'Un joueur')} utilise <strong>${escapeHtml(jokerEvent.label)}</strong></div>` : ''}
+          <div class="party-joker-options">
+            ${playerJoker.inventory.map(item => `<button type="button" data-party-joker="${item.id}" ${item.remaining ? '' : 'disabled'}>
+              <span>${item.emoji}</span><strong>${escapeHtml(item.label)}</strong><small>${item.remaining ? '1 disponible' : 'Utilisé'}</small>
+            </button>`).join('')}
+          </div>
+          ${playerJoker.multiplier === 2 ? '<div class="party-joker-active">✨ Double mise active pour cette manche</div>' : ''}
+        </div>` : '';
     return `
       <div class="party-answer-block">
         ${confidenceHtml}
         ${cooperationHtml}
+        ${jokerHtml}
         <div class="party-search-box">
           <span class="party-search-icon" aria-hidden="true">⌕</span>
           <input id="party-answer-input" maxlength="200" placeholder="${placeholder}"
@@ -2604,6 +2621,13 @@
         });
         return;
       }
+      const jokerUse = event.target.closest('[data-party-joker]');
+      if (jokerUse) {
+        partyPlayerAction('joker-use', {
+          jokerId: jokerUse.getAttribute('data-party-joker'),
+        });
+        return;
+      }
       const confidenceBtn = event.target.closest('[data-party-confidence]');
       if (confidenceBtn) {
         partyPlayerAction('set-confidence', {
@@ -2703,7 +2727,7 @@
         const modeLabel = {
           buzzer: '🔔 Buzzer', royale: '👑 Battle Royale', duel: '🥊 Duel',
           confidence: '🎲 Confiance', cooperation: '🤝 Coopération',
-          intruder: '🕵️ Intrus', auction: '🔨 Enchères',
+          intruder: '🕵️ Intrus', auction: '🔨 Enchères', joker: '🃏 Joker',
         }[item.mode] || '🎯 Réponses simultanées';
         return `
           <div class="party-history-card">

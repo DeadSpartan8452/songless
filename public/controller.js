@@ -442,6 +442,12 @@
         <div class="tutorial-rule"><span>🔐</span><p>Les enchères restent <strong>secrètes</strong> jusqu’à leur clôture.</p></div>
         <div class="tutorial-rule"><span>⏱️</span><p>La plus petite durée répond en premier ; une égalité favorise l’enchère reçue en premier.</p></div>
         <div class="tutorial-rule"><span>🔁</span><p>En cas d’erreur, la main passe à l’enchère suivante avec son propre extrait.</p></div>`
+      : current.mode === 'joker'
+      ? `
+        <div class="tutorial-rule"><span>🃏</span><p>Chaque joueur reçoit les <strong>trois mêmes jokers</strong>, utilisables une fois dans la partie.</p></div>
+        <div class="tutorial-rule"><span>🔁</span><p><strong>Seconde écoute</strong> relance le même extrait.</p></div>
+        <div class="tutorial-rule"><span>⏱️</span><p><strong>Rallonge</strong> ajoute 3 secondes pour tout le monde.</p></div>
+        <div class="tutorial-rule"><span>✨</span><p><strong>Double mise</strong> double tes points si tu trouves pendant cette manche.</p></div>`
       : `
         <div class="tutorial-rule"><span>🎧</span><p>Écoute l’extrait sur ton téléphone ou le PC, puis écris <strong>${answerLabel}</strong>.</p></div>
         <div class="tutorial-rule"><span>📨</span><p><strong>Envoie une seule réponse</strong>, puis attends la révélation de l’hôte.</p></div>
@@ -462,7 +468,8 @@
           : current.mode === 'confidence' ? 'Mode Confiance'
             : current.mode === 'cooperation' ? 'Mode Coopération'
               : current.mode === 'intruder' ? 'Mode Intrus'
-                : current.mode === 'auction' ? 'Mode Enchères' : 'Réponses simultanées';
+                : current.mode === 'auction' ? 'Mode Enchères'
+                  : current.mode === 'joker' ? 'Mode Joker' : 'Réponses simultanées';
     byId('tutorial-gate').classList.remove('hidden');
   }
 
@@ -784,6 +791,12 @@
       badge.innerHTML = `<span>🔨 ${auctionState.phase === 'bidding' ? 'Enchères ouvertes' : active ? `${escapeHtml(active.nom)} · ${Number(auctionState.activeSeconds)} s` : 'Enchères'}</span>`;
       badge.className = 'mobile-mode-badge auction';
       badge.classList.remove('hidden');
+    } else if (state.mode === 'joker') {
+      const jokerState = me && me.joker;
+      const remaining = jokerState ? jokerState.inventory.reduce((sum, item) => sum + Number(item.remaining), 0) : 0;
+      badge.innerHTML = `<span>🃏 ${remaining} joker${remaining > 1 ? 's' : ''}${jokerState && jokerState.multiplier === 2 ? ' · points ×2' : ''}</span>`;
+      badge.className = 'mobile-mode-badge joker';
+      badge.classList.remove('hidden');
     } else {
       badge.classList.add('hidden');
     }
@@ -1067,11 +1080,13 @@
       ? `${me.confidence.preview.multiplier}:${me.confidence.lastDelta}` : '';
     const cooperationKey = state.cooperation
       ? `${state.cooperation.sharedPoints}:${state.cooperation.streak}:${state.cooperation.lives}` : '';
+    const jokerKey = me && me.joker
+      ? `${me.joker.multiplier}:${me.joker.inventory.map(item => item.remaining).join(',')}:${state.joker && state.joker.event ? state.joker.event.createdAt : ''}` : '';
     const intruderKey = state.intruderChallenge
       ? `${state.intruderChallenge.id}:${state.intruderChallenge.answerId || ''}` : '';
     const auctionKey = state.auction
       ? `${state.auction.phase}:${state.auction.activeProfileId || ''}:${(state.auction.bids || []).map(bid => `${bid.profileId}:${bid.submitted}`).join(',')}` : '';
-    const signature = `${state.status}:${state.round}:${state.mode}:${startsIn > 0 ? 'wait' : 'go'}:${me ? me.currentAttempt : 0}:${me ? me.found : false}:${me ? me.finished : false}:${me ? me.answer : ''}:${me ? me.lastAnswer : ''}:${me ? me.buzzPosition : ''}:${me ? me.buzzerBlockedSeconds : 0}:${confidenceKey}:${cooperationKey}:${intruderKey}:${auctionKey}:${buzzer.activeProfileId || ''}:${buzzer.solvedByProfileId || ''}:${buzzer.solvedByProfileId && Number(buzzer.answerSecondsRemaining) > 0 ? 'paused' : 'played'}`;
+    const signature = `${state.status}:${state.round}:${state.mode}:${startsIn > 0 ? 'wait' : 'go'}:${me ? me.currentAttempt : 0}:${me ? me.found : false}:${me ? me.finished : false}:${me ? me.answer : ''}:${me ? me.lastAnswer : ''}:${me ? me.buzzPosition : ''}:${me ? me.buzzerBlockedSeconds : 0}:${confidenceKey}:${cooperationKey}:${jokerKey}:${intruderKey}:${auctionKey}:${buzzer.activeProfileId || ''}:${buzzer.solvedByProfileId || ''}:${buzzer.solvedByProfileId && Number(buzzer.answerSecondsRemaining) > 0 ? 'paused' : 'played'}`;
     
     const currentInput = byId('answer-input');
     const hadFocus = currentInput && document.activeElement === currentInput;
@@ -1260,10 +1275,24 @@
           <div class="cooperation-progress"><span style="width:${Number(coop.progress) || 0}%"></span></div>
           <div class="cooperation-numbers"><strong>${Number(coop.sharedPoints) || 0} / ${Number(coop.targetPoints) || 0} pts</strong><span>Série ${Number(coop.streak) || 0}/${Number(coop.targetStreak) || 0} · contribution +${Number(playerCoop.contribution) || 0}</span></div>
         </div>` : '';
+    const playerJoker = me && me.joker;
+    const jokerEvent = state.joker && state.joker.event;
+    const eventPlayer = jokerEvent && state.players.find(player => player.profileId === jokerEvent.profileId);
+    const jokerHtml = state.mode === 'joker' && playerJoker
+      ? `<div class="joker-panel">
+          ${jokerEvent ? `<div class="joker-event">${jokerEvent.emoji} ${escapeHtml(eventPlayer ? eventPlayer.nom : 'Un joueur')} utilise <strong>${escapeHtml(jokerEvent.label)}</strong></div>` : ''}
+          <div class="joker-options">
+            ${playerJoker.inventory.map(item => `<button type="button" data-joker-use="${item.id}" ${item.remaining ? '' : 'disabled'}>
+              <span>${item.emoji}</span><strong>${escapeHtml(item.label)}</strong><small>${item.remaining ? '1 disponible' : 'Utilisé'}</small>
+            </button>`).join('')}
+          </div>
+          ${playerJoker.multiplier === 2 ? '<div class="joker-active">✨ Double mise active pour cette manche</div>' : ''}
+        </div>` : '';
     return `
       <div class="answer-block">
         ${confidenceHtml}
         ${cooperationHtml}
+        ${jokerHtml}
         <div class="answer-search">
           <span class="answer-search-icon" aria-hidden="true">⌕</span>
           <input id="answer-input" class="answer-input" maxlength="200"
@@ -1728,6 +1757,11 @@
     const auctionBid = event.target.closest('[data-auction-bid]');
     if (auctionBid) {
       playerAction('auction-bid', { seconds: Number(auctionBid.getAttribute('data-auction-bid')) });
+      return;
+    }
+    const jokerUse = event.target.closest('[data-joker-use]');
+    if (jokerUse) {
+      playerAction('joker-use', { jokerId: jokerUse.getAttribute('data-joker-use') });
       return;
     }
     const confidenceBtn = event.target.closest('[data-confidence]');

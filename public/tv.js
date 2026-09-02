@@ -26,7 +26,9 @@
       name.textContent = `${player.emoji || '🎧'} ${player.nom || 'Joueur'}`;
       const stake = player.confidence && player.confidence.preview;
       const coop = player.cooperation;
-      points.textContent = `${Number(player.score) || 0} PT${stake ? ` · ×${stake.multiplier}` : ''}${coop ? ` · +${Number(coop.contribution) || 0} ÉQUIPE` : ''}`;
+      const jokers = player.joker && player.joker.inventory
+        ? player.joker.inventory.reduce((sum, item) => sum + Number(item.remaining), 0) : null;
+      points.textContent = `${Number(player.score) || 0} PT${stake ? ` · ×${stake.multiplier}` : ''}${coop ? ` · +${Number(coop.contribution) || 0} ÉQUIPE` : ''}${jokers !== null ? ` · ${jokers} 🃏${player.joker.multiplier === 2 ? ' · ×2' : ''}` : ''}`;
       item.append(rank, name, points);
       return item;
     }));
@@ -103,6 +105,7 @@
               : state.mode === 'intruder' ? 'Quel est l’intrus ?'
                 : state.mode === 'auction' && state.auction && state.auction.phase === 'bidding' ? 'À vos enchères.'
                   : state.mode === 'auction' ? 'L’enchère gagnante joue.'
+                    : state.mode === 'joker' ? 'À vous de jouer vos cartes.'
               : 'Qui reconnaît ce morceau ?');
       const coop = state.cooperation;
       setText('hero-subtitle', finalDuel && finalDuel.active
@@ -113,6 +116,9 @@
           ? state.auction.phase === 'bidding'
             ? `${Math.max(0, Math.ceil((Number(state.auction.deadlineAt) - Number(state.serverNow)) / 1000))} secondes · les durées restent secrètes jusqu’à la clôture.`
             : `${Number(state.auction.activeSeconds).toLocaleString('fr-FR')} s · ${state.auction.tie ? state.auction.tieBreak : 'une erreur transmet la main.'}`
+        : state.mode === 'joker' && state.joker && state.joker.event
+          ? `${state.joker.event.emoji} ${(state.players || []).find(player => player.profileId === state.joker.event.profileId)?.nom || 'Un joueur'} utilise ${state.joker.event.label}.`
+          : state.mode === 'joker' ? 'Réécoute, rallonge ou double mise : chaque atout ne sert qu’une fois.'
         : coop
           ? `${Number(coop.sharedPoints) || 0} / ${Number(coop.targetPoints) || 0} points · série ${Number(coop.streak) || 0}/${Number(coop.targetStreak) || 0} · ${'♥'.repeat(Number(coop.lives) || 0)}${'♡'.repeat(Math.max(0, 3 - (Number(coop.lives) || 0)))}`
         : 'Titre, artiste ou année : la régie attend vos réponses.');

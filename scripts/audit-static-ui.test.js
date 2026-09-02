@@ -223,4 +223,16 @@ test('le mode Enchères affiche durées, chrono et main active sur les trois éc
   assert.match(tvHtml, /id="auction-board"/);
 });
 
+test('le mode Joker expose le même inventaire limité sur PC, contrôleur et TV', () => {
+  const controller = read('controller.js');
+  const expansions = read('expansions.js');
+  const tv = read('tv.js');
+  assert.match(controller, /data-joker-use/);
+  assert.match(controller, /Double mise active/);
+  assert.match(expansions, /data-party-joker/);
+  assert.match(expansions, /party-joker-event/);
+  assert.match(tv, /player\.joker\.inventory/);
+  assert.match(tv, /state\.joker\.event/);
+});
+
 console.log(`\n${passed} tests statiques d’interface réussis.`);
