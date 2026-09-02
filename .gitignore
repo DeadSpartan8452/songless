@@ -6,6 +6,7 @@ metadata-backups/
 songless-data.json
 .songless-tailscale-account
 .songless-instance-key
+dist/
 *.log
 .DS_Store
 Thumbs.db
