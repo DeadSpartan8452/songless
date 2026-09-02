@@ -1100,7 +1100,9 @@
       ? `${state.intruderChallenge.id}:${state.intruderChallenge.answerId || ''}` : '';
     const auctionKey = state.auction
       ? `${state.auction.phase}:${state.auction.activeProfileId || ''}:${(state.auction.bids || []).map(bid => `${bid.profileId}:${bid.submitted}`).join(',')}` : '';
-    const signature = `${state.status}:${state.round}:${state.mode}:${startsIn > 0 ? 'wait' : 'go'}:${me ? me.currentAttempt : 0}:${me ? me.found : false}:${me ? me.finished : false}:${me ? me.answer : ''}:${me ? me.lastAnswer : ''}:${me ? me.buzzPosition : ''}:${me ? me.buzzerBlockedSeconds : 0}:${confidenceKey}:${cooperationKey}:${jokerKey}:${missionKey}:${intruderKey}:${auctionKey}:${buzzer.activeProfileId || ''}:${buzzer.solvedByProfileId || ''}:${buzzer.solvedByProfileId && Number(buzzer.answerSecondsRemaining) > 0 ? 'paused' : 'played'}`;
+    const handicapKey = me && me.smartHandicap
+      ? `${me.smartHandicap.kind}:${me.smartHandicap.multiplier}` : '';
+    const signature = `${state.status}:${state.round}:${state.mode}:${startsIn > 0 ? 'wait' : 'go'}:${me ? me.currentAttempt : 0}:${me ? me.found : false}:${me ? me.finished : false}:${me ? me.answer : ''}:${me ? me.lastAnswer : ''}:${me ? me.buzzPosition : ''}:${me ? me.buzzerBlockedSeconds : 0}:${confidenceKey}:${cooperationKey}:${jokerKey}:${missionKey}:${intruderKey}:${auctionKey}:${handicapKey}:${buzzer.activeProfileId || ''}:${buzzer.solvedByProfileId || ''}:${buzzer.solvedByProfileId && Number(buzzer.answerSecondsRemaining) > 0 ? 'paused' : 'played'}`;
     
     const currentInput = byId('answer-input');
     const hadFocus = currentInput && document.activeElement === currentInput;
@@ -1310,8 +1312,15 @@
           <div class="mission-progress"><span style="width:${Math.min(100, 100 * Number(mission.progress) / Math.max(1, Number(mission.target)))}%"></span></div>
           <small>${Number(mission.progress)}/${Number(mission.target)} · récompense secrète jusqu’au podium</small>
         </div>` : '';
+    const smartHandicap = me && me.smartHandicap;
+    const handicapHtml = smartHandicap
+      ? `<div class="handicap-card ${smartHandicap.kind}">
+          <span class="handicap-mark" aria-hidden="true">⚖️</span>
+          <div><small>AJUSTEMENT TRANSPARENT</small><strong>Points ×${Number(smartHandicap.multiplier).toFixed(2)}</strong><p>${escapeHtml(smartHandicap.explanation)}</p></div>
+        </div>` : '';
     return `
       <div class="answer-block">
+        ${handicapHtml}
         ${confidenceHtml}
         ${cooperationHtml}
         ${jokerHtml}

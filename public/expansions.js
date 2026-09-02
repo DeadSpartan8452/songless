@@ -542,6 +542,7 @@
       points: oneOf(Number(source.points), [500, 1000, 1500, 2000], defaults.points),
       mystery: Boolean(source.mystery),
       teamsMode: Boolean(source.teamsMode),
+      smartHandicap: Boolean(source.smartHandicap),
     };
   }
 
@@ -582,6 +583,7 @@
     byId('party-points').value = String(value.points);
     if (byId('party-mystery')) byId('party-mystery').value = String(Boolean(value.mystery));
     if (byId('party-teams-mode')) byId('party-teams-mode').value = String(Boolean(value.teamsMode));
+    if (byId('party-smart-handicap')) byId('party-smart-handicap').value = String(Boolean(value.smartHandicap));
     const excerptContainer = byId('party-excerpt-container');
     if (excerptContainer) excerptContainer.classList.toggle('hidden', mode !== 'buzzer');
   }
@@ -601,6 +603,7 @@
       points: Number(byId('party-points').value),
       mystery: byId('party-mystery') ? byId('party-mystery').value === 'true' : false,
       teamsMode: byId('party-teams-mode') ? byId('party-teams-mode').value === 'true' : false,
+      smartHandicap: byId('party-smart-handicap') ? byId('party-smart-handicap').value === 'true' : false,
     });
     writeLocal(STORAGE_PARTY_OPTIONS, partyOptions);
   }
@@ -1232,10 +1235,12 @@
       const team = isTeams ? (partyState.teams || []).find(t => t.id === player.teamId) : null;
       const teamColor = safeTeamColor(team && team.color, '#a855f7');
       const teamPill = team ? `<span class="player-team-pill" style="border-color:${teamColor}; background:${teamColor}20; color:${teamColor}">${escapeHtml(team.emoji || '👥')} ${escapeHtml(team.name)}</span>` : '';
+      const handicapPill = player.smartHandicap
+        ? `<span class="party-handicap-pill ${player.smartHandicap.kind}">⚖️ ×${Number(player.smartHandicap.multiplier).toFixed(2)}</span>` : '';
       return `
         <div class="party-player${player.profileId === partyState.viewerProfileId ? ' me' : ''}${player.found ? ' player-found' : ''}">
           <div class="party-player-info">
-            <span class="party-player-name">${escapeHtml(String(player.emoji || '🎧'))} ${escapeHtml(String(player.nom || 'Joueur'))}${player.host ? ' · hôte' : ''} ${teamPill}</span>
+            <span class="party-player-name">${escapeHtml(String(player.emoji || '🎧'))} ${escapeHtml(String(player.nom || 'Joueur'))}${player.host ? ' · hôte' : ''} ${teamPill} ${handicapPill}</span>
             ${renderLiveStepPills(player, partyState)}
           </div>
           <span class="party-answer">${partyAnswerLabel(player)} · session ${Number(player.session && player.session.correct) || 0}/${Number(player.session && player.session.rounds) || 0}</span>
@@ -1917,7 +1922,9 @@
       ? `${partyState.intruderChallenge.id}:${partyState.intruderChallenge.answerId || ''}` : '';
     const auctionKey = partyState.auction
       ? `${partyState.auction.phase}:${partyState.auction.activeProfileId || ''}:${(partyState.auction.bids || []).map(bid => `${bid.profileId}:${bid.submitted}`).join(',')}` : '';
-    const signature = `${partyState.status}:${partyState.round}:${partyState.mode}:${waitingForStart ? 'wait' : 'go'}:${me ? me.currentAttempt : 0}:${me ? me.found : false}:${me ? me.finished : false}:${me ? me.answer : ''}:${me ? me.lastAnswer : ''}:${me ? me.buzzerBlockedSeconds : 0}:${confidenceKey}:${cooperationKey}:${jokerKey}:${missionKey}:${intruderKey}:${auctionKey}:${buzzer.activeProfileId || ''}:${buzzer.solvedByProfileId || ''}:${buzzer.solvedByProfileId && Number(buzzer.answerSecondsRemaining) > 0 ? 'paused' : 'played'}`;
+    const handicapKey = me && me.smartHandicap
+      ? `${me.smartHandicap.kind}:${me.smartHandicap.multiplier}` : '';
+    const signature = `${partyState.status}:${partyState.round}:${partyState.mode}:${waitingForStart ? 'wait' : 'go'}:${me ? me.currentAttempt : 0}:${me ? me.found : false}:${me ? me.finished : false}:${me ? me.answer : ''}:${me ? me.lastAnswer : ''}:${me ? me.buzzerBlockedSeconds : 0}:${confidenceKey}:${cooperationKey}:${jokerKey}:${missionKey}:${intruderKey}:${auctionKey}:${handicapKey}:${buzzer.activeProfileId || ''}:${buzzer.solvedByProfileId || ''}:${buzzer.solvedByProfileId && Number(buzzer.answerSecondsRemaining) > 0 ? 'paused' : 'played'}`;
     const currentInput = byId('party-answer-input');
     const hadFocus = currentInput && document.activeElement === currentInput;
     const previousVal = currentInput ? currentInput.value : '';
@@ -2098,8 +2105,15 @@
           <div class="party-mission-progress"><span style="width:${Math.min(100, 100 * Number(mission.progress) / Math.max(1, Number(mission.target)))}%"></span></div>
           <small>${Number(mission.progress)}/${Number(mission.target)} · récompense révélée au podium</small>
         </div>` : '';
+    const smartHandicap = me && me.smartHandicap;
+    const handicapHtml = smartHandicap
+      ? `<div class="party-handicap-card ${smartHandicap.kind}">
+          <span class="party-handicap-mark" aria-hidden="true">⚖️</span>
+          <div><small>AJUSTEMENT TRANSPARENT</small><strong>Points ×${Number(smartHandicap.multiplier).toFixed(2)}</strong><p>${escapeHtml(smartHandicap.explanation)}</p></div>
+        </div>` : '';
     return `
       <div class="party-answer-block">
+        ${handicapHtml}
         ${confidenceHtml}
         ${cooperationHtml}
         ${jokerHtml}

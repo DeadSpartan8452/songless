@@ -29,7 +29,8 @@
       const jokers = player.joker && player.joker.inventory
         ? player.joker.inventory.reduce((sum, item) => sum + Number(item.remaining), 0) : null;
       const mission = player.mission;
-      points.textContent = `${Number(player.score) || 0} PT${stake ? ` · ×${stake.multiplier}` : ''}${coop ? ` · +${Number(coop.contribution) || 0} ÉQUIPE` : ''}${jokers !== null ? ` · ${jokers} 🃏${player.joker.multiplier === 2 ? ' · ×2' : ''}` : ''}${mission ? ` · ${mission.emoji} ${mission.completed ? `+${mission.reward}` : 'MANQUÉE'}` : ''}`;
+      const smartHandicap = player.smartHandicap;
+      points.textContent = `${Number(player.score) || 0} PT${smartHandicap ? ` · ⚖ ×${Number(smartHandicap.multiplier).toFixed(2)}` : ''}${stake ? ` · ×${stake.multiplier}` : ''}${coop ? ` · +${Number(coop.contribution) || 0} ÉQUIPE` : ''}${jokers !== null ? ` · ${jokers} 🃏${player.joker.multiplier === 2 ? ' · ×2' : ''}` : ''}${mission ? ` · ${mission.emoji} ${mission.completed ? `+${mission.reward}` : 'MANQUÉE'}` : ''}`;
       item.append(rank, name, points);
       return item;
     }));
