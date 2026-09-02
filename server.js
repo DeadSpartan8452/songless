@@ -1303,7 +1303,7 @@ app.post('/api/upload', (req, res) => {
     const archive = estArchive(nom);
 
     try {
-      await antivirus.scan(req.file.path);
+      const scanResult = await antivirus.scan(req.file.path);
       let rapport;
       if (archive) {
         rapport = await importer.importerArchive(req.file.path);
@@ -1321,7 +1321,7 @@ app.post('/api/upload', (req, res) => {
 
       res.json({
         success: true,
-        antivirus: 'Microsoft Defender : fichier sain',
+        antivirus: `${scanResult.engine} : fichier sain`,
         archive,
         file: nom,
         ajoutes: rapport.ajoutes,
@@ -1542,7 +1542,7 @@ app.post('/api/preflight', async (req, res) => {
       root: __dirname, musicDir: MUSIC_DIR, tracks,
       port: Number(PORT), publicPort: PUBLIC_PORT,
       internetMode: INTERNET, publicUrl: PUBLIC_URL,
-      dependenciesOk, defender: antivirus.findDefender(),
+      dependenciesOk, antivirus: antivirus.status(),
       tools: downloader.checkTools(), partyStore, qrCode: QRCode,
     });
     res.set('Cache-Control', 'no-store');

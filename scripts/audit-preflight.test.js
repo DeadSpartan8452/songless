@@ -34,7 +34,8 @@ async function test(name, fn) {
       const report = await preflight.run({
         root, musicDir, tracks: { 'test.mp3': { title: 'Test' } },
         port: 3000, publicPort: 0, internetMode: false, publicUrl: '',
-        dependenciesOk: true, defender: 'defender',
+        dependenciesOk: true,
+        antivirus: { available: true, id: 'defender', name: 'Microsoft Defender' },
         tools: { ok: false, missing: ['yt-dlp'] }, partyStore, qrCode: QRCode,
       });
       assert.strictEqual(report.checks.find(item => item.id === 'tools').status, 'check');
