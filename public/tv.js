@@ -24,6 +24,13 @@
       points.className = 'points';
       rank.textContent = String(index + 1).padStart(2, '0');
       name.textContent = `${player.emoji || '🎧'} ${player.nom || 'Joueur'}`;
+      const portrait = Array.isArray(player.portraitTitles) && player.portraitTitles[0];
+      if (portrait) {
+        const title = document.createElement('small');
+        title.className = 'tv-portrait-title';
+        title.textContent = portrait.label;
+        name.appendChild(title);
+      }
       const stake = player.confidence && player.confidence.preview;
       const coop = player.cooperation;
       const jokers = player.joker && player.joker.inventory
@@ -149,6 +156,7 @@
         ? collective.result === 'won' ? 'OBJECTIF ATTEINT.' : 'DÉFI MANQUÉ.'
         : winner ? `${winner.emoji || '🏆'} ${winner.nom}` : 'Fin de partie');
       const stats = winner && winner.confidence && winner.confidence.stats;
+      const portrait = winner && Array.isArray(winner.portraitTitles) && winner.portraitTitles[0];
       setText('hero-subtitle', state.mode === 'missions'
         ? `${(state.players || []).filter(player => player.mission && player.mission.completed).length} mission(s) accomplie(s) · les récompenses sont incluses dans les scores.`
         : collective
@@ -156,7 +164,9 @@
         : winner
         ? stats
           ? `${Number(winner.score) || 0} points · audace ×${Number(stats.audacity).toFixed(2)} · précision ${Number(stats.precision) || 0} % · rentabilité ${Number(stats.profitability) >= 0 ? '+' : ''}${Number(stats.profitability) || 0}.`
-          : `${Number(winner.score) || 0} points — quelle machine.`
+          : portrait
+            ? `${portrait.label} · ${portrait.evidence}`
+            : `${Number(winner.score) || 0} points — quelle machine.`
         : 'Merci d’avoir joué.');
     } else {
       setText('eyebrow', 'ÉCRAN SPECTATEUR');

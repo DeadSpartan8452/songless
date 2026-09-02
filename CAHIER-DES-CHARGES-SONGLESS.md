@@ -670,7 +670,7 @@ Une phase est terminée uniquement si :
 | 4 — Modes existants | En cours | Duel final Battle Royale à deux survivants, persistance du vrai vainqueur et interfaces PC/TV/télécommande/téléphone validées | Unification complète des autres modes et de leurs fins de partie |
 | 5 — Bibliothèque | Très avancée | Audit des 1 687 fichiers, favoris unifiés, sous-genres et années avec provenance/confiance, filtres précis, aperçus obligatoires avant application des années ou genres en lot, blacklist temporaire, mesure d’encodage et dimensions de pochettes, comparateur réversible de doublons et indice de qualité explicable | Compléter et valider manuellement les années et genres encore incertains |
 | 6 — Nouveaux modes | Livrée | Confiance, Coopération, Intrus, Enchères, Joker, Missions secrètes et Handicap intelligent livrés côté serveur, PC, contrôleur et TV, avec tests de règles, permissions et contrôle visuel Playwright/Axe | — |
-| 7 — Personnalité | En cours | Catalogue porté de 105 à 205 succès : **100/100 nouveaux succès** déclaratifs, persistants, dédupliqués et contrôlés sur PC/téléphone ; succès secrets masqués avant déblocage | Titres de podium : 0/50, Portal, cartes souvenir et autres easter eggs |
+| 7 — Personnalité | En cours | Catalogue porté de 105 à 205 succès : **100/100 nouveaux succès** déclaratifs, persistants, dédupliqués et contrôlés sur PC/téléphone ; succès secrets masqués avant déblocage ; **50/50 titres de podium** factuels et uniques, attribués côté serveur et contrôlés sur PC/téléphone/TV | Portal, cartes souvenir et autres easter eggs |
 | 8 — Finition | Non commencée | — | Parcours complets, charge, permissions, visuel et documentation finale |
 
 Un élément n’est considéré comme livré que s’il respecte les critères de la

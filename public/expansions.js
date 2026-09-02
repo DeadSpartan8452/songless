@@ -1480,6 +1480,8 @@
     sorted.slice(0, 6).forEach((p, idx) => {
       const medal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `${idx + 1}.`;
       text += `   ${medal} ${p.emoji || '🎧'} ${p.nom} : ${p.score || 0} pts (${p.session ? p.session.correct : 0}/${p.session ? p.session.rounds : 0} trouvés)\n`;
+      const portrait = Array.isArray(p.portraitTitles) && p.portraitTitles[0];
+      if (portrait) text += `      « ${portrait.label} » — ${portrait.evidence}\n`;
     });
 
     text += `\n✨ DISTINCTIONS :\n`;
@@ -1555,6 +1557,10 @@
     const missionSummary = partyState.mode === 'missions'
       ? `<div class="party-missions-final"><strong>🕶️ Missions révélées</strong>${players.map(player => player.mission ? `<span>${escapeHtml(player.emoji || '🎧')} ${escapeHtml(player.nom)} · ${player.mission.emoji} ${escapeHtml(player.mission.label)} · ${player.mission.completed ? `réussie +${Number(player.mission.reward)} pt` : 'manquée'}</span>` : '').join('')}</div>`
       : '';
+    const portraitHtml = (player, className = '') => {
+      const title = player && Array.isArray(player.portraitTitles) && player.portraitTitles[0];
+      return title ? `<span class="party-portrait-title ${className}" title="${escapeHtml(title.evidence)}">${escapeHtml(title.label)}</span>` : '';
+    };
 
     container.innerHTML = `
       <div class="podium-card">
@@ -1588,6 +1594,7 @@
               <span class="podium-medal">🥈</span>
               <div class="podium-avatar">${escapeHtml(String(second.emoji || '🎧'))}</div>
               <span class="podium-name">${escapeHtml(String(second.nom))}</span>
+              ${portraitHtml(second, 'podium-portrait-title')}
               <span class="podium-pts">${Number(second.score) || 0} pts</span>
               <div class="podium-bar">2</div>
             </div>` : ''}
@@ -1595,6 +1602,7 @@
             <span class="podium-medal">🥇</span>
             <div class="podium-avatar">${escapeHtml(String(first.emoji || '🎧'))}</div>
             <span class="podium-name">${escapeHtml(String(first.nom))}</span>
+            ${portraitHtml(first, 'podium-portrait-title')}
             <span class="podium-pts">${Number(first.score) || 0} pts</span>
             <div class="podium-bar">1</div>
           </div>
@@ -1603,6 +1611,7 @@
               <span class="podium-medal">🥉</span>
               <div class="podium-avatar">${escapeHtml(String(third.emoji || '🎧'))}</div>
               <span class="podium-name">${escapeHtml(String(third.nom))}</span>
+              ${portraitHtml(third, 'podium-portrait-title')}
               <span class="podium-pts">${Number(third.score) || 0} pts</span>
               <div class="podium-bar">3</div>
             </div>` : ''}
@@ -1672,6 +1681,7 @@
                       ${badgeTag}
                       ${confidenceTag}
                       ${cooperationTag}
+                      ${portraitHtml(player, 'leaderboard-portrait-title')}
                     </div>
                   </div>
                   <div class="leaderboard-stats">

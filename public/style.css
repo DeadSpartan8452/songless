@@ -2584,6 +2584,17 @@ code {
   background: rgba(255, 255, 255, 0.05);
   color: #a1a1aa;
 }
+.party-portrait-title {
+  display: inline-flex;
+  max-width: 100%;
+  color: #f5d0fe;
+  font-size: .7rem;
+  font-weight: 800;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+.podium-portrait-title { justify-content: center; text-align: center; }
+.leaderboard-portrait-title { color: #e9d5ff; }
 
 #trophies-modal .modal-card-large { max-width: 980px !important; }
 .trophy-card.locked .trophy-card-desc { color: #a1a1aa; }

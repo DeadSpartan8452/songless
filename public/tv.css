@@ -71,7 +71,8 @@ ol { list-style: none; display: grid; grid-template-columns: repeat(auto-fit, mi
 li { min-width: 0; border-left: 4px solid var(--signal); background: #ffffff0c; padding: 1vh 1vw; display: grid; grid-template-columns: auto 1fr auto; gap: .6em; align-items: center; }
 li:first-child { background: var(--acid); color: var(--ink); border-color: var(--acid); transform: translateY(-.5vh); }
 .rank { font: 900 1.4em/1 Georgia, serif; }
-.name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 900; }
+.name { min-width: 0; display: grid; gap: .15em; overflow-wrap: anywhere; font-weight: 900; }
+.tv-portrait-title { color: inherit; font: 700 .7em/1.15 Georgia, serif; opacity: .82; }
 .points { font-variant-numeric: tabular-nums; font-weight: 900; }
 .status { color: #ffb4a7; min-height: 1.2em; font-size: clamp(.7rem, 1vw, 1rem); }
 

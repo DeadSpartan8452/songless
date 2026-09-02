@@ -339,6 +339,7 @@ h2 { margin: 0 0 14px; font-size: 1.05rem; }
 .mission-progress { height: 7px; overflow: hidden; border-radius: 999px; background: rgba(255,255,255,.1); }
 .mission-progress span { display: block; height: 100%; border-radius: inherit; background: #34d399; }
 .mission-reveal { display: block; color: #6ee7b7; overflow-wrap: anywhere; }
+.portrait-title-mobile { display: block; margin-top: 2px; color: #e9d5ff; font-size: .68rem; font-weight: 800; overflow-wrap: anywhere; }
 .handicap-card {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
@@ -1011,6 +1012,9 @@ h2 { margin: 0 0 14px; font-size: 1.05rem; }
   text-align: center;
   white-space: normal;
 }
+.controller-portrait-title { display: grid; gap: 3px; padding: 10px; border-radius: 10px; text-align: center; background: rgba(168,85,247,.13); border: 1px solid rgba(216,180,254,.24); }
+.controller-portrait-title strong { color: #f5d0fe; overflow-wrap: anywhere; }
+.controller-portrait-title small { color: var(--muted); line-height: 1.3; overflow-wrap: anywhere; }
 
 .mobile-mode-badge.royale {
   background: rgba(236, 72, 153, 0.15);

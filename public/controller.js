@@ -1505,6 +1505,7 @@
       podiumHeader = `
         <div class="controller-podium">
           <div class="podium-rank-highlight">🏆 Tu termines <strong>${medal}</strong> avec <strong>${Number(me ? me.score : 0)} pts</strong></div>
+          ${me && me.portraitTitles && me.portraitTitles[0] ? `<div class="controller-portrait-title"><strong>${escapeHtml(me.portraitTitles[0].label)}</strong><small>${escapeHtml(me.portraitTitles[0].evidence)}</small></div>` : ''}
           ${badgesHtml ? `<div class="controller-badges-row">${badgesHtml}</div>` : ''}
           ${confidenceHtml}
           ${cooperationHtml}
@@ -1519,7 +1520,7 @@
           return `
           <div class="rank-row${item.profileId === state.viewerProfileId ? ' me' : ''}">
             <span>${rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : rank}</span>
-            <span>${escapeHtml(item.emoji || '🎧')} ${escapeHtml(item.nom)}${state.status === 'finished' && item.mission ? `<small class="mission-reveal">${item.mission.emoji} ${escapeHtml(item.mission.label)} · ${item.mission.completed ? `réussie +${Number(item.mission.reward)} pt` : 'manquée'}</small>` : ''}</span>
+            <span>${escapeHtml(item.emoji || '🎧')} ${escapeHtml(item.nom)}${state.status === 'finished' && item.portraitTitles && item.portraitTitles[0] ? `<small class="portrait-title-mobile">${escapeHtml(item.portraitTitles[0].label)}</small>` : ''}${state.status === 'finished' && item.mission ? `<small class="mission-reveal">${item.mission.emoji} ${escapeHtml(item.mission.label)} · ${item.mission.completed ? `réussie +${Number(item.mission.reward)} pt` : 'manquée'}</small>` : ''}</span>
             <span class="rank-score">${Number(item.score) || 0}<small>${item.cooperation ? `+${Number(item.cooperation.contribution) || 0} équipe` : `${Number(item.session && item.session.correct) || 0}/${Number(item.session && item.session.rounds) || 0}`}</small></span>
           </div>`;
         }).join('')
