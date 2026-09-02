@@ -14,6 +14,7 @@ const importer = require('./lib/importer');
 const health = require('./lib/health');
 const playerStore = require('./lib/player-store');
 const partyStore = require('./lib/party');
+const partyResults = require('./lib/party-results');
 const modeRegistry = require('./lib/mode-registry');
 const antivirus = require('./lib/antivirus');
 
@@ -930,45 +931,7 @@ app.post('/api/party/:code/command', async (req, res) => {
     } else {
       partyStore.command(party, req.body.hostToken, req.body.action, req.body.data);
     }
-    if (party.status === 'finished' && !party.statsCommitted) {
-      const saved = playerStore.recordPartySessions(party.players, party.winnerProfileId);
-      for (const result of saved) {
-        const player = party.players.find(item => item.profileId === result.id);
-        if (player) player.globalStats = result.multiplayer;
-      }
-      const sortedPlayers = [...party.players].sort((a, b) => {
-        if (party.winnerProfileId && a.profileId === party.winnerProfileId) return -1;
-        if (party.winnerProfileId && b.profileId === party.winnerProfileId) return 1;
-        return b.score - a.score;
-      });
-      const topWinner = party.winnerProfileId
-        ? party.players.find(player => player.profileId === party.winnerProfileId)
-        : sortedPlayers[0];
-      const teams = (party.teams || []).map(t => {
-        const mems = party.players.filter(p => p.teamId === t.id);
-        const score = mems.reduce((s, p) => s + (p.score || 0), 0);
-        return { name: t.name, color: t.color, emoji: t.emoji, score };
-      }).sort((a, b) => b.score - a.score);
-
-      playerStore.recordPartyHistory({
-        code: party.code,
-        mode: party.mode,
-        totalRounds: party.round,
-        winner: topWinner ? { nom: topWinner.nom, emoji: topWinner.emoji, score: topWinner.score } : null,
-        winningTeam: teams.length ? teams[0] : null,
-        playersCount: party.players.length,
-        players: sortedPlayers.map(p => ({
-          nom: p.nom,
-          emoji: p.emoji,
-          score: p.score,
-          rank: party.winnerProfileId
-            ? sortedPlayers.indexOf(p) + 1
-            : 1 + sortedPlayers.filter(other => other.score > p.score).length,
-          teamId: p.teamId,
-        })),
-      });
-      party.statsCommitted = true;
-    }
+    partyResults.commitFinishedParty(party, playerStore);
     res.json(partyStore.publicState(
       party,
       req.body.playerToken,

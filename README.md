@@ -564,6 +564,7 @@ Le bouton **Partager** en fin de manche copie la même chose.
 server.js              serveur Express (API + site)
 lib/
   mode-registry.js      registre unique des modes et de leurs capacités
+  party-results.js      classement et persistance des résultats multijoueurs
   player-store.js       profils, statistiques, listes et sauvegardes partagés
   party.js              salons, manches, buzzers et scores temporaires
   antivirus.js          analyse Defender avant installation d'un fichier
