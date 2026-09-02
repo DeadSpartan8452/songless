@@ -1366,6 +1366,33 @@
     </div>
   </div>
 
+  <!-- Carte souvenir : export local, anonyme par défaut -->
+  <div class="modal-overlay hidden" id="souvenir-card-modal" role="dialog" aria-modal="true"
+       aria-labelledby="souvenir-card-title" aria-describedby="souvenir-card-summary">
+    <div class="modal-card souvenir-card-modal-card">
+      <div class="souvenir-card-heading">
+        <div>
+          <p class="eyebrow">CARTE À PARTAGER</p>
+          <h2 id="souvenir-card-title">Souvenir de la soirée</h2>
+        </div>
+        <button class="ghost-btn souvenir-close-btn" id="souvenir-card-close-btn"
+                type="button" aria-label="Fermer la carte souvenir">✕</button>
+      </div>
+      <label class="edit-favorite-toggle souvenir-privacy-toggle" for="souvenir-show-names">
+        <input type="checkbox" id="souvenir-show-names">
+        <span>Afficher les pseudos sur l’image <small>désactivé par défaut</small></span>
+      </label>
+      <canvas id="souvenir-card-canvas" width="1080" height="1350"
+              aria-label="Aperçu graphique de la carte souvenir"></canvas>
+      <p class="souvenir-card-summary" id="souvenir-card-summary"></p>
+      <div class="modal-actions souvenir-card-actions">
+        <button class="ghost-btn" id="souvenir-copy-text-btn" type="button">Copier le texte</button>
+        <button class="ghost-btn" id="souvenir-download-btn" type="button">Télécharger le PNG</button>
+        <button class="cta-btn" id="souvenir-copy-image-btn" type="button">Copier l’image</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Notification Toast -->
   <div id="toast" class="toast hidden">Message de notification</div>
 
@@ -1374,6 +1401,7 @@
   <script src="trophies-data.js"></script>
   <script src="trophies.js"></script>
   <script src="easter-eggs.js"></script>
+  <script src="souvenir-card.js"></script>
   <script src="app.js"></script>
   <script src="duplicate-comparison.js"></script>
   <script src="expansions.js"></script>

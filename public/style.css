@@ -2584,6 +2584,72 @@ code {
   background: rgba(255, 255, 255, 0.05);
   color: #a1a1aa;
 }
+
+.souvenir-card-modal-card {
+  width: min(760px, calc(100vw - 28px));
+  max-height: min(94vh, 960px);
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+  background:
+    radial-gradient(circle at 80% 0, rgba(168, 85, 247, .2), transparent 34%),
+    #15111f;
+}
+
+.souvenir-card-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.souvenir-card-heading h2 { margin-top: 4px; }
+.souvenir-close-btn { width: 42px; min-width: 42px; padding-inline: 0; }
+.souvenir-privacy-toggle { margin: 4px 0 2px; }
+.souvenir-privacy-toggle span { display: grid; gap: 2px; }
+.souvenir-privacy-toggle small { color: var(--text-muted); font-weight: 500; }
+
+#souvenir-card-canvas {
+  display: block;
+  width: min(100%, 460px);
+  height: auto;
+  margin: 4px auto;
+  border-radius: 18px;
+  border: 1px solid rgba(216, 180, 254, .26);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, .42);
+  animation: souvenir-card-arrive .48s cubic-bezier(.16, 1, .3, 1) both;
+}
+
+.souvenir-card-summary {
+  margin: 0;
+  padding: 10px 12px;
+  color: var(--text-muted);
+  background: rgba(255, 255, 255, .04);
+  border-radius: 10px;
+  font-size: .78rem;
+  line-height: 1.45;
+}
+
+.souvenir-card-actions { flex-wrap: wrap; }
+.souvenir-card-actions button { flex: 1 1 170px; }
+
+@keyframes souvenir-card-arrive {
+  from { opacity: 0; transform: translateY(20px) rotate(-1deg) scale(.97); }
+}
+
+@media (max-width: 520px) {
+  .souvenir-card-modal-card { padding: 16px; max-height: 96vh; }
+  .souvenir-card-actions { display: grid; grid-template-columns: 1fr; }
+  .souvenir-card-actions button { width: 100%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+}
 .party-portrait-title {
   display: inline-flex;
   max-width: 100%;

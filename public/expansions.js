@@ -28,6 +28,7 @@
   let partyLastReactionId = 0;
   let selectedTeamPreset = null;
   let partyTeamsSignature = '';
+  let partyPodiumSignature = '';
   let hostPlaybackSignature = '';
   let partyActionSignature = '';
   let partySuggestionTimer = null;
@@ -1459,51 +1460,74 @@
   }
 
   function generatePartySouvenirText(partyState) {
-    if (!partyState) return '';
-    const sorted = [...partyState.players].sort((a, b) => {
-      if (partyState.winnerProfileId && a.profileId === partyState.winnerProfileId) return -1;
-      if (partyState.winnerProfileId && b.profileId === partyState.winnerProfileId) return 1;
-      return (Number(b.score) || 0) - (Number(a.score) || 0);
+    if (!partyState || !window.songlessSouvenir) return '';
+    const showNames = Boolean(byId('souvenir-show-names') && byId('souvenir-show-names').checked);
+    return window.songlessSouvenir.text(
+      window.songlessSouvenir.buildModel(partyState, { showNames }));
+  }
+
+  function renderPartySouvenirCard() {
+    if (!partyState || !window.songlessSouvenir) return null;
+    const showNames = Boolean(byId('souvenir-show-names') && byId('souvenir-show-names').checked);
+    const model = window.songlessSouvenir.buildModel(partyState, { showNames });
+    window.songlessSouvenir.draw(byId('souvenir-card-canvas'), model);
+    byId('souvenir-card-summary').innerText = window.songlessSouvenir.summary(model);
+    return model;
+  }
+
+  function openPartySouvenirCard() {
+    if (!partyState || partyState.status !== 'finished') return;
+    byId('souvenir-show-names').checked = false;
+    renderPartySouvenirCard();
+    byId('souvenir-card-modal').classList.remove('hidden');
+    byId('souvenir-card-close-btn').focus();
+  }
+
+  function closePartySouvenirCard() {
+    byId('souvenir-card-modal').classList.add('hidden');
+    const opener = byId('copy-souvenir-card-btn');
+    if (opener) opener.focus();
+  }
+
+  function souvenirBlob() {
+    return new Promise((resolve, reject) => {
+      byId('souvenir-card-canvas').toBlob(blob => {
+        if (blob) resolve(blob);
+        else reject(new Error('Impossible de produire l’image PNG.'));
+      }, 'image/png');
     });
-    const winner = sorted[0];
-    const teams = partyState.teams || [];
-    const winningTeam = teams.length ? [...teams].sort((a, b) => (b.score || 0) - (a.score || 0))[0] : null;
+  }
 
-    let text = `🎵 ═════ BILAN DE SOIRÉE SONGLESS ═════ 🎵\n`;
-    text += `📅 Date : ${new Date().toLocaleDateString('fr-FR')} à ${new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}\n`;
-    text += `🎮 Manches jouées : ${partyState.round} | Mode : ${partyState.mode === 'buzzer' ? 'Buzzer' : 'Réponses simultanées'}\n\n`;
+  function unlockSouvenirTrophy() {
+    if (window.songlessTrophies) window.songlessTrophies.unlock('party_souvenir_copy');
+  }
 
-    if (winner) {
-      text += `🏆 VAINQUEUR INDIVIDUEL :\n`;
-      text += `   🥇 ${winner.emoji || '🎧'} ${winner.nom} — ${winner.score || 0} pts\n\n`;
+  async function downloadPartySouvenirCard() {
+    const blob = await souvenirBlob();
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'songless-carte-souvenir.png';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    unlockSouvenirTrophy();
+    showToast('Carte PNG téléchargée.', 'ok');
+  }
+
+  async function copyPartySouvenirImage() {
+    try {
+      const blob = await souvenirBlob();
+      if (!navigator.clipboard || typeof navigator.clipboard.write !== 'function'
+          || typeof ClipboardItem === 'undefined') throw new Error('Copie d’image indisponible');
+      await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+      unlockSouvenirTrophy();
+      showToast('Image copiée : tu peux la coller dans un message.', 'ok');
+    } catch (_) {
+      await downloadPartySouvenirCard();
+      showToast('La copie d’image est indisponible : le PNG a été téléchargé.', 'warn');
     }
-
-    if (winningTeam && winningTeam.score > 0) {
-      text += `👑 ÉQUIPE CHAMPIONNE :\n`;
-      text += `   ${winningTeam.emoji || '👥'} ${winningTeam.name} — ${winningTeam.score || 0} pts\n\n`;
-    }
-
-    text += `📊 PODIUM COMPLET :\n`;
-    sorted.slice(0, 6).forEach((p, idx) => {
-      const medal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `${idx + 1}.`;
-      text += `   ${medal} ${p.emoji || '🎧'} ${p.nom} : ${p.score || 0} pts (${p.session ? p.session.correct : 0}/${p.session ? p.session.rounds : 0} trouvés)\n`;
-      const portrait = Array.isArray(p.portraitTitles) && p.portraitTitles[0];
-      if (portrait) text += `      « ${portrait.label} » — ${portrait.evidence}\n`;
-    });
-
-    text += `\n✨ DISTINCTIONS :\n`;
-    const lightning = [...partyState.players].sort((a, b) => (b.accolades && b.accolades.lightningWins || 0) - (a.accolades && a.accolades.lightningWins || 0))[0];
-    const fastest = [...partyState.players].sort((a, b) => (b.accolades && b.accolades.firstCorrectCount || 0) - (a.accolades && a.accolades.firstCorrectCount || 0))[0];
-    if (lightning && (lightning.accolades && lightning.accolades.lightningWins || 0) > 0) {
-      text += `   ⚡ L'Éclair (0.2s) : ${lightning.nom} (${lightning.accolades.lightningWins}x)\n`;
-    }
-    if (fastest && (fastest.accolades && fastest.accolades.firstCorrectCount || 0) > 0) {
-      text += `   🚀 Le Plus Rapide : ${fastest.nom} (${fastest.accolades.firstCorrectCount}x 1er)\n`;
-    }
-
-    text += `\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
-    text += `🎉 Joué sur Songless · https://manapattes.fr`;
-    return text;
   }
 
   function renderLiveStepPills(player, partyState) {
@@ -1533,12 +1557,28 @@
     const container = byId('party-podium');
     if (!container) return;
     if (!partyState || partyState.status !== 'finished') {
+      partyPodiumSignature = '';
       container.classList.add('hidden');
       container.innerHTML = '';
       return;
     }
     const sorted = [...partyState.players].sort((a, b) => (Number(b.score) || 0) - (Number(a.score) || 0));
     if (!sorted.length) return;
+
+    const signature = JSON.stringify({
+      winnerProfileId: partyState.winnerProfileId,
+      mode: partyState.mode,
+      players: sorted.map(player => ({
+        id: player.profileId, nom: player.nom, emoji: player.emoji, score: player.score,
+        session: player.session, accolades: player.accolades, confidence: player.confidence,
+        cooperation: player.cooperation, mission: player.mission,
+        portraitTitles: player.portraitTitles,
+      })),
+      teams: partyState.teams,
+      cooperation: partyState.cooperation,
+    });
+    if (signature === partyPodiumSignature && !container.classList.contains('hidden')) return;
+    partyPodiumSignature = signature;
 
     const first = sorted[0];
     const second = sorted[1];
@@ -1701,7 +1741,7 @@
         </div>
         <div class="podium-share-row">
           <button type="button" class="cta-btn souvenir-share-btn" id="copy-souvenir-card-btn">
-            📋 Copier la carte souvenir
+            ✨ Créer la carte souvenir
           </button>
         </div>
       </div>
@@ -2396,6 +2436,7 @@
     hostPlaybackSignature = '';
     partyActionSignature = '';
     partyAutoNextSignature = '';
+    partyPodiumSignature = '';
     partyAutoRevealRound = null;
     partyHighlightRound = null;
     partyHighlightPromise = null;
@@ -2520,6 +2561,33 @@
       });
     }
 
+    if (byId('souvenir-card-close-btn')) {
+      byId('souvenir-card-close-btn').addEventListener('click', closePartySouvenirCard);
+      byId('souvenir-show-names').addEventListener('change', renderPartySouvenirCard);
+      byId('souvenir-download-btn').addEventListener('click', () => {
+        downloadPartySouvenirCard().catch(error => showToast(error.message, 'error'));
+      });
+      byId('souvenir-copy-image-btn').addEventListener('click', () => {
+        copyPartySouvenirImage().catch(error => showToast(error.message, 'error'));
+      });
+      byId('souvenir-copy-text-btn').addEventListener('click', () => {
+        const text = generatePartySouvenirText(partyState);
+        navigator.clipboard.writeText(text).then(() => {
+          unlockSouvenirTrophy();
+          showToast('Bilan texte copié.', 'ok');
+        }).catch(() => prompt('Copie le bilan de la partie :', text));
+      });
+      const souvenirModal = byId('souvenir-card-modal');
+      souvenirModal.addEventListener('click', event => {
+        if (event.target === souvenirModal) closePartySouvenirCard();
+      });
+      document.addEventListener('keydown', event => {
+        if (event.key === 'Escape' && !souvenirModal.classList.contains('hidden')) {
+          closePartySouvenirCard();
+        }
+      });
+    }
+
     const quizPrintBtn = byId('quiz-print-btn');
     if (quizPrintBtn) quizPrintBtn.addEventListener('click', openQuizPrintModal);
 
@@ -2606,12 +2674,7 @@
 
       const souvenirBtn = event.target.closest('#copy-souvenir-card-btn');
       if (souvenirBtn) {
-        const text = generatePartySouvenirText(partyState);
-        navigator.clipboard.writeText(text).then(() => {
-          showToast('Carte souvenir copiée dans le presse-papier ! 📋', 'ok');
-        }).catch(() => {
-          prompt('Copie le bilan de la partie :', text);
-        });
+        openPartySouvenirCard();
         return;
       }
 

@@ -48,6 +48,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "<ch
 | Export/import complet des données de jeu | onglet **Modes** |
 | Statistiques par genre et par artiste | onglet **Statistiques** |
 | Résumé de partie à partager | bouton « Partager » en fin de manche |
+| Carte souvenir de soirée en PNG | podium → « Créer la carte souvenir » |
 | Télécommande Kahoot sur téléphone | `Songless (telephone).bat` + bouton 📱 |
 | Comparaison des doublons | onglet **Bibliothèque** → « Comparer les doublons » |
 | Diagnostic de la bibliothèque | onglet **Bibliothèque** → « État de la bibliothèque » |
@@ -587,6 +588,16 @@ L'onglet **Statistiques** ajoute, sous les compteurs habituels :
 permet à quelqu'un de rejouer exactement la même partie.
 
 Le bouton **Partager** en fin de manche copie la même chose.
+
+Après le podium d’une soirée, le bouton **Créer la carte souvenir** ouvre un
+aperçu vertical prêt à envoyer. La carte contient le podium, les scores et les
+portraits musicaux attribués pendant la partie. Elle est **anonyme par défaut** :
+aucun pseudo, code de salon, adresse, lien ou identifiant n’y apparaît. Une case
+permet d’ajouter volontairement les pseudos avant l’export.
+
+Trois actions sont proposées : copier le résumé texte, télécharger un vrai PNG
+1080 × 1350, ou copier directement l’image. Si le navigateur refuse la copie
+d’image, Songless télécharge automatiquement le PNG à la place.
 
 ---
 
