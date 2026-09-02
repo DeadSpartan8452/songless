@@ -581,6 +581,7 @@ lib/
   titles.js            nettoyage, translittération, genres, alias
   track-metadata.js    favoris, sous-genres, années, provenance et confiance
   track-quality.js     indice de qualité explicable et couverture des contrôles
+  media-images.js      validation des pochettes intégrées et du favicon local
   overrides.json       titres connus sous un autre nom  ← à compléter
   store.js             lecture/écriture de metadata.json
   downloader.js        yt-dlp + ffmpeg, détection de doublons, playlists

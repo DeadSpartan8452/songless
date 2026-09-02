@@ -109,4 +109,11 @@ test('les filtres de bibliothèque couvrent genre précis, année et favoris san
   assert.doesNotMatch(app, /filterLibraryDisplay[\s\S]*?patch\.title/);
 });
 
+test('toutes les interfaces utilisent le favicon local sans le confondre avec une pochette', () => {
+  for (const page of PAGES) {
+    assert.match(read(page), /<link\s+rel=["']icon["']\s+href=["']favicon\.svg["']/i);
+  }
+  assert.doesNotMatch(read('app.js'), /favicon\.svg[^\n]*(?:cover|pochette)/i);
+});
+
 console.log(`\n${passed} tests statiques d’interface réussis.`);

@@ -4516,6 +4516,7 @@ const LIBELLES_PROBLEMES = {
   'sans-annee': 'Sans année',
   'annee-incertaine': 'Années à confirmer',
   'sans-pochette': 'Sans pochette musicale',
+  'pochette-invalide': 'Pochettes invalides',
   'ffmpeg-absent': 'Analyse audio impossible',
 };
 

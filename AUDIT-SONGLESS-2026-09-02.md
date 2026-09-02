@@ -232,9 +232,12 @@ Il ne correspond ni à un fichier absent ni à une erreur de l’application.
   une note expliquée par ses raisons et la couverture réelle des contrôles ;
 - la qualité d’encodage demeure explicitement « inconnue » tant qu’elle n’est pas
   mesurée, afin que la note ne prétende pas contrôler ce qui ne l’est pas ;
+- les pochettes annoncées sont maintenant confrontées à leur signature binaire
+  réelle (PNG, JPEG, GIF ou WebP) et le favicon SVG local est contrôlé séparément
+  sur les quatre interfaces ;
 - la grande majorité des années doit être complétée ;
 - genres et artistes demandent une normalisation avec niveau de confiance ;
-- la validité binaire des pochettes et la qualité d’encodage restent à analyser ;
+- la qualité d’encodage et les dimensions visuelles des pochettes restent à analyser ;
 - la détection des doublons doit apprendre à distinguer explicitement les
   variantes artistiques.
 
