@@ -197,4 +197,17 @@ test('le mode Coopération montre objectif, rôle et contribution sur les trois 
   assert.match(tv, /ÉQUIPE/);
 });
 
+test('le mode Intrus propose quatre choix et révèle sa justification sur les trois écrans', () => {
+  const controller = read('controller.js');
+  const expansions = read('expansions.js');
+  const tv = read('tv.js');
+  const tvHtml = read('tv.html');
+  assert.match(controller, /data-intruder-option/);
+  assert.match(controller, /challenge\.explanation/);
+  assert.match(expansions, /data-party-intruder/);
+  assert.match(expansions, /Bilan des enquêteurs/);
+  assert.match(tv, /renderIntruder/);
+  assert.match(tvHtml, /id="intruder-options"/);
+});
+
 console.log(`\n${passed} tests statiques d’interface réussis.`);

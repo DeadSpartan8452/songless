@@ -40,6 +40,16 @@ h1 { font: 900 clamp(3.2rem, 8.5vw, 9.5rem)/.84 Impact, Haettenschweiler, sans-s
 .subtitle { color: var(--muted); font: italic 700 clamp(1.1rem, 2.2vw, 2.3rem)/1.2 Georgia, serif; margin: 2vh 0; }
 .hero.reveal h1 { color: var(--acid); text-shadow: .035em .035em 0 var(--signal); }
 .hero.round h1 { color: var(--paper); }
+.hero.intruder { align-self: stretch; max-width: 92vw; display: grid; align-content: center; }
+.hero.intruder h1 { font-size: clamp(2.7rem, 5vw, 5.8rem); }
+.tv-intruder-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1vw; margin: 1.5vh 0; }
+.tv-intruder-grid:empty { display: none; }
+.tv-intruder-option { min-width: 0; padding: 1.2vh 1vw; border: 1px solid #ffffff30; border-top: 5px solid var(--cyan); background: #ffffff0d; display: grid; gap: .4vh; }
+.tv-intruder-option strong { overflow-wrap: anywhere; font: 900 clamp(1.1rem, 1.8vw, 2rem)/1.05 Georgia, serif; }
+.tv-intruder-option small { color: var(--muted); overflow-wrap: anywhere; font-size: clamp(.72rem, 1vw, 1rem); }
+.tv-intruder-option.correct { border-color: var(--acid); background: #d9ff4320; }
+.tv-intruder-option.correct strong { color: var(--acid); }
+.tv-intruder-number { color: var(--signal); font-weight: 900; letter-spacing: .12em; }
 
 .pulse { height: 8vh; display: flex; align-items: end; gap: min(1vw, 14px); margin-top: 3vh; }
 .pulse i { display: block; width: min(2.2vw, 30px); height: 18%; background: var(--signal); animation: meter .9s ease-in-out infinite alternate; }
@@ -58,5 +68,5 @@ li:first-child { background: var(--acid); color: var(--ink); border-color: var(-
 
 @keyframes meter { from { height: 12%; } to { height: 100%; } }
 @keyframes blink { 50% { opacity: .35; box-shadow: none; } }
-@media (max-width: 800px) { ol { grid-template-columns: repeat(2, 1fr); } .hero { max-width: 94vw; } }
+@media (max-width: 800px) { ol { grid-template-columns: repeat(2, 1fr); } .hero { max-width: 94vw; } .tv-intruder-grid { grid-template-columns: repeat(2, 1fr); } }
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; } }

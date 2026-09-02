@@ -8,7 +8,7 @@ const modes = registry.publicModes();
 
 assert.deepStrictEqual(
   modes.map(mode => mode.id),
-  ['classic', 'buzzer', 'royale', 'duel', 'confidence', 'cooperation']
+  ['classic', 'buzzer', 'royale', 'duel', 'confidence', 'cooperation', 'intruder']
 );
 assert.strictEqual(new Set(modes.map(mode => mode.id)).size, modes.length);
 

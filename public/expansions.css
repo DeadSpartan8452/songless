@@ -302,6 +302,23 @@
 .party-cooperation-final { display: grid; gap: 4px; margin: 12px 0; padding: 13px; border-radius: 12px; text-align: center; }
 .party-cooperation-final.won { color: #bbf7d0; background: rgba(34,197,94,.14); border: 1px solid rgba(34,197,94,.3); }
 .party-cooperation-final.lost { color: #fecaca; background: rgba(239,68,68,.14); border: 1px solid rgba(239,68,68,.3); }
+.party-intruder-challenge { display: grid; gap: 12px; margin: 8px 0; }
+.party-intruder-heading { display: flex; justify-content: space-between; gap: 12px; color: #fbbf24; font-weight: 850; }
+.party-intruder-heading small { color: #b9adbf; text-align: right; }
+.party-intruder-prompt { margin: 0; font-size: 1.15rem; font-weight: 850; }
+.party-intruder-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.party-intruder-option { min-width: 0; min-height: 120px; padding: 13px; border: 1px solid rgba(255,255,255,.14); border-radius: 13px; color: #f7edf7; background: rgba(255,255,255,.045); text-align: left; display: grid; align-content: start; gap: 6px; cursor: pointer; }
+.party-intruder-option:not(:disabled):hover { border-color: #f59e0b; transform: translateY(-2px); }
+.party-intruder-option.selected { border-color: #f59e0b; background: rgba(245,158,11,.13); box-shadow: inset 0 0 0 1px rgba(245,158,11,.28); }
+.party-intruder-option.correct { border-color: #4ade80; background: rgba(34,197,94,.15); }
+.party-intruder-option.wrong { border-color: #f87171; background: rgba(239,68,68,.13); }
+.party-intruder-option:disabled { opacity: 1; cursor: default; }
+.party-intruder-option strong, .party-intruder-option small { overflow-wrap: anywhere; }
+.party-intruder-option small { color: #b9adbf; line-height: 1.3; }
+.party-intruder-number { color: #fbbf24; font-size: .75rem; font-weight: 900; letter-spacing: .12em; }
+.party-intruder-verdict { color: #86efac; font-size: .74rem; font-weight: 900; letter-spacing: .1em; }
+.party-intruder-explanation, .party-intruder-final { display: grid; gap: 5px; padding: 13px; border-radius: 12px; color: #fef3c7; background: rgba(120,53,15,.28); border: 1px solid rgba(245,158,11,.3); }
+.party-intruder-explanation span, .party-intruder-final span { overflow-wrap: anywhere; line-height: 1.4; }
 .party-search-box { position: relative; width: 100%; }
 .party-search-icon {
   position: absolute;

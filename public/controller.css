@@ -284,6 +284,24 @@ h2 { margin: 0 0 14px; font-size: 1.05rem; }
 .cooperation-final { display: grid; gap: 4px; margin-top: 10px; padding: 10px; border-radius: 10px; }
 .cooperation-final.won { color: #bbf7d0; background: rgba(34,197,94,.14); }
 .cooperation-final.lost { color: #fecaca; background: rgba(239,68,68,.14); }
+.mobile-mode-badge.intruder { color: #fef3c7; border-color: rgba(245,158,11,.45); background: rgba(120,53,15,.3); }
+.intruder-challenge { display: grid; gap: 10px; }
+.intruder-heading { display: flex; justify-content: space-between; gap: 10px; color: #fbbf24; font-weight: 850; }
+.intruder-heading small { color: var(--muted); text-align: right; }
+.intruder-prompt { margin: 0; font-size: 1.15rem; font-weight: 850; }
+.intruder-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.intruder-option { min-width: 0; min-height: 106px; padding: 10px; border: 1px solid rgba(255,255,255,.14); border-radius: 12px; color: var(--text); background: rgba(255,255,255,.045); text-align: left; display: grid; align-content: start; gap: 5px; }
+.intruder-option:not(:disabled):active { transform: scale(.98); }
+.intruder-option.selected { border-color: #f59e0b; background: rgba(245,158,11,.13); box-shadow: inset 0 0 0 1px rgba(245,158,11,.28); }
+.intruder-option.correct { border-color: #4ade80; background: rgba(34,197,94,.15); }
+.intruder-option.wrong { border-color: #f87171; background: rgba(239,68,68,.13); }
+.intruder-option:disabled { opacity: 1; }
+.intruder-option strong, .intruder-option small { overflow-wrap: anywhere; }
+.intruder-option small { color: var(--muted); line-height: 1.25; }
+.intruder-number { color: #fbbf24; font-size: .72rem; font-weight: 900; letter-spacing: .12em; }
+.intruder-verdict { color: #86efac; font-size: .72rem; font-weight: 900; letter-spacing: .1em; }
+.intruder-explanation, .intruder-final { display: grid; gap: 4px; padding: 11px; border-radius: 11px; color: #fef3c7; background: rgba(120,53,15,.28); border: 1px solid rgba(245,158,11,.3); }
+.intruder-explanation span, .intruder-final span { overflow-wrap: anywhere; line-height: 1.35; }
 .answer-search { position: relative; }
 .answer-search-icon {
   position: absolute;

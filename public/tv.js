@@ -33,6 +33,25 @@
     setText('player-count', `${sorted.length} JOUEUR${sorted.length > 1 ? 'S' : ''}`);
   }
 
+  function renderIntruder(challenge, revealed) {
+    const grid = byId('intruder-options');
+    grid.replaceChildren();
+    if (!challenge || !Array.isArray(challenge.options)) return;
+    for (const [index, option] of challenge.options.entries()) {
+      const card = document.createElement('article');
+      card.className = `tv-intruder-option${revealed && option.id === challenge.answerId ? ' correct' : ''}`;
+      const number = document.createElement('span');
+      const title = document.createElement('strong');
+      const meta = document.createElement('small');
+      number.className = 'tv-intruder-number';
+      number.textContent = `0${index + 1}`;
+      title.textContent = option.title || 'Sans titre';
+      meta.textContent = [option.artist, option.year, option.genre, option.theme].filter(Boolean).join(' · ');
+      card.append(number, title, meta);
+      grid.append(card);
+    }
+  }
+
   function render(state) {
     const finalDuel = state.finalDuel;
     const finalists = finalDuel ? (finalDuel.contenders || []).map(entry => ({
@@ -50,7 +69,9 @@
         ? 'SOIRÉE TERMINÉE'
         : `MANCHE ${state.round}${state.infinite ? '' : ` / ${state.totalRounds}`}`);
     const hero = byId('hero');
-    hero.className = `hero ${state.status}`;
+    hero.className = `hero ${state.status}${state.mode === 'intruder' ? ' intruder' : ''}`;
+    renderIntruder(state.mode === 'intruder' ? state.intruderChallenge : null,
+      state.status !== 'round');
     if (state.status === 'round') {
       setText('eyebrow', finalDuel && finalDuel.active ? '⚔️ DUEL FINAL' : 'À VOUS DE JOUER');
       setText('hero-title', finalDuel && finalDuel.active
@@ -58,13 +79,22 @@
         : state.mode === 'buzzer' ? 'Buzzez maintenant.'
           : state.mode === 'confidence' ? 'À quel point êtes-vous sûrs ?'
             : state.mode === 'cooperation' ? 'Une équipe. Un objectif.'
-            : 'Qui reconnaît ce morceau ?');
+              : state.mode === 'intruder' ? 'Quel est l’intrus ?'
+              : 'Qui reconnaît ce morceau ?');
       const coop = state.cooperation;
       setText('hero-subtitle', finalDuel && finalDuel.active
         ? `${finalScore} · premier à ${finalDuel.targetWins}. Une égalité ne rapporte rien.`
+        : state.mode === 'intruder' && state.intruderChallenge
+          ? `${{ easy: 'Facile', medium: 'Intermédiaire', hard: 'Difficile' }[state.intruderChallenge.difficulty] || 'Progressif'} · observez les quatre propositions, sans donner la réponse.`
         : coop
           ? `${Number(coop.sharedPoints) || 0} / ${Number(coop.targetPoints) || 0} points · série ${Number(coop.streak) || 0}/${Number(coop.targetStreak) || 0} · ${'♥'.repeat(Number(coop.lives) || 0)}${'♡'.repeat(Math.max(0, 3 - (Number(coop.lives) || 0)))}`
         : 'Titre, artiste ou année : la régie attend vos réponses.');
+    } else if (state.status === 'reveal' && state.mode === 'intruder' && state.intruderChallenge) {
+      setText('eyebrow', 'INTRUS RÉVÉLÉ');
+      const answer = state.intruderChallenge.options.find(option => (
+        option.id === state.intruderChallenge.answerId));
+      setText('hero-title', answer ? answer.title : 'Intrus trouvé');
+      setText('hero-subtitle', state.intruderChallenge.explanation || 'Le verdict est dévoilé.');
     } else if (state.status === 'reveal' && state.revealedTrack) {
       setText('eyebrow', finalDuel && finalDuel.roundResult === 'transition' ? '⚔️ DUEL FINAL' : 'RÉPONSE');
       setText('hero-title', finalDuel && finalDuel.roundResult === 'transition'

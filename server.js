@@ -18,6 +18,7 @@ const partyStore = require('./lib/party');
 const partyResults = require('./lib/party-results');
 const partyRounds = require('./lib/party-rounds');
 const partySuggestions = require('./lib/party-suggestions');
+const partyIntruder = require('./lib/party-intruder');
 const modeRegistry = require('./lib/mode-registry');
 const antivirus = require('./lib/antivirus');
 const blacklist = require('./lib/blacklist');
@@ -609,6 +610,14 @@ async function partyTrackData(trackId) {
 async function startNextPartyRound(party) {
   return partyRounds.startNextPartyRound(party, {
     loadTrack: partyTrackData,
+    buildIntruderChallenge: async currentParty => partyIntruder.generate(
+      await tracksFromIds(currentParty.trackIds),
+      {
+        seed: currentParty.seed,
+        round: currentParty.round + 1,
+        totalRounds: currentParty.totalRounds || 10,
+      }
+    ),
     command: partyStore.command,
   });
 }

@@ -1544,6 +1544,9 @@
           <strong>${coop.result === 'won' ? '🤝 Objectif collectif atteint !' : '💔 Défi collectif manqué'}</strong>
           <span>${Number(coop.sharedPoints) || 0}/${Number(coop.targetPoints) || 0} pts · meilleure série ${Number(coop.bestStreak) || 0}/${Number(coop.targetStreak) || 0} · ${Number(coop.lives) || 0} vie${Number(coop.lives) > 1 ? 's' : ''}</span>
         </div>` : '';
+    const intruderSummary = partyState.mode === 'intruder'
+      ? `<div class="party-intruder-final"><strong>🕵️ Bilan des enquêteurs</strong><span>${players.map(player => `${escapeHtml(String(player.nom))} : ${Number(player.session && player.session.correct) || 0}/${Number(player.session && player.session.rounds) || 0}`).join(' · ')}</span></div>`
+      : '';
 
     container.innerHTML = `
       <div class="podium-card">
@@ -1552,6 +1555,7 @@
           <h3>Podium de la soirée</h3>
         </div>
         ${cooperationSummary}
+        ${intruderSummary}
 
         ${sortedTeams.length ? `
           <div class="team-podium-section">
@@ -1680,6 +1684,11 @@
   }
 
   function partyAnswerLabel(player) {
+    if (partyState && partyState.mode === 'intruder') {
+      if (player.correct === true) return `Intrus trouvé · +${Number(player.earnedPoints) || 0} pt`;
+      if (player.finished) return 'Choix envoyé · verdict en attente';
+      return 'Observe encore les quatre fiches';
+    }
     if (player.found) {
       const count = Array.isArray(player.attempts) ? player.attempts.length : 1;
       const pts = Number(player.earnedPoints) || 0;
@@ -1780,6 +1789,45 @@
     }
   }
 
+  function partyIntruderHtml(me) {
+    const challenge = partyState && partyState.intruderChallenge;
+    if (!challenge || !Array.isArray(challenge.options)) return '';
+    const revealed = partyState.status !== 'round' && Boolean(challenge.answerId);
+    const selectedId = me && me.answer ? String(me.answer) : '';
+    const dimension = {
+      artist: 'artiste', genre: 'genre', theme: 'thème', year: 'époque',
+    }[challenge.dimension] || 'point commun';
+    const difficulty = {
+      easy: 'Facile', medium: 'Intermédiaire', hard: 'Difficile',
+    }[challenge.difficulty] || 'Progressif';
+    const cards = challenge.options.map((option, index) => {
+      const correct = revealed && option.id === challenge.answerId;
+      const selected = option.id === selectedId;
+      const classes = `party-intruder-option${selected ? ' selected' : ''}${correct ? ' correct' : ''}${revealed && selected && !correct ? ' wrong' : ''}`;
+      const meta = [option.artist, option.year, option.genre, option.theme]
+        .filter(Boolean).map(value => escapeHtml(String(value))).join(' · ');
+      return `<button type="button" class="${classes}" data-party-intruder="${escapeHtml(String(option.id))}"
+                ${revealed || (me && me.finished) ? 'disabled' : ''}
+                aria-pressed="${selected}" aria-label="Choisir ${escapeHtml(String(option.title))}">
+          <span class="party-intruder-number">0${index + 1}</span>
+          <strong>${escapeHtml(String(option.title))}</strong>
+          <small>${meta}</small>
+          ${correct ? '<span class="party-intruder-verdict">L’INTRUS</span>' : ''}
+        </button>`;
+    }).join('');
+    const verdict = revealed
+      ? `<div class="party-intruder-explanation"><strong>${me && me.correct ? '✅ Bien vu !' : '💡 Le point commun'}</strong><span>${escapeHtml(String(challenge.explanation || ''))}</span></div>`
+      : me && me.finished
+        ? '<div class="mode-status">Choix verrouillé. Le verdict reste secret jusqu’à la révélation.</div>'
+        : '<div class="mode-status">Un seul choix possible : observe les quatre fiches.</div>';
+    return `<section class="party-intruder-challenge" aria-labelledby="party-intruder-prompt">
+      <div class="party-intruder-heading"><span>🕵️ ${difficulty}</span><small>Point commun : ${dimension}</small></div>
+      <p class="party-intruder-prompt" id="party-intruder-prompt">${escapeHtml(String(challenge.prompt || 'Quel est l’intrus ?'))}</p>
+      <div class="party-intruder-grid">${cards}</div>
+      ${verdict}
+    </section>`;
+  }
+
   function renderPartyChat() {
     const zone = byId('party-chat-messages');
     if (!zone || !partyState) return;
@@ -1821,7 +1869,9 @@
       ? `${me.confidence.preview.multiplier}:${me.confidence.lastDelta}` : '';
     const cooperationKey = partyState.cooperation
       ? `${partyState.cooperation.sharedPoints}:${partyState.cooperation.streak}:${partyState.cooperation.lives}` : '';
-    const signature = `${partyState.status}:${partyState.round}:${partyState.mode}:${waitingForStart ? 'wait' : 'go'}:${me ? me.currentAttempt : 0}:${me ? me.found : false}:${me ? me.finished : false}:${me ? me.answer : ''}:${me ? me.lastAnswer : ''}:${me ? me.buzzerBlockedSeconds : 0}:${confidenceKey}:${cooperationKey}:${buzzer.activeProfileId || ''}:${buzzer.solvedByProfileId || ''}:${buzzer.solvedByProfileId && Number(buzzer.answerSecondsRemaining) > 0 ? 'paused' : 'played'}`;
+    const intruderKey = partyState.intruderChallenge
+      ? `${partyState.intruderChallenge.id}:${partyState.intruderChallenge.answerId || ''}` : '';
+    const signature = `${partyState.status}:${partyState.round}:${partyState.mode}:${waitingForStart ? 'wait' : 'go'}:${me ? me.currentAttempt : 0}:${me ? me.found : false}:${me ? me.finished : false}:${me ? me.answer : ''}:${me ? me.lastAnswer : ''}:${me ? me.buzzerBlockedSeconds : 0}:${confidenceKey}:${cooperationKey}:${intruderKey}:${buzzer.activeProfileId || ''}:${buzzer.solvedByProfileId || ''}:${buzzer.solvedByProfileId && Number(buzzer.answerSecondsRemaining) > 0 ? 'paused' : 'played'}`;
     const currentInput = byId('party-answer-input');
     const hadFocus = currentInput && document.activeElement === currentInput;
     const previousVal = currentInput ? currentInput.value : '';
@@ -1833,6 +1883,12 @@
       return;
     }
     partyActionSignature = signature;
+
+    if (partyState.mode === 'intruder' && partyState.intruderChallenge
+        && (partyState.status === 'round' || partyState.status === 'reveal')) {
+      zone.innerHTML = partyIntruderHtml(me);
+      return;
+    }
 
     if (!me) {
       zone.innerHTML = partyState.isHost && partyState.status === 'finished'
@@ -2486,6 +2542,13 @@
       if (event.target.closest('#party-copy-internet')) copyPartyInvite('internet');
       if (event.target.closest('#party-buzz-btn')) partyPlayerAction('buzz').catch(showPartyError);
       if (event.target.closest('#party-answer-btn')) submitPartyAnswer();
+      const intruderOption = event.target.closest('[data-party-intruder]');
+      if (intruderOption) {
+        partyPlayerAction('intruder-answer', {
+          optionId: intruderOption.getAttribute('data-party-intruder'),
+        });
+        return;
+      }
       const confidenceBtn = event.target.closest('[data-party-confidence]');
       if (confidenceBtn) {
         partyPlayerAction('set-confidence', {

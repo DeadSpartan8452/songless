@@ -430,6 +430,12 @@
         <div class="tutorial-rule"><span>💖</span><p>L’équipe partage <strong>3 vies</strong>. Une manche sans bonne réponse peut en coûter une.</p></div>
         <div class="tutorial-rule"><span>🎭</span><p>Ton rôle donne un bonus positif selon le moment où tu trouves.</p></div>
         <div class="tutorial-rule"><span>🏅</span><p>Le résultat est collectif, mais chaque contribution reste visible.</p></div>`
+      : current.mode === 'intruder'
+      ? `
+        <div class="tutorial-rule"><span>🕵️</span><p>Observe les <strong>quatre fiches</strong> et trouve celle qui ne partage pas le même point commun.</p></div>
+        <div class="tutorial-rule"><span>🔐</span><p>Il existe toujours <strong>un seul intrus certain</strong>, calculé avec les métadonnées de la bibliothèque.</p></div>
+        <div class="tutorial-rule"><span>☝️</span><p>Tu n’as droit qu’à <strong>un choix par manche</strong>.</p></div>
+        <div class="tutorial-rule"><span>💡</span><p>La réponse et sa justification apparaissent uniquement à la révélation.</p></div>`
       : `
         <div class="tutorial-rule"><span>🎧</span><p>Écoute l’extrait sur ton téléphone ou le PC, puis écris <strong>${answerLabel}</strong>.</p></div>
         <div class="tutorial-rule"><span>📨</span><p><strong>Envoie une seule réponse</strong>, puis attends la révélation de l’hôte.</p></div>
@@ -448,7 +454,8 @@
         ? 'Mode Buzzer'
         : current.mode === 'royale' ? 'Battle Royale'
           : current.mode === 'confidence' ? 'Mode Confiance'
-            : current.mode === 'cooperation' ? 'Mode Coopération' : 'Réponses simultanées';
+            : current.mode === 'cooperation' ? 'Mode Coopération'
+              : current.mode === 'intruder' ? 'Mode Intrus' : 'Réponses simultanées';
     byId('tutorial-gate').classList.remove('hidden');
   }
 
@@ -758,6 +765,12 @@
       badge.innerHTML = `<span>🤝 ${Number(coop.sharedPoints) || 0}/${Number(coop.targetPoints) || 0} · ${'💖'.repeat(Number(coop.lives) || 0)}${'🖤'.repeat(Math.max(0, 3 - (Number(coop.lives) || 0)))}</span>`;
       badge.className = 'mobile-mode-badge cooperation';
       badge.classList.remove('hidden');
+    } else if (state.mode === 'intruder') {
+      const challenge = state.intruderChallenge || {};
+      const difficulty = { easy: 'Facile', medium: 'Intermédiaire', hard: 'Difficile' }[challenge.difficulty] || 'Intrus';
+      badge.innerHTML = `<span>🕵️ Intrus · ${difficulty}</span>`;
+      badge.className = 'mobile-mode-badge intruder';
+      badge.classList.remove('hidden');
     } else {
       badge.classList.add('hidden');
     }
@@ -956,6 +969,45 @@
     return state && state.players.find(item => item.profileId === state.viewerProfileId);
   }
 
+  function intruderCardsHtml(me) {
+    const challenge = state && state.intruderChallenge;
+    if (!challenge || !Array.isArray(challenge.options)) return '';
+    const revealed = state.status !== 'round' && Boolean(challenge.answerId);
+    const selectedId = me && me.answer ? String(me.answer) : '';
+    const dimension = {
+      artist: 'artiste', genre: 'genre', theme: 'thème', year: 'époque',
+    }[challenge.dimension] || 'point commun';
+    const difficulty = {
+      easy: 'Facile', medium: 'Intermédiaire', hard: 'Difficile',
+    }[challenge.difficulty] || 'Progressif';
+    const cards = challenge.options.map((option, index) => {
+      const correct = revealed && option.id === challenge.answerId;
+      const selected = option.id === selectedId;
+      const classes = `intruder-option${selected ? ' selected' : ''}${correct ? ' correct' : ''}${revealed && selected && !correct ? ' wrong' : ''}`;
+      const meta = [option.artist, option.year, option.genre, option.theme]
+        .filter(Boolean).map(value => escapeHtml(String(value))).join(' · ');
+      return `<button type="button" class="${classes}" data-intruder-option="${escapeHtml(String(option.id))}"
+                ${revealed || (me && me.finished) ? 'disabled' : ''}
+                aria-pressed="${selected}" aria-label="Choisir ${escapeHtml(String(option.title))}">
+          <span class="intruder-number">0${index + 1}</span>
+          <strong>${escapeHtml(String(option.title))}</strong>
+          <small>${meta}</small>
+          ${correct ? '<span class="intruder-verdict">L’INTRUS</span>' : ''}
+        </button>`;
+    }).join('');
+    const verdict = revealed
+      ? `<div class="intruder-explanation"><strong>${me && me.correct ? '✅ Bien vu !' : '💡 Le point commun'}</strong><span>${escapeHtml(String(challenge.explanation || ''))}</span></div>`
+      : me && me.finished
+        ? '<div class="wait-note">Choix verrouillé. La réponse reste secrète jusqu’à la révélation.</div>'
+        : '<div class="wait-note">Un seul choix possible : observe les quatre fiches.</div>';
+    return `<section class="intruder-challenge" aria-labelledby="intruder-prompt">
+      <div class="intruder-heading"><span>🕵️ ${difficulty}</span><small>Point commun : ${dimension}</small></div>
+      <p class="intruder-prompt" id="intruder-prompt">${escapeHtml(String(challenge.prompt || 'Quel est l’intrus ?'))}</p>
+      <div class="intruder-grid">${cards}</div>
+      ${verdict}
+    </section>`;
+  }
+
   function renderAction() {
     const zone = byId('player-action');
     const me = currentPlayer();
@@ -966,7 +1018,9 @@
       ? `${me.confidence.preview.multiplier}:${me.confidence.lastDelta}` : '';
     const cooperationKey = state.cooperation
       ? `${state.cooperation.sharedPoints}:${state.cooperation.streak}:${state.cooperation.lives}` : '';
-    const signature = `${state.status}:${state.round}:${state.mode}:${startsIn > 0 ? 'wait' : 'go'}:${me ? me.currentAttempt : 0}:${me ? me.found : false}:${me ? me.finished : false}:${me ? me.answer : ''}:${me ? me.lastAnswer : ''}:${me ? me.buzzPosition : ''}:${me ? me.buzzerBlockedSeconds : 0}:${confidenceKey}:${cooperationKey}:${buzzer.activeProfileId || ''}:${buzzer.solvedByProfileId || ''}:${buzzer.solvedByProfileId && Number(buzzer.answerSecondsRemaining) > 0 ? 'paused' : 'played'}`;
+    const intruderKey = state.intruderChallenge
+      ? `${state.intruderChallenge.id}:${state.intruderChallenge.answerId || ''}` : '';
+    const signature = `${state.status}:${state.round}:${state.mode}:${startsIn > 0 ? 'wait' : 'go'}:${me ? me.currentAttempt : 0}:${me ? me.found : false}:${me ? me.finished : false}:${me ? me.answer : ''}:${me ? me.lastAnswer : ''}:${me ? me.buzzPosition : ''}:${me ? me.buzzerBlockedSeconds : 0}:${confidenceKey}:${cooperationKey}:${intruderKey}:${buzzer.activeProfileId || ''}:${buzzer.solvedByProfileId || ''}:${buzzer.solvedByProfileId && Number(buzzer.answerSecondsRemaining) > 0 ? 'paused' : 'played'}`;
     
     const currentInput = byId('answer-input');
     const hadFocus = currentInput && document.activeElement === currentInput;
@@ -980,6 +1034,11 @@
     }
     actionSignature = signature;
     zone.innerHTML = '';
+    if (state.mode === 'intruder' && state.intruderChallenge
+        && (state.status === 'round' || state.status === 'reveal')) {
+      zone.innerHTML = intruderCardsHtml(me);
+      return;
+    }
     if (!me || state.status !== 'round') return;
     if (state.playback && Number(state.serverNow) < Number(state.playback.startedAt)) {
       zone.innerHTML = '<div class="wait-note">Prépare-toi… départ dans <span id="action-timer">—</span> s.</div>';
@@ -1301,12 +1360,18 @@
             <strong>${coop.result === 'won' ? '🤝 Objectif collectif atteint !' : '💔 Défi collectif manqué'}</strong>
             <span>${Number(coop.sharedPoints) || 0}/${Number(coop.targetPoints) || 0} pts · meilleure série ${Number(coop.bestStreak) || 0}</span>
           </div>` : '';
+      const intruderHtml = state.mode === 'intruder' && me
+        ? `<div class="intruder-final">
+            <strong>🕵️ Tes enquêtes</strong>
+            <span>${Number(me.session && me.session.correct) || 0} intrus trouvé${Number(me.session && me.session.correct) > 1 ? 's' : ''} sur ${Number(me.session && me.session.rounds) || 0}</span>
+          </div>` : '';
       podiumHeader = `
         <div class="controller-podium">
           <div class="podium-rank-highlight">🏆 Tu termines <strong>${medal}</strong> avec <strong>${Number(me ? me.score : 0)} pts</strong></div>
           ${badgesHtml ? `<div class="controller-badges-row">${badgesHtml}</div>` : ''}
           ${confidenceHtml}
           ${cooperationHtml}
+          ${intruderHtml}
         </div>
       `;
     }
@@ -1592,6 +1657,13 @@
     if (event.target.closest('#tutorial-close-btn')) closePartyTutorial();
     if (event.target.closest('#buzz-btn')) playerAction('buzz');
     if (event.target.closest('#answer-btn')) submitAnswer();
+    const intruderOption = event.target.closest('[data-intruder-option]');
+    if (intruderOption) {
+      playerAction('intruder-answer', {
+        optionId: intruderOption.getAttribute('data-intruder-option'),
+      });
+      return;
+    }
     const confidenceBtn = event.target.closest('[data-confidence]');
     if (confidenceBtn) {
       playerAction('set-confidence', {
