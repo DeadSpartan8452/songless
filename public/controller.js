@@ -448,6 +448,12 @@
         <div class="tutorial-rule"><span>🔁</span><p><strong>Seconde écoute</strong> relance le même extrait.</p></div>
         <div class="tutorial-rule"><span>⏱️</span><p><strong>Rallonge</strong> ajoute 3 secondes pour tout le monde.</p></div>
         <div class="tutorial-rule"><span>✨</span><p><strong>Double mise</strong> double tes points si tu trouves pendant cette manche.</p></div>`
+      : current.mode === 'missions'
+      ? `
+        <div class="tutorial-rule"><span>🕶️</span><p>Ton contrôleur reçoit une <strong>mission individuelle secrète</strong>.</p></div>
+        <div class="tutorial-rule"><span>📈</span><p>Les niveaux Facile, Difficile et Expert demandent des performances croissantes.</p></div>
+        <div class="tutorial-rule"><span>🤫</span><p>Personne d’autre ne voit ton objectif avant la fin.</p></div>
+        <div class="tutorial-rule"><span>🏆</span><p>Mission et récompense sont révélées uniquement au podium.</p></div>`
       : `
         <div class="tutorial-rule"><span>🎧</span><p>Écoute l’extrait sur ton téléphone ou le PC, puis écris <strong>${answerLabel}</strong>.</p></div>
         <div class="tutorial-rule"><span>📨</span><p><strong>Envoie une seule réponse</strong>, puis attends la révélation de l’hôte.</p></div>
@@ -469,7 +475,8 @@
             : current.mode === 'cooperation' ? 'Mode Coopération'
               : current.mode === 'intruder' ? 'Mode Intrus'
                 : current.mode === 'auction' ? 'Mode Enchères'
-                  : current.mode === 'joker' ? 'Mode Joker' : 'Réponses simultanées';
+                  : current.mode === 'joker' ? 'Mode Joker'
+                    : current.mode === 'missions' ? 'Missions secrètes' : 'Réponses simultanées';
     byId('tutorial-gate').classList.remove('hidden');
   }
 
@@ -797,6 +804,11 @@
       badge.innerHTML = `<span>🃏 ${remaining} joker${remaining > 1 ? 's' : ''}${jokerState && jokerState.multiplier === 2 ? ' · points ×2' : ''}</span>`;
       badge.className = 'mobile-mode-badge joker';
       badge.classList.remove('hidden');
+    } else if (state.mode === 'missions') {
+      const mission = me && me.mission;
+      badge.innerHTML = `<span>🕶️ Mission ${mission ? `${Number(mission.progress)}/${Number(mission.target)}` : 'secrète'}</span>`;
+      badge.className = 'mobile-mode-badge missions';
+      badge.classList.remove('hidden');
     } else {
       badge.classList.add('hidden');
     }
@@ -1082,11 +1094,13 @@
       ? `${state.cooperation.sharedPoints}:${state.cooperation.streak}:${state.cooperation.lives}` : '';
     const jokerKey = me && me.joker
       ? `${me.joker.multiplier}:${me.joker.inventory.map(item => item.remaining).join(',')}:${state.joker && state.joker.event ? state.joker.event.createdAt : ''}` : '';
+    const missionKey = me && me.mission
+      ? `${me.mission.id}:${me.mission.progress}:${me.mission.completed}` : '';
     const intruderKey = state.intruderChallenge
       ? `${state.intruderChallenge.id}:${state.intruderChallenge.answerId || ''}` : '';
     const auctionKey = state.auction
       ? `${state.auction.phase}:${state.auction.activeProfileId || ''}:${(state.auction.bids || []).map(bid => `${bid.profileId}:${bid.submitted}`).join(',')}` : '';
-    const signature = `${state.status}:${state.round}:${state.mode}:${startsIn > 0 ? 'wait' : 'go'}:${me ? me.currentAttempt : 0}:${me ? me.found : false}:${me ? me.finished : false}:${me ? me.answer : ''}:${me ? me.lastAnswer : ''}:${me ? me.buzzPosition : ''}:${me ? me.buzzerBlockedSeconds : 0}:${confidenceKey}:${cooperationKey}:${jokerKey}:${intruderKey}:${auctionKey}:${buzzer.activeProfileId || ''}:${buzzer.solvedByProfileId || ''}:${buzzer.solvedByProfileId && Number(buzzer.answerSecondsRemaining) > 0 ? 'paused' : 'played'}`;
+    const signature = `${state.status}:${state.round}:${state.mode}:${startsIn > 0 ? 'wait' : 'go'}:${me ? me.currentAttempt : 0}:${me ? me.found : false}:${me ? me.finished : false}:${me ? me.answer : ''}:${me ? me.lastAnswer : ''}:${me ? me.buzzPosition : ''}:${me ? me.buzzerBlockedSeconds : 0}:${confidenceKey}:${cooperationKey}:${jokerKey}:${missionKey}:${intruderKey}:${auctionKey}:${buzzer.activeProfileId || ''}:${buzzer.solvedByProfileId || ''}:${buzzer.solvedByProfileId && Number(buzzer.answerSecondsRemaining) > 0 ? 'paused' : 'played'}`;
     
     const currentInput = byId('answer-input');
     const hadFocus = currentInput && document.activeElement === currentInput;
@@ -1214,7 +1228,7 @@
     const threshold = Number(votes.threshold) || 1;
     let buttonsHtml = '';
 
-    if (['classic', 'confidence'].includes(state.mode)
+    if (['classic', 'confidence', 'cooperation', 'joker', 'missions'].includes(state.mode)
         && votes.nextStep && votes.nextStep.nextDuration) {
       buttonsHtml += `
         <button type="button" class="vote-btn${votes.nextStep.voted ? ' voted' : ''}"
@@ -1288,11 +1302,20 @@
           </div>
           ${playerJoker.multiplier === 2 ? '<div class="joker-active">✨ Double mise active pour cette manche</div>' : ''}
         </div>` : '';
+    const mission = me && me.mission;
+    const missionHtml = state.mode === 'missions' && mission
+      ? `<div class="mission-card ${mission.completed ? 'completed' : ''}">
+          <div class="mission-head"><span>${mission.emoji}</span><div><small>MISSION ${mission.level === 'easy' ? 'FACILE' : mission.level === 'hard' ? 'DIFFICILE' : 'EXPERT'}</small><strong>${escapeHtml(mission.label)}</strong></div></div>
+          <p>${escapeHtml(mission.description)}</p>
+          <div class="mission-progress"><span style="width:${Math.min(100, 100 * Number(mission.progress) / Math.max(1, Number(mission.target)))}%"></span></div>
+          <small>${Number(mission.progress)}/${Number(mission.target)} · récompense secrète jusqu’au podium</small>
+        </div>` : '';
     return `
       <div class="answer-block">
         ${confidenceHtml}
         ${cooperationHtml}
         ${jokerHtml}
+        ${missionHtml}
         <div class="answer-search">
           <span class="answer-search-icon" aria-hidden="true">⌕</span>
           <input id="answer-input" class="answer-input" maxlength="200"
@@ -1472,7 +1495,7 @@
           return `
           <div class="rank-row${item.profileId === state.viewerProfileId ? ' me' : ''}">
             <span>${rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : rank}</span>
-            <span>${escapeHtml(item.emoji || '🎧')} ${escapeHtml(item.nom)}</span>
+            <span>${escapeHtml(item.emoji || '🎧')} ${escapeHtml(item.nom)}${state.status === 'finished' && item.mission ? `<small class="mission-reveal">${item.mission.emoji} ${escapeHtml(item.mission.label)} · ${item.mission.completed ? `réussie +${Number(item.mission.reward)} pt` : 'manquée'}</small>` : ''}</span>
             <span class="rank-score">${Number(item.score) || 0}<small>${item.cooperation ? `+${Number(item.cooperation.contribution) || 0} équipe` : `${Number(item.session && item.session.correct) || 0}/${Number(item.session && item.session.rounds) || 0}`}</small></span>
           </div>`;
         }).join('')

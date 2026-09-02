@@ -28,7 +28,8 @@
       const coop = player.cooperation;
       const jokers = player.joker && player.joker.inventory
         ? player.joker.inventory.reduce((sum, item) => sum + Number(item.remaining), 0) : null;
-      points.textContent = `${Number(player.score) || 0} PT${stake ? ` · ×${stake.multiplier}` : ''}${coop ? ` · +${Number(coop.contribution) || 0} ÉQUIPE` : ''}${jokers !== null ? ` · ${jokers} 🃏${player.joker.multiplier === 2 ? ' · ×2' : ''}` : ''}`;
+      const mission = player.mission;
+      points.textContent = `${Number(player.score) || 0} PT${stake ? ` · ×${stake.multiplier}` : ''}${coop ? ` · +${Number(coop.contribution) || 0} ÉQUIPE` : ''}${jokers !== null ? ` · ${jokers} 🃏${player.joker.multiplier === 2 ? ' · ×2' : ''}` : ''}${mission ? ` · ${mission.emoji} ${mission.completed ? `+${mission.reward}` : 'MANQUÉE'}` : ''}`;
       item.append(rank, name, points);
       return item;
     }));
@@ -106,6 +107,7 @@
                 : state.mode === 'auction' && state.auction && state.auction.phase === 'bidding' ? 'À vos enchères.'
                   : state.mode === 'auction' ? 'L’enchère gagnante joue.'
                     : state.mode === 'joker' ? 'À vous de jouer vos cartes.'
+                      : state.mode === 'missions' ? 'Objectif reçu. Identité secrète.'
               : 'Qui reconnaît ce morceau ?');
       const coop = state.cooperation;
       setText('hero-subtitle', finalDuel && finalDuel.active
@@ -140,12 +142,15 @@
       const winner = (state.players || []).find(player => player.profileId === state.winnerProfileId)
         || [...(state.players || [])].sort((a, b) => Number(b.score) - Number(a.score))[0];
       const collective = state.mode === 'cooperation' && state.cooperation;
-      setText('eyebrow', collective ? 'VERDICT COLLECTIF' : 'VERDICT FINAL');
+      setText('eyebrow', collective ? 'VERDICT COLLECTIF'
+        : state.mode === 'missions' ? 'MISSIONS RÉVÉLÉES' : 'VERDICT FINAL');
       setText('hero-title', collective
         ? collective.result === 'won' ? 'OBJECTIF ATTEINT.' : 'DÉFI MANQUÉ.'
         : winner ? `${winner.emoji || '🏆'} ${winner.nom}` : 'Fin de partie');
       const stats = winner && winner.confidence && winner.confidence.stats;
-      setText('hero-subtitle', collective
+      setText('hero-subtitle', state.mode === 'missions'
+        ? `${(state.players || []).filter(player => player.mission && player.mission.completed).length} mission(s) accomplie(s) · les récompenses sont incluses dans les scores.`
+        : collective
         ? `${Number(collective.sharedPoints) || 0}/${Number(collective.targetPoints) || 0} points · meilleure série ${Number(collective.bestStreak) || 0}/${Number(collective.targetStreak) || 0}.`
         : winner
         ? stats

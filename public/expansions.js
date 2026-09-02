@@ -608,7 +608,7 @@
   function applyPartySettings(settings) {
     const mode = partyState ? partyState.mode : 'classic';
     const value = normalizedPartyOptions(mode, settings);
-    if (['classic', 'confidence', 'cooperation'].includes(mode)) {
+    if (['classic', 'confidence', 'cooperation', 'joker', 'missions'].includes(mode)) {
       durations = Array.isArray(value.paliers) ? [...value.paliers] : (PALIERS_PRESETS[value.difficulty] || PALIERS_PRESETS.normal);
       reglages.paliers = [...durations];
       reglages.preset = value.difficulty || 'normal';
@@ -1547,15 +1547,19 @@
     const intruderSummary = partyState.mode === 'intruder'
       ? `<div class="party-intruder-final"><strong>🕵️ Bilan des enquêteurs</strong><span>${players.map(player => `${escapeHtml(String(player.nom))} : ${Number(player.session && player.session.correct) || 0}/${Number(player.session && player.session.rounds) || 0}`).join(' · ')}</span></div>`
       : '';
+    const missionSummary = partyState.mode === 'missions'
+      ? `<div class="party-missions-final"><strong>🕶️ Missions révélées</strong>${players.map(player => player.mission ? `<span>${escapeHtml(player.emoji || '🎧')} ${escapeHtml(player.nom)} · ${player.mission.emoji} ${escapeHtml(player.mission.label)} · ${player.mission.completed ? `réussie +${Number(player.mission.reward)} pt` : 'manquée'}</span>` : '').join('')}</div>`
+      : '';
 
     container.innerHTML = `
       <div class="podium-card">
         <div class="podium-header">
           <span class="podium-crown">👑</span>
-          <h3>Podium de la soirée</h3>
+          <p class="podium-title">Podium de la soirée</p>
         </div>
         ${cooperationSummary}
         ${intruderSummary}
+        ${missionSummary}
 
         ${sortedTeams.length ? `
           <div class="team-podium-section">
@@ -1695,7 +1699,7 @@
       return `Trouvé ! (${count}e essai${pts ? ` · +${pts} pt` : ''})`;
     }
     if (player.finished) return 'Essais terminés ❌';
-    if (partyState && ['classic', 'confidence', 'cooperation'].includes(partyState.mode)
+    if (partyState && ['classic', 'confidence', 'cooperation', 'joker', 'missions'].includes(partyState.mode)
         && partyState.status === 'round') {
       const paliers = partyState.paliers || [0.2, 0.7, 2.5, 5, 9, 15];
       const attemptIdx = Number(player.currentAttempt) || 0;
@@ -1725,7 +1729,7 @@
     const threshold = Number(votes.threshold) || 1;
     let buttonsHtml = '';
 
-    if (['classic', 'confidence', 'cooperation'].includes(partyState.mode)
+    if (['classic', 'confidence', 'cooperation', 'joker', 'missions'].includes(partyState.mode)
         && votes.nextStep && votes.nextStep.nextDuration) {
       buttonsHtml += `
         <button class="party-vote${votes.nextStep.voted ? ' voted' : ''}"
@@ -1907,11 +1911,13 @@
       ? `${partyState.cooperation.sharedPoints}:${partyState.cooperation.streak}:${partyState.cooperation.lives}` : '';
     const jokerKey = me && me.joker
       ? `${me.joker.multiplier}:${me.joker.inventory.map(item => item.remaining).join(',')}:${partyState.joker && partyState.joker.event ? partyState.joker.event.createdAt : ''}` : '';
+    const missionKey = me && me.mission
+      ? `${me.mission.id}:${me.mission.progress}:${me.mission.completed}` : '';
     const intruderKey = partyState.intruderChallenge
       ? `${partyState.intruderChallenge.id}:${partyState.intruderChallenge.answerId || ''}` : '';
     const auctionKey = partyState.auction
       ? `${partyState.auction.phase}:${partyState.auction.activeProfileId || ''}:${(partyState.auction.bids || []).map(bid => `${bid.profileId}:${bid.submitted}`).join(',')}` : '';
-    const signature = `${partyState.status}:${partyState.round}:${partyState.mode}:${waitingForStart ? 'wait' : 'go'}:${me ? me.currentAttempt : 0}:${me ? me.found : false}:${me ? me.finished : false}:${me ? me.answer : ''}:${me ? me.lastAnswer : ''}:${me ? me.buzzerBlockedSeconds : 0}:${confidenceKey}:${cooperationKey}:${jokerKey}:${intruderKey}:${auctionKey}:${buzzer.activeProfileId || ''}:${buzzer.solvedByProfileId || ''}:${buzzer.solvedByProfileId && Number(buzzer.answerSecondsRemaining) > 0 ? 'paused' : 'played'}`;
+    const signature = `${partyState.status}:${partyState.round}:${partyState.mode}:${waitingForStart ? 'wait' : 'go'}:${me ? me.currentAttempt : 0}:${me ? me.found : false}:${me ? me.finished : false}:${me ? me.answer : ''}:${me ? me.lastAnswer : ''}:${me ? me.buzzerBlockedSeconds : 0}:${confidenceKey}:${cooperationKey}:${jokerKey}:${missionKey}:${intruderKey}:${auctionKey}:${buzzer.activeProfileId || ''}:${buzzer.solvedByProfileId || ''}:${buzzer.solvedByProfileId && Number(buzzer.answerSecondsRemaining) > 0 ? 'paused' : 'played'}`;
     const currentInput = byId('party-answer-input');
     const hadFocus = currentInput && document.activeElement === currentInput;
     const previousVal = currentInput ? currentInput.value : '';
@@ -2084,11 +2090,20 @@
           </div>
           ${playerJoker.multiplier === 2 ? '<div class="party-joker-active">✨ Double mise active pour cette manche</div>' : ''}
         </div>` : '';
+    const mission = me && me.mission;
+    const missionHtml = partyState.mode === 'missions' && mission
+      ? `<div class="party-mission-card ${mission.completed ? 'completed' : ''}">
+          <div class="party-mission-head"><span>${mission.emoji}</span><div><small>MISSION ${mission.level === 'easy' ? 'FACILE' : mission.level === 'hard' ? 'DIFFICILE' : 'EXPERT'}</small><strong>${escapeHtml(mission.label)}</strong></div></div>
+          <p>${escapeHtml(mission.description)}</p>
+          <div class="party-mission-progress"><span style="width:${Math.min(100, 100 * Number(mission.progress) / Math.max(1, Number(mission.target)))}%"></span></div>
+          <small>${Number(mission.progress)}/${Number(mission.target)} · récompense révélée au podium</small>
+        </div>` : '';
     return `
       <div class="party-answer-block">
         ${confidenceHtml}
         ${cooperationHtml}
         ${jokerHtml}
+        ${missionHtml}
         <div class="party-search-box">
           <span class="party-search-icon" aria-hidden="true">⌕</span>
           <input id="party-answer-input" maxlength="200" placeholder="${placeholder}"
@@ -2728,6 +2743,7 @@
           buzzer: '🔔 Buzzer', royale: '👑 Battle Royale', duel: '🥊 Duel',
           confidence: '🎲 Confiance', cooperation: '🤝 Coopération',
           intruder: '🕵️ Intrus', auction: '🔨 Enchères', joker: '🃏 Joker',
+          missions: '🕶️ Missions secrètes',
         }[item.mode] || '🎯 Réponses simultanées';
         return `
           <div class="party-history-card">

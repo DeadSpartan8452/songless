@@ -235,4 +235,15 @@ test('le mode Joker expose le même inventaire limité sur PC, contrôleur et TV
   assert.match(tv, /state\.joker\.event/);
 });
 
+test('les Missions secrètes restent privées puis sont révélées au podium', () => {
+  const controller = read('controller.js');
+  const expansions = read('expansions.js');
+  const tv = read('tv.js');
+  assert.match(controller, /mission-card/);
+  assert.match(controller, /récompense secrète jusqu’au podium/);
+  assert.match(expansions, /party-mission-card/);
+  assert.match(expansions, /Missions révélées/);
+  assert.match(tv, /MISSIONS RÉVÉLÉES/);
+});
+
 console.log(`\n${passed} tests statiques d’interface réussis.`);
