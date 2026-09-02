@@ -63,6 +63,14 @@ spectacle et les contrôleurs la rapidité.
 - gère fichiers, profils, sauvegardes, métadonnées et diagnostic ;
 - reste le seul détenteur du secret hôte principal.
 
+**Racine de confiance Windows livrée le 2 septembre 2026** : `Songless.bat`
+appelle le lanceur PowerShell autorisé, qui crée une clé d’installation protégée
+par Windows DPAPI puis en dérive un secret différent à chaque démarrage. Le
+serveur échange ce secret uniquement depuis la machine hôte contre un cookie de
+session HttpOnly/SameSite, puis retire le secret de l’adresse par redirection.
+Un autre onglet local sans ce cookie reçoit l’interface contrôleur et toutes les
+API d’administration lui sont refusées. Le mode Internet utilise le même contrat.
+
 ### 3.1 bis Téléphone hôte autonome
 
 Le téléphone doit pouvoir remplacer entièrement le PC hôte, sans PC allumé sur le
@@ -689,7 +697,7 @@ Une phase est terminée uniquement si :
 |---|---|---|---|
 | 0 — Audit | Validée | Audit moteur, HTTP, bibliothèque, encodage, sécurité et contrôle Playwright/Axe multi-écrans | Rejouer administrativement les trois lanceurs sur une instance fraîche |
 | 1 — Moteur | Avancée | Registre des modes et modules testés pour manches, réponses, suggestions, accès, résultats, équipes, easter eggs anti-spoiler, Buzzer, Duel et Battle Royale | Stabiliser les derniers contrats entre modules |
-| 2 — Rôles | Avancée | Jetons distincts hôte, joueur, TV et télécommande ; expiration et révocation ; tests négatifs | Reconnexion et validation visuelle réelle |
+| 2 — Rôles | Très avancée | Jetons distincts hôte, joueur, TV et télécommande ; expiration et révocation ; tests négatifs ; clé d’installation Windows protégée par DPAPI, secret de démarrage dérivé et session admin HttpOnly refusant un autre onglet local | Reconnexion et validation visuelle réelle sur les appareils cibles |
 | 3 — TV/admin | Première version | `tv.html`, `remote.html`, boutons d’appairage et commandes limitées | Essais réels TV/téléphone, reprise après coupure et finitions |
 | 4 — Modes existants | En cours | Duel final Battle Royale à deux survivants, persistance du vrai vainqueur et interfaces PC/TV/télécommande/téléphone validées | Unification complète des autres modes et de leurs fins de partie |
 | 5 — Bibliothèque | Très avancée | Audit des 1 687 fichiers, favoris unifiés, sous-genres et années avec provenance/confiance, filtres précis, aperçus obligatoires avant application des années ou genres en lot, blacklist temporaire, mesure d’encodage et dimensions de pochettes, comparateur réversible de doublons et indice de qualité explicable | Compléter et valider manuellement les années et genres encore incertains |

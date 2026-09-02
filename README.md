@@ -23,6 +23,13 @@ dossier, recrée-le (clic droit sur le Bureau → Nouveau → Raccourci) avec :
 powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "<chemin>\Songless.ps1"
 ```
 
+Le lanceur crée au premier démarrage une clé propre à cette installation,
+chiffrée par Windows pour ton compte. À chaque lancement, elle produit un accès
+administrateur temporaire remis au navigateur dans un cookie HttpOnly. Ouvrir
+manuellement `localhost:3000` dans un autre navigateur ne donne donc aucun accès
+aux musiques, profils ou réglages. La clé locale, les données et les morceaux ne
+font jamais partie d’un kit transférable.
+
 ---
 
 ## Ce qui a été ajouté

@@ -71,9 +71,10 @@ function Test-SonglessInternetInstance {
 
   $LocalExpected = $LocalContext.port -eq $LocalPort `
     -and $LocalContext.lan -eq $true `
-    -and $LocalContext.local -eq $true `
-    -and $LocalContext.canEditProfiles -eq $true `
-    -and $LocalContext.readOnly -eq $false `
+    -and $LocalContext.deviceLocal -eq $true `
+    -and $LocalContext.local -eq $false `
+    -and $LocalContext.canEditProfiles -eq $false `
+    -and $LocalContext.readOnly -eq $true `
     -and [string]$LocalContext.publicUrl -eq $ExpectedPublicUrl
   $InternetExpected = $InternetContext.port -eq $LocalPort `
     -and $InternetContext.lan -eq $true `
@@ -139,6 +140,38 @@ if (-not $OwnsInstanceLock) {
 }
 
 $ProjectRoot = Split-Path -Parent $PSScriptRoot
+$InstanceKeyPath = Join-Path $ProjectRoot '.songless-instance-key'
+if (Test-Path -LiteralPath $InstanceKeyPath) {
+  $ProtectedKey = [Convert]::FromBase64String(
+    (Get-Content -Raw -LiteralPath $InstanceKeyPath).Trim()
+  )
+  $InstanceKey = [Security.Cryptography.ProtectedData]::Unprotect(
+    $ProtectedKey, $null,
+    [Security.Cryptography.DataProtectionScope]::CurrentUser
+  )
+} else {
+  $InstanceKey = New-Object byte[] 32
+  $Generator = [Security.Cryptography.RandomNumberGenerator]::Create()
+  $Generator.GetBytes($InstanceKey)
+  $Generator.Dispose()
+  $ProtectedKey = [Security.Cryptography.ProtectedData]::Protect(
+    $InstanceKey, $null,
+    [Security.Cryptography.DataProtectionScope]::CurrentUser
+  )
+  [IO.File]::WriteAllText(
+    $InstanceKeyPath,
+    [Convert]::ToBase64String($ProtectedKey)
+  )
+}
+$Nonce = New-Object byte[] 32
+$Generator = [Security.Cryptography.RandomNumberGenerator]::Create()
+$Generator.GetBytes($Nonce)
+$Generator.Dispose()
+$Hmac = New-Object Security.Cryptography.HMACSHA256 (,$InstanceKey)
+$RuntimeKey = $Hmac.ComputeHash($Nonce)
+$Hmac.Dispose()
+$InstanceToken = [Convert]::ToBase64String($RuntimeKey).TrimEnd('=')
+$InstanceToken = $InstanceToken.Replace('+', '-').Replace('/', '_')
 $AccountConfigPath = Join-Path $ProjectRoot '.songless-tailscale-account'
 $TailscaleCommand = Get-Command tailscale.exe -ErrorAction SilentlyContinue
 $TailscalePath = if ($TailscaleCommand) { $TailscaleCommand.Source } else { $null }
@@ -231,6 +264,8 @@ if ($PortPublicOccupe) {
 
 $env:SONGLESS_PUBLIC_URL = $PublicUrl
 $env:SONGLESS_PUBLIC_PORT = '3001'
+$env:SONGLESS_INSTANCE_SECRET = $InstanceToken
+$AdminUrl = "$LocalUrl/admin-bootstrap?token=$InstanceToken"
 $Node = Start-Process -FilePath 'node.exe' `
   -ArgumentList 'server.js', '--lan', '--internet' `
   -WorkingDirectory $ProjectRoot `
@@ -305,6 +340,9 @@ try {
 
   Write-Host 'Tunnel et adresse HTTPS verifies.' -ForegroundColor Green
   if ($SmokeTest) {
+    $AdminSession = New-Object Microsoft.PowerShell.Commands.WebRequestSession
+    Invoke-WebRequest -UseBasicParsing -Uri $AdminUrl `
+      -WebSession $AdminSession -TimeoutSec 3 | Out-Null
     $CorpsSalon = @{
       mode = 'classic'
       totalRounds = 1
@@ -312,12 +350,14 @@ try {
     } | ConvertTo-Json
     $Salon = Invoke-RestMethod -Method Post `
       -Uri 'http://127.0.0.1:3000/api/party/create' `
-      -ContentType 'application/json' -Body $CorpsSalon -TimeoutSec 3
+      -ContentType 'application/json' -Body $CorpsSalon -TimeoutSec 3 `
+      -WebSession $AdminSession
     $CodeSalon = [uri]::EscapeDataString([string]$Salon.code)
     $JetonHote = [uri]::EscapeDataString([string]$Salon.hostToken)
     $AdresseQr = "http://127.0.0.1:3000/api/party/$CodeSalon/qr.svg" `
       + "?hostToken=$JetonHote&kind=internet"
-    $Qr = Invoke-WebRequest -UseBasicParsing -Uri $AdresseQr -TimeoutSec 3
+    $Qr = Invoke-WebRequest -UseBasicParsing -Uri $AdresseQr -TimeoutSec 3 `
+      -WebSession $AdminSession
     if ($Qr.StatusCode -ne 200 -or $Qr.Content -notmatch '<svg') {
       throw 'Le QR code du salon n''a pas pu etre genere.'
     }
@@ -332,7 +372,7 @@ try {
     return
   }
   if (-not $SkipBrowser) {
-    Start-Process $LocalUrl
+    Start-Process $AdminUrl
   }
   Wait-Process -Id $Node.Id
 } finally {

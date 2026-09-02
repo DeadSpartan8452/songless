@@ -19,6 +19,49 @@ $dossier = Split-Path -Parent $MyInvocation.MyCommand.Path
 $port    = 3000
 $url     = "http://localhost:$port"
 
+# Clé propre à cette installation, chiffrée par Windows pour l’utilisateur.
+$keyPath = Join-Path $dossier '.songless-instance-key'
+try {
+    if (Test-Path -LiteralPath $keyPath) {
+        $protected = [Convert]::FromBase64String(
+            (Get-Content -Raw -LiteralPath $keyPath).Trim()
+        )
+        $keyBytes = [Security.Cryptography.ProtectedData]::Unprotect(
+            $protected,
+            $null,
+            [Security.Cryptography.DataProtectionScope]::CurrentUser
+        )
+    } else {
+        $keyBytes = New-Object byte[] 32
+        $rng = [Security.Cryptography.RandomNumberGenerator]::Create()
+        $rng.GetBytes($keyBytes)
+        $rng.Dispose()
+        $protected = [Security.Cryptography.ProtectedData]::Protect(
+            $keyBytes,
+            $null,
+            [Security.Cryptography.DataProtectionScope]::CurrentUser
+        )
+        [IO.File]::WriteAllText($keyPath, [Convert]::ToBase64String($protected))
+    }
+} catch {
+    Add-Type -AssemblyName PresentationFramework
+    [System.Windows.MessageBox]::Show(
+        "La cle locale de Songless ne peut pas etre ouverte.`n`nRepare l'installation sans supprimer tes donnees.",
+        'Songless', 'OK', 'Error'
+    ) | Out-Null
+    exit 1
+}
+$nonce = New-Object byte[] 32
+$rng = [Security.Cryptography.RandomNumberGenerator]::Create()
+$rng.GetBytes($nonce)
+$rng.Dispose()
+$hmac = New-Object Security.Cryptography.HMACSHA256 (,$keyBytes)
+$runtimeBytes = $hmac.ComputeHash($nonce)
+$hmac.Dispose()
+$instanceToken = [Convert]::ToBase64String($runtimeBytes).TrimEnd('=')
+$instanceToken = $instanceToken.Replace('+', '-').Replace('/', '_')
+$urlAdmin = "$url/admin-bootstrap?token=$instanceToken"
+
 # server.js n'écoute que sur 127.0.0.1 (IPv4). PowerShell résout « localhost »
 # en IPv6 (::1) en premier : le test tombait donc systématiquement en timeout,
 # et le lanceur croyait que Songless ne tournait jamais. On teste en IPv4
@@ -27,7 +70,7 @@ $urlTest = "http://127.0.0.1:$port"
 
 function Serveur-Repond {
     try {
-        $r = Invoke-WebRequest -Uri "$urlTest/api/genres" -TimeoutSec 2 -UseBasicParsing
+        $r = Invoke-WebRequest -Uri "$urlTest/api/context" -TimeoutSec 2 -UseBasicParsing
         return $r.StatusCode -eq 200
     } catch {
         return $false
@@ -81,6 +124,7 @@ if (-not (Test-Path (Join-Path $dossier 'node_modules'))) {
 # --- Démarrage du serveur dans sa propre fenêtre.
 # Volontairement réduite et non masquée : la fermer arrête Songless.
 $argsNode = if ($Lan) { 'node server.js --lan' } else { 'node server.js' }
+$env:SONGLESS_INSTANCE_SECRET = $instanceToken
 
 Start-Process -FilePath 'cmd.exe' `
     -ArgumentList '/c', "title Songless - serveur (fermer cette fenetre arrete le jeu) && $argsNode || pause" `
@@ -92,7 +136,7 @@ $limite = 25
 for ($i = 0; $i -lt $limite; $i++) {
     if (Serveur-Repond) {
         if (-not $SkipBrowser) {
-            Start-Process $url
+            Start-Process $urlAdmin
         }
         exit 0
     }

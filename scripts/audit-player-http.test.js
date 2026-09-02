@@ -72,6 +72,7 @@ async function main() {
       SONGLESS_BACKUP_DIR: backupDir,
       SONGLESS_MUSIC_DIR: musicDir,
       SONGLESS_METADATA_FILE: metadataFile,
+      SONGLESS_TEST_ALLOW_LOCAL_ADMIN: '1',
     },
     stdio: ['ignore', 'pipe', 'pipe'],
     windowsHide: true,

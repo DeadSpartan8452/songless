@@ -25,6 +25,7 @@ const antivirus = require('./lib/antivirus');
 const blacklist = require('./lib/blacklist');
 const duplicateComparison = require('./lib/duplicate-comparison');
 const preflight = require('./lib/preflight');
+const instanceAuthModule = require('./lib/instance-auth');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -32,6 +33,10 @@ const INTERNET = process.argv.includes('--internet');
 const PUBLIC_PORT = Number(process.env.SONGLESS_PUBLIC_PORT) || 3001;
 const PUBLIC_URL = /^https:\/\/[a-z0-9.-]+(?::\d+)?$/i.test(String(process.env.SONGLESS_PUBLIC_URL || '').replace(/\/$/, ''))
   ? String(process.env.SONGLESS_PUBLIC_URL).replace(/\/$/, '') : '';
+const INSTANCE_SECRET_PROVIDED = Boolean(process.env.SONGLESS_INSTANCE_SECRET);
+const instanceAuth = instanceAuthModule.create(process.env.SONGLESS_INSTANCE_SECRET, {
+  allowLocalForTests: process.env.SONGLESS_TEST_ALLOW_LOCAL_ADMIN === '1',
+});
 
 // ==========================================
 // MODE RÉSEAU LOCAL
@@ -127,7 +132,7 @@ function urlLan(paired = false) {
  * le PC hôte arrive par l'adresse réseau de la machine, et on se retrouverait
  * en lecture seule chez soi. Ses propres adresses comptent donc comme locales.
  */
-function estLocal(req) {
+function estMachineLocale(req) {
   // Un tunnel arrive depuis la boucle locale. Sans ce test, cette connexion
   // serait prise à tort pour l'hôte du jeu et recevrait les droits du PC.
   if (estEntreeInternet(req)) return false;
@@ -230,6 +235,16 @@ app.use((req, res, next) => {
     res.set('Strict-Transport-Security', 'max-age=31536000');
   }
   next();
+});
+
+app.get('/admin-bootstrap', (req, res) => {
+  if (!estMachineLocale(req) || !instanceAuth.authorize(req.query.token)) {
+    return res.status(403).type('text/plain')
+      .send('Lien administrateur Songless invalide. Relance Songless.bat.');
+  }
+  instanceAuth.setCookie(res);
+  res.set('Cache-Control', 'no-store');
+  res.redirect(303, '/');
 });
 
 const remoteRates = new Map();
@@ -345,7 +360,7 @@ app.use((req, res, next) => {
 });
 
 app.get(['/', '/index.html'], (req, res, next) => {
-  if (LAN && !estLocal(req)) return res.sendFile(path.join(PUBLIC_DIR, 'controller.html'));
+  if (!estLocal(req)) return res.sendFile(path.join(PUBLIC_DIR, 'controller.html'));
   next();
 });
 
@@ -383,13 +398,14 @@ app.get('/api/context', (req, res) => {
   const lanPaired = !estEntreeInternet(req) && req.get('X-Songless-Pair') === LAN_PAIR_TOKEN;
   const paired = local || lanPaired || invitationFromRequest(req);
   res.json({
+    deviceLocal: estMachineLocale(req),
     lan: LAN,
     local,
     paired,
     canEditProfiles: local || lanPaired,
     canAdd: paired,
-    controller: LAN && !local,
-    readOnly: LAN && !local,
+    controller: !local,
+    readOnly: !local,
     url: LAN ? urlLan() : null,
     urls: LAN ? urlsLan() : [],
     publicUrl: PUBLIC_URL || null,
@@ -514,6 +530,10 @@ function partyInviteUrl(base, party) {
   if (!base) return null;
   const query = new URLSearchParams({ party: party.code, invite: party.inviteToken });
   return `${base}/controller.html?${query}`;
+}
+
+function estLocal(req) {
+  return estMachineLocale(req) && instanceAuth.isAuthorized(req);
 }
 
 function partyAccessUrl(base, party, issued) {
@@ -1916,6 +1936,9 @@ app.listen(PORT, HOTE, async () => {
   console.log(`🐾 Serveur Songless lancé avec succès !`);
   console.log(`👉 http://localhost:${PORT}`);
   console.log(`📁 Dossier musiques : ${MUSIC_DIR}`);
+  if (!INSTANCE_SECRET_PROVIDED) {
+    console.log(`🔑 Administration : http://localhost:${PORT}/admin-bootstrap?token=${instanceAuth.bootstrapToken}`);
+  }
 
   if (!LAN) {
     console.log(`🔒 Écoute sur ${HOTE} — accessible depuis cette machine seulement`);

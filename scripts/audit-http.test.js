@@ -5,6 +5,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { spawn } = require('child_process');
+const crypto = require('crypto');
 
 const LOCAL = 'http://127.0.0.1:31300';
 const REMOTE = 'http://127.0.0.1:31301';
@@ -29,6 +30,8 @@ fs.writeFileSync(dataFile, JSON.stringify({
 }, null, 2));
 
 let passed = 0;
+let localCookie = '';
+const instanceBootstrap = crypto.randomBytes(32).toString('base64url');
 
 function ok(name) {
   passed++;
@@ -36,7 +39,9 @@ function ok(name) {
 }
 
 async function request(base, route, options = {}) {
-  const response = await fetch(`${base}${route}`, options);
+  const headers = new Headers(options.headers || {});
+  if (base === LOCAL && localCookie) headers.set('Cookie', localCookie);
+  const response = await fetch(`${base}${route}`, { ...options, headers });
   const text = await response.text();
   let body = text;
   try { body = JSON.parse(text); } catch (_) {}
@@ -67,6 +72,7 @@ async function main() {
       SONGLESS_PUBLIC_PORT: '31301',
       SONGLESS_PUBLIC_URL: 'https://songless-audit.invalid',
       SONGLESS_DATA_FILE: dataFile,
+      SONGLESS_INSTANCE_SECRET: instanceBootstrap,
     },
     stdio: ['ignore', 'pipe', 'pipe'],
     windowsHide: true,
@@ -78,6 +84,20 @@ async function main() {
 
   try {
     await waitForServer(child);
+
+    const unauthorized = await request(LOCAL, '/api/context');
+    assert.strictEqual(unauthorized.body.local, false);
+    const deniedCreate = await request(LOCAL, '/api/party/create', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}',
+    });
+    assert.strictEqual(deniedCreate.status, 403);
+    ok('un onglet local sans session ne devient pas administrateur');
+
+    const bootstrap = await request(LOCAL,
+      `/admin-bootstrap?token=${encodeURIComponent(instanceBootstrap)}`, { redirect: 'manual' });
+    assert.strictEqual(bootstrap.status, 303);
+    localCookie = (bootstrap.response.headers.get('set-cookie') || '').split(';')[0];
+    assert.match(localCookie, /^songless_admin=/);
 
     const localContext = await request(LOCAL, '/api/context');
     assert.strictEqual(localContext.status, 200);
