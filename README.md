@@ -523,10 +523,16 @@ automatiquement** : chaque groupe rappelle la commande ou le geste qui répare.
 | **Gênant** | morceau de 12 s, mix d'une heure, titre indevinable (« videoplayback »), doublon probable, longue intro silencieuse |
 | **Cosmétique** | pas d'artiste, genre « Autre », pas d'année, fiche sans fichier |
 
-L'analyse ordinaire est immédiate (elle lit les fiches, pas les fichiers).
-Cocher **« Écouter aussi les fichiers »** lance en plus ffmpeg sur les
-25 premières secondes de chaque morceau pour repérer les fichiers muets et les
+L'analyse ordinaire lit aussi les pochettes annoncées pour vérifier leur format
+et leurs dimensions réelles. Cocher **« Analyse profonde »** mesure en plus le
+débit, l’échantillonnage et la profondeur de tous les morceaux, puis lance
+ffmpeg sur leurs 25 premières secondes pour repérer les fichiers muets et les
 intros vides : comptez plusieurs minutes sur une grosse bibliothèque.
+
+Les seuils ne récompensent pas un simple réencodage : une source avec perte sous
+96 kb/s ou 32 kHz est signalée, tandis qu’un FLAC n’est pas jugé avec un seuil
+de débit MP3. Une information absente reste marquée inconnue au lieu d’améliorer
+artificiellement la note.
 
 Un défaut partagé par un millier de morceaux se raconte par son total : seuls
 les premiers exemples de chaque type sont listés, le compte complet est dans la
@@ -601,6 +607,7 @@ lib/
   titles.js            nettoyage, translittération, genres, alias
   track-metadata.js    favoris, sous-genres, années, provenance et confiance
   track-quality.js     indice de qualité explicable et couverture des contrôles
+  audio-quality.js     mesures et seuils honnêtes de qualité d’encodage
   media-images.js      validation des pochettes intégrées et du favicon local
   overrides.json       titres connus sous un autre nom  ← à compléter
   store.js             lecture/écriture de metadata.json

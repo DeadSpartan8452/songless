@@ -4937,6 +4937,13 @@ const LIBELLES_PROBLEMES = {
   'annee-incertaine': 'Années à confirmer',
   'sans-pochette': 'Sans pochette musicale',
   'pochette-invalide': 'Pochettes invalides',
+  'pochette-dimensions-inconnues': 'Dimensions de pochette inconnues',
+  'pochette-petite': 'Pochettes trop petites',
+  'pochette-surdimensionnee': 'Pochettes trop lourdes',
+  'encodage-faible': 'Encodages très compressés',
+  'encodage-moyen': 'Encodages à améliorer',
+  'echantillonnage-faible': 'Échantillonnages trop faibles',
+  'profondeur-faible': 'Profondeurs audio inhabituelles',
   'ffmpeg-absent': 'Analyse audio impossible',
 };
 
@@ -5034,9 +5041,13 @@ function afficherRapportSante(rapport) {
       <span class="sev-genant"><strong>${q.review}</strong> à vérifier</span>
       <span class="sev-bloquant"><strong>${q.problematic}</strong> problématiques</span>
       <span><strong>${q.averageScore}</strong> / 100 en moyenne</span>
+      <span><strong>${q.encodingMeasured || 0}</strong> encodages mesurés</span>
+      <span><strong>${q.coverDimensionsMeasured || 0}</strong> dimensions de pochette</span>
     </div>
     <p class="empty-note">La note indique seulement les contrôles réellement effectués ;
-      la qualité d’encodage reste inconnue tant qu’elle n’est pas analysée.</p>`];
+      ${rapport.deep
+        ? `l’encodage a été lu sur ${q.encodingMeasured || 0} morceau${q.encodingMeasured > 1 ? 'x' : ''}.`
+        : 'coche l’analyse profonde pour mesurer l’encodage de toute la bibliothèque.'}</p>`];
 
   if (types.length === 0) {
     blocs.push('<p class="empty-note">Rien à signaler : la bibliothèque est saine.</p>');

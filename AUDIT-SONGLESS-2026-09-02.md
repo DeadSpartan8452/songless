@@ -251,8 +251,8 @@ aucune erreur console, aucun débordement ou texte coupé, et aucune violation A
   manquante et favoris ;
 - le diagnostic calcule désormais un statut prêt / à vérifier / problématique,
   une note expliquée par ses raisons et la couverture réelle des contrôles ;
-- la qualité d’encodage demeure explicitement « inconnue » tant qu’elle n’est pas
-  mesurée, afin que la note ne prétende pas contrôler ce qui ne l’est pas ;
+- la qualité d’encodage demeure explicitement « inconnue » fichier par fichier
+  tant qu’aucun débit, échantillonnage ou profondeur n’a réellement été lu ;
 - les pochettes annoncées sont maintenant confrontées à leur signature binaire
   réelle (PNG, JPEG, GIF ou WebP) et le favicon SVG local est contrôlé séparément
   sur les quatre interfaces ;
@@ -264,7 +264,13 @@ aucune erreur console, aucun débordement ou texte coupé, et aucune violation A
   usage unique avant d’autoriser l’application, sans accepter de champ titre ;
 - la grande majorité des années doit être complétée ;
 - genres et artistes demandent une normalisation avec niveau de confiance ;
-- la qualité d’encodage et les dimensions visuelles des pochettes restent à analyser ;
+- le diagnostic lit désormais débit, échantillonnage, profondeur, codec et mode
+  avec/sans perte, sans juger un FLAC avec les seuils d’un codec destructif ;
+- les dimensions PNG, JPEG, GIF et WebP sont lues depuis les octets intégrés,
+  en acceptant les `Uint8Array` réellement renvoyés par `music-metadata` ;
+- le passage réel en lecture seule a mesuré 1 027 encodages et les dimensions
+  des 1 026 pochettes annoncées : 4 encodages faibles, 35 intermédiaires et
+  39 pochettes sous 256 px ont été signalés, sans aucune écriture automatique ;
 - la détection des doublons doit apprendre à distinguer explicitement les
   variantes artistiques.
 

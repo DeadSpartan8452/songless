@@ -48,4 +48,16 @@ test('une analyse profonde marque le signal audio comme réellement contrôlé',
   assert.ok(result.unknownChecks.includes('encodingQuality'));
 });
 
+test('les mesures techniques retirent réellement les inconnues correspondantes', () => {
+  const result = quality.assess({
+    coverKnown: true,
+    coverDimensionsKnown: true,
+    encodingKnown: true,
+  });
+  assert.ok(result.assessedChecks.includes('coverDimensions'));
+  assert.ok(result.assessedChecks.includes('encodingQuality'));
+  assert.ok(!result.unknownChecks.includes('coverDimensions'));
+  assert.ok(!result.unknownChecks.includes('encodingQuality'));
+});
+
 console.log(`\n${passed} tests d'indice de qualité réussis.`);
