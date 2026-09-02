@@ -102,6 +102,18 @@ test('le panneau téléphone centralise les QR TV et télécommande de façon s�
   assert.match(expansions, /if \(deviceQrGrid\)/);
 });
 
+test('le panneau Android expose clairement l’état et la mise à jour antivirus', () => {
+  const index = read('index.html');
+  const app = read('app.js');
+  const css = read('features.css');
+  assert.match(index, /id="mobile-antivirus-state"/);
+  assert.match(index, /id="mobile-antivirus-update"/);
+  assert.match(app, /\/api\/antivirus\/status/);
+  assert.match(app, /\/api\/antivirus\/update/);
+  assert.match(css, /\.mobile-antivirus-state\.ready/);
+  assert.match(css, /\.mobile-antivirus-state\.error/);
+});
+
 test('l’hôte Android reçoit des textes de bibliothèque adaptés à sa plateforme', () => {
   const index = read('index.html');
   const app = read('app.js');

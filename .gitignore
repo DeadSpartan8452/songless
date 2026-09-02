@@ -8,6 +8,8 @@ songless-data.json
 .songless-instance-key
 dist/
 mobile/android-host/nodejs-assets/nodejs-project/
+mobile/android-host/android/app/src/main/jniLibs/
+mobile/android-host/android/app/src/main/assets/clamav/
 mobile/android-host/android/app/debug.keystore
 *.log
 .DS_Store

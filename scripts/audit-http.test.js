@@ -114,6 +114,21 @@ async function main() {
     assert.strictEqual(remoteContext.body.readOnly, true);
     ok('le port Internet ne reçoit pas les droits locaux');
 
+    const antivirusLocal = await request(LOCAL, '/api/antivirus/status');
+    assert.strictEqual(antivirusLocal.status, 200);
+    assert.strictEqual(typeof antivirusLocal.body.available, 'boolean');
+    assert.strictEqual(antivirusLocal.body.mobileHost, false);
+
+    const antivirusRemote = await request(REMOTE, '/api/antivirus/status');
+    assert.strictEqual(antivirusRemote.status, 403);
+
+    const antivirusDesktopUpdate = await request(LOCAL, '/api/antivirus/update', {
+      method: 'POST',
+    });
+    assert.strictEqual(antivirusDesktopUpdate.status, 400);
+    assert.match(antivirusDesktopUpdate.body.error, /Android/);
+    ok('le diagnostic antivirus reste local et sa mise à jour est réservée à Android');
+
     const localPage = await request(LOCAL, '/');
     const remotePage = await request(REMOTE, '/');
     assert.match(localPage.text, /Songless/i);

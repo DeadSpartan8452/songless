@@ -22,6 +22,7 @@ const partyIntruder = require('./lib/party-intruder');
 const partyEasterEggs = require('./lib/party-easter-eggs');
 const modeRegistry = require('./lib/mode-registry');
 const antivirus = require('./lib/antivirus');
+const clamavDatabase = require('./lib/clamav-database');
 const blacklist = require('./lib/blacklist');
 const duplicateComparison = require('./lib/duplicate-comparison');
 const preflight = require('./lib/preflight');
@@ -535,7 +536,12 @@ function partyInviteUrl(base, party) {
 }
 
 function estLocal(req) {
-  return estMachineLocale(req) && instanceAuth.isAuthorized(req);
+  // Dans l'application Android, le serveur et la WebView vivent dans le même
+  // exécutable : une requête de boucle locale est donc déjà une preuve d'hôte.
+  // Cela évite qu'une rotation du cookie au redémarrage laisse l'interface
+  // visible mais incapable de relire sa propre bibliothèque. Les appareils du
+  // Wi-Fi restent distants et ne passent jamais estMachineLocale().
+  return estMachineLocale(req) && (MOBILE_HOST || instanceAuth.isAuthorized(req));
 }
 
 function partyAccessUrl(base, party, issued) {
@@ -1557,6 +1563,33 @@ function ouvrirFlux(res) {
 // Route: État des outils externes (yt-dlp / ffmpeg)
 app.get('/api/download/status', (req, res) => {
   res.json({ ...downloader.checkTools(), mobileHost: MOBILE_HOST });
+});
+
+app.get('/api/antivirus/status', (req, res) => {
+  if (!estLocal(req)) return res.status(403).json({ error: 'Diagnostic réservé à l’hôte local.' });
+  res.json({...antivirus.status(), mobileHost: MOBILE_HOST});
+});
+
+app.post('/api/antivirus/update', async (req, res) => {
+  if (!estLocal(req)) return res.status(403).json({ error: 'Mise à jour réservée à l’hôte local.' });
+  if (!MOBILE_HOST) return res.status(400).json({ error: 'Mise à jour intégrée réservée à Android.' });
+  try {
+    const result = await clamavDatabase.update();
+    if (!result.status.ready) throw new Error('Les bases antivirus restent incomplètes.');
+
+    fs.mkdirSync(UPLOAD_TMP, {recursive: true});
+    const probe = path.join(UPLOAD_TMP, `clamav-probe-${crypto.randomBytes(8).toString('hex')}.txt`);
+    try {
+      fs.writeFileSync(probe, 'Songless antivirus verification file.\n', {flag: 'wx'});
+      await antivirus.scan(probe, {timeout: 15 * 60 * 1000});
+    } finally {
+      try { fs.unlinkSync(probe); } catch (_) { /* déjà absent */ }
+    }
+    res.json({success: true, updated: result.updated, antivirus: antivirus.status()});
+  } catch (error) {
+    console.error('Erreur mise à jour antivirus:', error.message);
+    res.status(500).json({error: error.message});
+  }
 });
 
 app.post('/api/preflight', async (req, res) => {

@@ -730,10 +730,19 @@
           <div class="mobile-host-note hidden" id="mobile-host-note" role="status">
             <strong>Bibliothèque de ce téléphone</strong>
             <p>
-              Les morceaux resteront sur cet appareil. L’import local sera activé
-              dès que le contrôle antivirus Android intégré sera prêt ; Songless
-              refuse jusque-là les fichiers non vérifiés.
+              Les morceaux restent sur cet appareil. Avant le premier import,
+              Songless installe les signatures de sécurité de ClamAV puis contrôle
+              chaque fichier localement.
             </p>
+            <div class="mobile-antivirus-panel">
+              <span class="mobile-antivirus-state" id="mobile-antivirus-state">
+                Vérification de la protection…
+              </span>
+              <button class="ghost-btn" id="mobile-antivirus-update" type="button">
+                Vérifier la protection
+              </button>
+              <small>Protection incluse et utilisable hors ligne. Aucun morceau n’est envoyé.</small>
+            </div>
           </div>
 
           <!-- Téléchargement automatique -->

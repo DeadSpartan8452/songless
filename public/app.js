@@ -18,6 +18,7 @@ let victoryAutoPlay = false;
 
 // Contexte serveur : mode réseau local, et droit d'écrire ou non.
 let contexte = { lan: false, local: true, mobileHost: false, readOnly: false, url: null };
+let mobileAntivirusBound = false;
 
 // Les gestionnaires JavaScript écrits directement dans le HTML sont bloqués
 // par notre politique de sécurité. On traite donc les pochettes cassées avec
@@ -4300,6 +4301,7 @@ function initContexte() {
         document.body.classList.add('mobile-host');
         const mobileNote = document.getElementById('mobile-host-note');
         if (mobileNote) mobileNote.classList.remove('hidden');
+        initMobileAntivirus();
       }
       if (info.readOnly) {
         document.body.classList.add('lecture-seule');
@@ -4317,6 +4319,76 @@ function initContexte() {
     .catch(() => { /* vieille version du serveur : on ne bride rien */ });
 
   initPhoneModal();
+}
+
+function renderMobileAntivirus(state, detail = '') {
+  const label = document.getElementById('mobile-antivirus-state');
+  const button = document.getElementById('mobile-antivirus-update');
+  if (!label || !button) return;
+  label.classList.remove('ready', 'error');
+  if (state && state.available) {
+    label.classList.add('ready');
+    label.textContent = detail || 'Protection locale active';
+    button.textContent = 'Rechercher une mise à jour';
+    button.disabled = false;
+    return;
+  }
+  if (state && state.engineInstalled) {
+    label.textContent = detail || 'Signatures de sécurité incomplètes';
+    button.textContent = 'Réparer la protection';
+    button.disabled = false;
+    return;
+  }
+  label.classList.add('error');
+  label.textContent = detail || 'Moteur antivirus absent de cette version';
+  button.disabled = true;
+}
+
+async function refreshMobileAntivirus() {
+  const response = await fetch('/api/antivirus/status', {cache: 'no-store'});
+  const state = await response.json();
+  if (!response.ok) throw new Error(state.error || 'État antivirus indisponible.');
+  renderMobileAntivirus(state);
+  return state;
+}
+
+function initMobileAntivirus() {
+  const button = document.getElementById('mobile-antivirus-update');
+  if (!button) return;
+  refreshMobileAntivirus().catch(error => renderMobileAntivirus(null, error.message));
+  if (mobileAntivirusBound) return;
+  mobileAntivirusBound = true;
+  button.addEventListener('click', async () => {
+    const label = document.getElementById('mobile-antivirus-state');
+    button.disabled = true;
+    button.textContent = 'Installation en cours…';
+    if (label) {
+      label.classList.remove('ready', 'error');
+      label.textContent = 'Téléchargement et validation des signatures…';
+    }
+    try {
+      const response = await fetch('/api/antivirus/update', {method: 'POST'});
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Installation antivirus impossible.');
+      const count = Array.isArray(result.updated) ? result.updated.length : 0;
+      renderMobileAntivirus(result.antivirus,
+        count ? 'Protection locale installée et vérifiée' : 'Protection locale déjà à jour');
+      showToast('Protection antivirus Android prête.', 'success');
+    } catch (error) {
+      try {
+        const current = await refreshMobileAntivirus();
+        if (current.available) {
+          renderMobileAntivirus(current, 'Protection active · mise à jour reportée');
+          showToast(error.message, 'warn');
+          return;
+        }
+      } catch (_) { /* afficher l’erreur initiale */ }
+      renderMobileAntivirus({engineInstalled: true}, `Échec : ${error.message}`);
+      const state = document.getElementById('mobile-antivirus-state');
+      if (state) state.classList.add('error');
+      showToast(error.message, 'error');
+    }
+  });
 }
 
 function initPhoneModal() {

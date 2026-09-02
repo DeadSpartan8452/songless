@@ -305,6 +305,59 @@ body.lecture-seule #refresh-library-btn {
   line-height: 1.55;
 }
 
+.mobile-antivirus-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px 14px;
+  margin-top: 15px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(168, 85, 247, .24);
+}
+
+.mobile-antivirus-state {
+  color: #f3e8ff;
+  font-size: .86rem;
+  font-weight: 700;
+}
+
+.mobile-antivirus-state::before {
+  content: '';
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 8px;
+  border-radius: 50%;
+  background: #fbbf24;
+  box-shadow: 0 0 12px rgba(251, 191, 36, .55);
+}
+
+.mobile-antivirus-state.ready::before {
+  background: #34d399;
+  box-shadow: 0 0 12px rgba(52, 211, 153, .55);
+}
+
+.mobile-antivirus-state.error::before {
+  background: #fb7185;
+  box-shadow: 0 0 12px rgba(251, 113, 133, .55);
+}
+
+.mobile-antivirus-panel .ghost-btn {
+  min-height: 40px;
+  padding: 8px 13px;
+  white-space: nowrap;
+}
+
+.mobile-antivirus-panel small {
+  grid-column: 1 / -1;
+  color: var(--text-muted);
+}
+
+@media (max-width: 620px) {
+  .mobile-antivirus-panel { grid-template-columns: 1fr; }
+  .mobile-antivirus-panel .ghost-btn { width: 100%; }
+}
+
 .mobile-host .desktop-downloader-only {
   display: none;
 }

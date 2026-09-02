@@ -1,0 +1,12 @@
+COMPOSANTS ANTIVIRUS ANDROID DE SONGLESS
+
+ClamAV 1.5.4 - Copyright Cisco Systems, Inc. et contributeurs - GPL-2.0
+Source : https://github.com/Cisco-Talos/clamav/tree/clamav-1.5.4
+
+Paquets Android Termux : https://github.com/termux/termux-packages
+Depot binaire : https://packages.termux.dev/apt/termux-main/
+Bases officielles : https://database.clamav.net/
+
+Les versions, paquets et empreintes SHA-256 exacts sont declares dans
+scripts/build-android-antivirus.js. Les bibliotheques transitives conservent
+leurs licences amont respectives.
