@@ -222,10 +222,19 @@ Il ne correspond ni à un fichier absent ni à une erreur de l’application.
 
 ### Métadonnées
 
+- les anciens champs de favoris convergent vers `favorite`, avec une étoile
+  accessible et un filtre dédié dans la bibliothèque ;
+- année, provenance, confiance et sous-genre précis sont éditables sans modifier
+  le titre, le fichier ou l’identifiant audio ;
+- les filtres de bibliothèque couvrent genre, sous-genre, décennie, année
+  manquante et favoris ;
+- le diagnostic calcule désormais un statut prêt / à vérifier / problématique,
+  une note expliquée par ses raisons et la couverture réelle des contrôles ;
+- la qualité d’encodage demeure explicitement « inconnue » tant qu’elle n’est pas
+  mesurée, afin que la note ne prétende pas contrôler ce qui ne l’est pas ;
 - la grande majorité des années doit être complétée ;
 - genres et artistes demandent une normalisation avec niveau de confiance ;
-- le diagnostic actuel repère déjà plusieurs problèmes, mais ne calcule pas
-  encore l’indice de qualité complet demandé ;
+- la validité binaire des pochettes et la qualité d’encodage restent à analyser ;
 - la détection des doublons doit apprendre à distinguer explicitement les
   variantes artistiques.
 

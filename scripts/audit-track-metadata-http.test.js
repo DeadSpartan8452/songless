@@ -104,6 +104,18 @@ async function main() {
     assert.strictEqual(updated.yearSource, 'manual');
     assert.strictEqual(updated.yearConfidence, 'high');
     assert.strictEqual(updated.title, 'Titre de test');
+
+    const healthText = await (await fetch(`${base}/api/library/health`)).text();
+    const doneLine = healthText.split('\n')
+      .find((line, index, lines) => lines[index - 1] === 'event: done' && line.startsWith('data: '));
+    assert.ok(doneLine, 'Le diagnostic doit publier son résultat final.');
+    const healthReport = JSON.parse(doneLine.slice(6));
+    assert.strictEqual(
+      healthReport.qualite.review + healthReport.qualite.problematic,
+      1,
+    );
+    assert.strictEqual(healthReport.qualiteMorceaux.length, 1);
+    assert.ok(healthReport.qualiteMorceaux[0].unknownChecks.includes('encodingQuality'));
     console.log('OK  métadonnées HTTP isolées, sans écriture dans la bibliothèque personnelle');
   } finally {
     if (child && child.exitCode === null) child.kill();

@@ -4514,6 +4514,8 @@ const LIBELLES_PROBLEMES = {
   'sans-artiste': 'Sans artiste',
   'sans-genre': 'Sans genre',
   'sans-annee': 'Sans année',
+  'annee-incertaine': 'Années à confirmer',
+  'sans-pochette': 'Sans pochette musicale',
   'ffmpeg-absent': 'Analyse audio impossible',
 };
 
@@ -4582,6 +4584,7 @@ async function lancerDiagnostic() {
 function afficherRapportSante(rapport) {
   const zone = document.getElementById('health-report');
   const r = rapport.resume;
+  const q = rapport.qualite || { ready: 0, review: 0, problematic: 0, averageScore: 0 };
 
   // Un défaut partagé par mille morceaux se raconte par son total : le serveur
   // n'envoie qu'un échantillon de chaque type, et on le dit.
@@ -4604,7 +4607,15 @@ function afficherRapportSante(rapport) {
       <span class="sev-bloquant"><strong>${r.bloquants}</strong> bloquants</span>
       <span class="sev-genant"><strong>${r.genants}</strong> gênants</span>
       <span class="sev-cosmetique"><strong>${r.cosmetiques}</strong> cosmétiques</span>
-    </div>`];
+    </div>
+    <div class="health-summary health-quality-summary">
+      <span><strong>${q.ready}</strong> prêts</span>
+      <span class="sev-genant"><strong>${q.review}</strong> à vérifier</span>
+      <span class="sev-bloquant"><strong>${q.problematic}</strong> problématiques</span>
+      <span><strong>${q.averageScore}</strong> / 100 en moyenne</span>
+    </div>
+    <p class="empty-note">La note indique seulement les contrôles réellement effectués ;
+      la qualité d’encodage reste inconnue tant qu’elle n’est pas analysée.</p>`];
 
   if (types.length === 0) {
     blocs.push('<p class="empty-note">Rien à signaler : la bibliothèque est saine.</p>');
