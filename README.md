@@ -31,7 +31,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "<ch
 |---|---|
 | Téléchargement d'un morceau depuis un titre | onglet **Bibliothèque**, ou `tools/download.js` |
 | Import d'une playlist YouTube entière | onglet **Bibliothèque** → « Importer une playlist » |
-| Titres renommés en noms compréhensibles | `tools/enrich.js` + `lib/overrides.json` |
+| Titres source préservés, noms connus proposés en alias | `tools/enrich.js` + `lib/overrides.json` |
 | Années de sortie | `tools/years.js` |
 | Tri et filtre par genre | barre du haut de l'onglet **Jouer** |
 | Filtre par décennie | même panneau, sous les genres |
@@ -119,15 +119,16 @@ ni tunnel supplémentaire.
 
 ### Depuis le site
 Onglet **Bibliothèque** → « Télécharger une musique ». Tu tapes un titre
-(ou colles un lien), le MP3 est téléchargé, converti, renommé proprement et
-ajouté au jeu avec son genre. La progression s'affiche en direct.
+(ou colles un lien), le MP3 est téléchargé, converti et ajouté avec son genre,
+sans traduction automatique de son titre. Tu peux le renommer ensuite avec le
+crayon. La progression s'affiche en direct.
 
 ### Par fichier ou par archive
 Onglet **Bibliothèque** → zone de dépôt. Tu peux y glisser :
 
 - un fichier audio isolé ;
 - une **archive `.zip`** entière : elle est décompressée et chaque morceau est
-  trié (titre rendu lisible, genre, alias). Les rapprochements probables sont
+  trié (titre source, genre, alias). Les rapprochements probables sont
   signalés mais conservés ; parodies, remix, reprises, sped-up, slowed, live,
   acoustiques, instrumentales et remasters restent des morceaux distincts.
 
@@ -572,6 +573,7 @@ lib/
   party-results.js      classement et persistance des résultats multijoueurs
   party-royale.js       vies, éliminations et duel final Battle Royale
   party-suggestions.js  autocomplétion sûre des réponses de soirée
+  party-teams.js        équipes, capitaines, demandes et assignations hôte
   player-store.js       profils, statistiques, listes et sauvegardes partagés
   party.js              salons, manches, buzzers et scores temporaires
   antivirus.js          analyse Defender avant installation d'un fichier

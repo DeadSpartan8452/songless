@@ -5,15 +5,15 @@
  * Enrichissement de la bibliothèque Songless.
  *
  * Passe sur tous les fichiers du dossier musiques/ et remplit metadata.json :
- *   - titre affiché lisible (nettoyé du bruit YouTube, translittéré si besoin)
- *   - titre d'origine conservé à part (пыяла, 一剪梅, ...)
+ *   - titre source nettoyé du bruit technique, sans traduction ni translittération
+ *   - noms connus ajoutés comme alias, sans changer l’identité du morceau
  *   - artiste
  *   - genre
  *   - alias acceptés à la saisie
  *
  * Sources, dans l'ordre de confiance :
- *   1. lib/overrides.json  (noms sous lesquels un morceau est vraiment connu)
- *   2. tags ID3 du fichier
+ *   1. tags ID3 du fichier
+ *   2. lib/overrides.json  (alias connus et genre, jamais renommage implicite)
  *   3. MusicBrainz (un appel par artiste unique, pas par morceau)
  *   4. heuristiques sur le nom de fichier
  *
@@ -221,31 +221,15 @@ async function baseEntry(fileName, overrides, swapSet) {
   let source = useTagTitle ? 'tags' : 'nom de fichier';
   let needsReview = false;
 
-  // 1. Nom réellement connu du public (Polish Cow, Coffin Dance, ...)
+  // La table connue complète les métadonnées mais ne remplace jamais le titre
+  // source sans décision explicite de l’utilisateur.
   const ov = T.matchOverride(overrides, title, fromName.cleaned, fileName);
   if (ov) {
-    originalTitle = ov.originalTitle || (T.norm(title) !== T.norm(ov.title) ? title : '');
-    title = ov.title;
     if (ov.artist) artist = ov.artist;
     if (ov.genre) genre = ov.genre;
-    source = 'table de correspondance';
-  } else {
-    // 2. Alphabet non latin : on translittère et on signale pour relecture.
-    const script = T.detectScript(title);
-    if (script !== 'latin') {
-      const translated = T.cleanTitle(T.translit(title));
-      originalTitle = title;
-      if (T.isReadableLatin(translated) && T.norm(translated)) {
-        title = translated;                       // cyrillique/grec : translittération lisible
-        needsReview = true;
-      } else {
-        needsReview = true;                       // CJK : il faut un vrai nom connu
-      }
-      source = `translittéré (${script})`;
-    }
+    source = 'source + correspondance en alias';
   }
-
-  if (T.detectScript(artist) !== 'latin') artist = T.translit(artist) || artist;
+  if (T.detectScript(title) !== 'latin') needsReview = true;
 
   // 3. Genre : tag ID3, puis indices du nom de fichier.
   if (!genre && tagGenre) genre = T.resolveGenre(tagGenre);
@@ -433,7 +417,7 @@ async function main() {
     e.aliases = T.buildAliases(
       e.title,
       e.originalTitle,
-      ov ? ov.aliases : [],
+      ov ? [ov.title, ov.originalTitle, ...(ov.aliases || [])] : [],
       e.artist && e.title ? `${e.artist} ${e.title}` : '',
     );
   }

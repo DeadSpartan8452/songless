@@ -71,4 +71,25 @@ test('les confirmations d’équipe ne s’affichent qu’après une action réu
   assert.match(controller, /playerAction\('create-team',[\s\S]*?\.then\(success\s*=>\s*{\s*if \(success\) toast\(`Équipe/);
 });
 
+test('les trois champs de réponse exposent une liste accessible au clavier', () => {
+  const index = read('index.html');
+  const app = read('app.js');
+  const controller = read('controller.js');
+  const expansions = read('expansions.js');
+  assert.match(index, /id="guess-input"[\s\S]*?role="combobox"[\s\S]*?aria-controls="autocomplete-list"/);
+  assert.match(index, /id="autocomplete-list"[\s\S]*?role="listbox"/);
+  assert.match(controller, /id="answer-input"[\s\S]*?role="combobox"[\s\S]*?aria-controls="answer-suggestions"/);
+  assert.match(expansions, /id="party-answer-input"[\s\S]*?role="combobox"[\s\S]*?aria-controls="party-answer-suggestions"/);
+  for (const source of [app, controller, expansions]) {
+    assert.match(source, /aria-activedescendant/);
+    assert.match(source, /scrollIntoView\(\{ block: 'nearest' \}\)/);
+  }
+});
+
+test('le renommage post-révélation reste absent des interfaces distantes', () => {
+  const distant = `${read('controller.html')}\n${read('tv.html')}\n${read('remote.html')}`;
+  assert.match(read('index.html'), /id="edit-current-track-btn"/);
+  assert.doesNotMatch(distant, /edit-current-track-btn|Renommer cette chanson/);
+});
+
 console.log(`\n${passed} tests statiques d’interface réussis.`);

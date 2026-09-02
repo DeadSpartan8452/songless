@@ -776,6 +776,7 @@ app.get('/api/party/:code/suggestions', (req, res) => {
     answerMode: party.settings.answer,
     fileNames: listAudioFiles(),
     metadata: store.load().tracks,
+    limit: 16,
   });
   res.set('Cache-Control', 'no-store');
   res.json({ suggestions: results });

@@ -230,7 +230,7 @@ h2 { margin: 0 0 14px; font-size: 1.05rem; }
   top: calc(100% + 7px);
   left: 0;
   right: 0;
-  max-height: 245px;
+  max-height: min(52vh, 420px);
   overflow-y: auto;
   border: 1px solid rgba(139, 92, 246, .45);
   border-radius: 14px;
@@ -247,9 +247,18 @@ h2 { margin: 0 0 14px; font-size: 1.05rem; }
   color: var(--text);
   background: transparent;
   text-align: left;
+  min-width: 0;
+  scroll-snap-align: start;
 }
 .answer-suggestion:last-child { border-bottom: 0; }
 .answer-suggestion:active, .answer-suggestion.active { background: rgba(139, 92, 246, .22); }
+.answer-suggestion strong,
+.answer-suggestion small {
+  display: block;
+  line-height: 1.35;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
 .answer-suggestion small { color: var(--muted); }
 .answer-suggestion-empty { padding: 12px 14px; color: var(--muted); }
 .answer-buttons {

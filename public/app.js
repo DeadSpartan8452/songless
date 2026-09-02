@@ -1147,14 +1147,14 @@ function initGameEvents() {
   guessInput.addEventListener('input', handleAutocomplete);
   guessInput.addEventListener('focus', () => {
     if (guessInput.value.trim().length > 0) {
-      autocompleteList.classList.remove('hidden');
+      setAutocompleteOpen(true);
     }
   });
   
   // Clic en dehors pour fermer l'autocomplétion
   document.addEventListener('click', (e) => {
     if (!guessInput.contains(e.target) && !autocompleteList.contains(e.target)) {
-      autocompleteList.classList.add('hidden');
+      setAutocompleteOpen(false);
     }
   });
 
@@ -1162,7 +1162,7 @@ function initGameEvents() {
   clearInputBtn.addEventListener('click', () => {
     guessInput.value = '';
     clearInputBtn.classList.add('hidden');
-    autocompleteList.classList.add('hidden');
+    setAutocompleteOpen(false);
     guessInput.focus();
   });
 
@@ -1184,19 +1184,13 @@ function initGameEvents() {
     
     if (e.key === 'ArrowDown') {
       e.preventDefault();
-      if (activeIndex !== -1) {
-        items[activeIndex].classList.remove('active');
-      }
       activeIndex = (activeIndex + 1) % items.length;
-      items[activeIndex].classList.add('active');
+      setAutocompleteActive(Array.from(items), activeIndex);
       items[activeIndex].scrollIntoView({ block: 'nearest' });
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
-      if (activeIndex !== -1) {
-        items[activeIndex].classList.remove('active');
-      }
       activeIndex = (activeIndex - 1 + items.length) % items.length;
-      items[activeIndex].classList.add('active');
+      setAutocompleteActive(Array.from(items), activeIndex);
       items[activeIndex].scrollIntoView({ block: 'nearest' });
     } else if (e.key === 'Enter') {
       e.preventDefault();
@@ -1206,7 +1200,7 @@ function initGameEvents() {
         handleSubmitGuess();
       }
     } else if (e.key === 'Escape') {
-      autocompleteList.classList.add('hidden');
+      setAutocompleteOpen(false);
     }
   });
 
@@ -1258,7 +1252,7 @@ function startNewGame(step = 0) {
   guessInputContainer.classList.remove('hidden');
   guessInput.value = '';
   clearInputBtn.classList.add('hidden');
-  autocompleteList.classList.add('hidden');
+  setAutocompleteOpen(false);
 
   // Sélectionner la chanson : on suit l'ordre tiré par la seed
   currentTrack = playlist[playlistIndex];
@@ -1520,7 +1514,7 @@ function artisteCorrespond(saisie, attendu) {
 
 function soumettreArtiste(saisie) {
   pauseAudio();
-  autocompleteList.classList.add('hidden');
+  setAutocompleteOpen(false);
   const bon = artisteCorrespond(saisie, currentTrack.artist);
   registerAttempt(bon ? 'success' : 'failed', saisie.trim());
 }
@@ -1537,7 +1531,7 @@ function soumettreAnnee(saisie) {
   }
 
   pauseAudio();
-  autocompleteList.classList.add('hidden');
+  setAutocompleteOpen(false);
 
   const ecart = an - currentTrack.year;
   if (Math.abs(ecart) <= TOLERANCE_ANNEE) {
@@ -1551,6 +1545,23 @@ function soumettreAnnee(saisie) {
 }
 
 // Autocomplétion en direct
+function setAutocompleteOpen(open) {
+  autocompleteList.classList.toggle('hidden', !open);
+  guessInput.setAttribute('aria-expanded', open ? 'true' : 'false');
+  if (!open) guessInput.removeAttribute('aria-activedescendant');
+}
+
+function setAutocompleteActive(items, activeIndex) {
+  items.forEach((item, index) => {
+    const active = index === activeIndex;
+    item.classList.toggle('active', active);
+    item.setAttribute('aria-selected', active ? 'true' : 'false');
+  });
+  if (activeIndex >= 0 && items[activeIndex]) {
+    guessInput.setAttribute('aria-activedescendant', items[activeIndex].id);
+  }
+}
+
 function handleAutocomplete() {
   const query = guessInput.value.trim();
 
@@ -1558,13 +1569,13 @@ function handleAutocomplete() {
     clearInputBtn.classList.remove('hidden');
   } else {
     clearInputBtn.classList.add('hidden');
-    autocompleteList.classList.add('hidden');
+    setAutocompleteOpen(false);
     return;
   }
 
   // Une année ne s'autocomplète pas : quatre chiffres, et c'est tout.
   if (reglages.reponse === 'annee') {
-    autocompleteList.classList.add('hidden');
+    setAutocompleteOpen(false);
     return;
   }
   if (reglages.reponse === 'artiste') {
@@ -1583,13 +1594,23 @@ function handleAutocomplete() {
     if (stripAll(`${t.artist} ${t.title}`).includes(queryStrip)) return true;
     if (t.originalTitle && stripAll(t.originalTitle).includes(queryStrip)) return true;
     return (t.aliases || []).some(a => stripAll(a).includes(queryStrip));
-  }).slice(0, 6);
+  }).sort((a, b) => {
+    const aTitle = stripAll(a.title);
+    const bTitle = stripAll(b.title);
+    const aStarts = aTitle.startsWith(queryStrip) ? 0 : 1;
+    const bStarts = bTitle.startsWith(queryStrip) ? 0 : 1;
+    return aStarts - bStarts || aTitle.length - bTitle.length
+      || aTitle.localeCompare(bTitle, 'fr');
+  }).slice(0, 16);
 
   if (matches.length > 0) {
     autocompleteList.innerHTML = '';
     matches.forEach((track, index) => {
       const div = document.createElement('div');
       div.className = `autocomplete-item${index === 0 ? ' active' : ''}`;
+      div.id = `autocomplete-option-${index}`;
+      div.setAttribute('role', 'option');
+      div.setAttribute('aria-selected', index === 0 ? 'true' : 'false');
       div.setAttribute('data-track', JSON.stringify(track));
       const orig = track.originalTitle
         ? `<span class="autocomplete-original">${escapeHtml(track.originalTitle)}</span>` : '';
@@ -1602,29 +1623,41 @@ function handleAutocomplete() {
       });
       autocompleteList.appendChild(div);
     });
-    autocompleteList.classList.remove('hidden');
+    setAutocompleteOpen(true);
+    guessInput.setAttribute('aria-activedescendant', 'autocomplete-option-0');
   } else {
-    autocompleteList.innerHTML = '<div class="autocomplete-item"><div class="autocomplete-title">Aucun résultat</div></div>';
-    autocompleteList.classList.remove('hidden');
+    autocompleteList.innerHTML = '<div class="autocomplete-empty">Aucun résultat</div>';
+    setAutocompleteOpen(true);
+    guessInput.removeAttribute('aria-activedescendant');
   }
 }
 
 /** Propose les artistes de la bibliothèque, du plus fourni au moins fourni. */
 function autocompleterArtistes(query) {
   const q = stripAll(query);
-  const matches = allArtists.filter(a => stripAll(a.nom).includes(q)).slice(0, 6);
+  const matches = allArtists.filter(a => stripAll(a.nom).includes(q))
+    .sort((a, b) => {
+      const aName = stripAll(a.nom);
+      const bName = stripAll(b.nom);
+      return Number(bName.startsWith(q)) - Number(aName.startsWith(q))
+        || b.count - a.count || aName.localeCompare(bName, 'fr');
+    }).slice(0, 16);
 
   autocompleteList.innerHTML = '';
   if (matches.length === 0) {
     autocompleteList.innerHTML =
-      '<div class="autocomplete-item"><div class="autocomplete-title">Aucun artiste de ce nom</div></div>';
-    autocompleteList.classList.remove('hidden');
+      '<div class="autocomplete-empty">Aucun artiste de ce nom</div>';
+    setAutocompleteOpen(true);
+    guessInput.removeAttribute('aria-activedescendant');
     return;
   }
 
   matches.forEach((a, index) => {
     const div = document.createElement('div');
     div.className = `autocomplete-item${index === 0 ? ' active' : ''}`;
+    div.id = `autocomplete-option-${index}`;
+    div.setAttribute('role', 'option');
+    div.setAttribute('aria-selected', index === 0 ? 'true' : 'false');
     div.setAttribute('data-artist', a.nom);
     div.innerHTML = `
       <div class="autocomplete-title">${escapeHtml(a.nom)}</div>
@@ -1636,11 +1669,12 @@ function autocompleterArtistes(query) {
     });
     autocompleteList.appendChild(div);
   });
-  autocompleteList.classList.remove('hidden');
+  setAutocompleteOpen(true);
+  guessInput.setAttribute('aria-activedescendant', 'autocomplete-option-0');
 }
 
 function selectSuggestion(track) {
-  autocompleteList.classList.add('hidden');
+  setAutocompleteOpen(false);
   guessInput.value = `${track.artist} - ${track.title}`;
   // Soumettre directement !
   submitTrackGuess(track);
@@ -1664,7 +1698,7 @@ function handleSkip() {
 
 function submitTrackGuess(track) {
   pauseAudio();
-  autocompleteList.classList.add('hidden'); // S'assurer que le dropdown disparait et ne repop pas
+  setAutocompleteOpen(false); // S'assurer que le dropdown disparait et ne repop pas
   
   const isMatch = (track.id === currentTrack.id);
   const guessText = `${track.artist} - ${track.title}`;
@@ -1677,7 +1711,7 @@ function submitTrackGuess(track) {
 }
 
 function handleSubmitGuess() {
-  autocompleteList.classList.add('hidden'); // Cacher le dropdown
+  setAutocompleteOpen(false); // Cacher le dropdown
 
   const guess = guessInput.value.trim();
   if (!guess) {
@@ -4549,6 +4583,12 @@ function initEditModalEvents() {
   const modal = document.getElementById('edit-modal');
   if (!modal) return;
 
+  const currentTrackButton = document.getElementById('edit-current-track-btn');
+  if (currentTrackButton) {
+    currentTrackButton.addEventListener('click', () => {
+      if (currentTrack && !resultCard.classList.contains('hidden')) openEditModal(currentTrack);
+    });
+  }
   document.getElementById('edit-cancel-btn').addEventListener('click', closeEditModal);
   modal.addEventListener('click', (e) => {
     if (e.target === modal) closeEditModal();
@@ -4580,9 +4620,21 @@ function initEditModalEvents() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Erreur');
 
+      const editedId = editingTrack.id;
+      Object.assign(editingTrack, data.track || {}, payload);
+      if (currentTrack && currentTrack.id === editedId
+          && !resultCard.classList.contains('hidden')) {
+        Object.assign(currentTrack, data.track || {}, payload);
+        remplirFicheResultat();
+      }
       showToast('Fiche mise à jour.', 'ok');
       closeEditModal();
-      loadLibrary();
+      loadLibrary(() => {
+        if (currentTrack && currentTrack.id === editedId) {
+          const refreshed = tracks.find(track => track.id === editedId);
+          if (refreshed) currentTrack = refreshed;
+        }
+      });
     } catch (e) {
       showToast(`Impossible d'enregistrer : ${e.message}`, 'error');
     }

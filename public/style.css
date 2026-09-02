@@ -503,7 +503,7 @@ code {
   top: calc(100% + 8px);
   left: 0;
   width: 100%;
-  max-height: 240px;
+  max-height: min(52vh, 420px);
   overflow-y: auto;
   background: var(--card-bg);
   border: 1px solid var(--border);
@@ -521,6 +521,8 @@ code {
   gap: 2px;
   border-bottom: 1px solid var(--border);
   transition: var(--transition);
+  min-width: 0;
+  scroll-snap-align: start;
 }
 
 .autocomplete-item:last-child {
@@ -534,16 +536,61 @@ code {
 .autocomplete-title {
   font-weight: 700;
   font-size: 0.95rem;
+  line-height: 1.35;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .autocomplete-artist {
   font-size: 0.8rem;
   color: var(--text-muted);
+  line-height: 1.35;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
+
+.autocomplete-empty { padding: 14px 20px; color: var(--text-muted); }
 
 .autocomplete-suggestions.hidden {
   display: none;
 }
+
+.result-song-title-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  min-width: 0;
+}
+
+.result-song-title-row h3 { min-width: 0; overflow-wrap: anywhere; }
+
+.result-edit-track-btn {
+  flex: 0 0 auto;
+  display: inline-grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  margin-top: -2px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 50%;
+  color: var(--text-muted);
+  background: transparent;
+  cursor: pointer;
+  opacity: .58;
+  transition: var(--transition);
+}
+
+.result-edit-track-btn:hover,
+.result-edit-track-btn:focus-visible {
+  border-color: var(--border);
+  color: var(--cta);
+  background: var(--bg);
+  opacity: 1;
+  outline: none;
+}
+
+.result-edit-track-btn svg { width: 15px; height: 15px; }
 
 .guess-actions {
   display: flex;

@@ -270,7 +270,7 @@
   top: calc(100% + 7px);
   left: 0;
   right: 0;
-  max-height: 250px;
+  max-height: min(52vh, 420px);
   overflow-y: auto;
   border: 1px solid rgba(168, 85, 247, .4);
   border-radius: 14px;
@@ -287,9 +287,18 @@
   color: #f4eaff;
   background: transparent;
   text-align: left;
+  min-width: 0;
+  scroll-snap-align: start;
 }
 .party-suggestion:last-child { border-bottom: 0; }
 .party-suggestion:hover, .party-suggestion.active { background: rgba(168, 85, 247, .2); }
+.party-suggestion strong,
+.party-suggestion small {
+  display: block;
+  line-height: 1.35;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
 .party-suggestion small { color: #9f91ad; }
 .party-suggestion-empty { padding: 12px 14px; color: #9f91ad; }
 .party-game-panel .buzz-button {

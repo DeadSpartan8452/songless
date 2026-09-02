@@ -1090,8 +1090,11 @@
         <div class="answer-search">
           <span class="answer-search-icon" aria-hidden="true">⌕</span>
           <input id="answer-input" class="answer-input" maxlength="200"
-                 placeholder="${placeholder}" autocomplete="off"${inputMode}>
-          <div id="answer-suggestions" class="answer-suggestions hidden"></div>
+                 placeholder="${placeholder}" autocomplete="off"${inputMode}
+                 role="combobox" aria-autocomplete="list"
+                 aria-controls="answer-suggestions" aria-expanded="false">
+          <div id="answer-suggestions" class="answer-suggestions hidden"
+               role="listbox" aria-label="Suggestions de réponses"></div>
         </div>
         <div class="answer-buttons">
           <button id="answer-btn" class="primary-btn" type="button">Envoyer</button>
@@ -1107,7 +1110,7 @@
     if (!input || !list) return;
     const query = input.value.trim();
     if (!query) {
-      list.classList.add('hidden');
+      setAnswerSuggestionsOpen(false);
       list.innerHTML = '';
       return;
     }
@@ -1120,9 +1123,31 @@
         if (!currentInput || currentInput.value.trim() !== query) return;
         renderAnswerSuggestions(result.suggestions || []);
       } catch (_) {
-        list.classList.add('hidden');
+        setAnswerSuggestionsOpen(false);
       }
     }, 60);
+  }
+
+  function setAnswerSuggestionsOpen(open) {
+    const list = byId('answer-suggestions');
+    const input = byId('answer-input');
+    if (list) list.classList.toggle('hidden', !open);
+    if (input) {
+      input.setAttribute('aria-expanded', open ? 'true' : 'false');
+      if (!open) input.removeAttribute('aria-activedescendant');
+    }
+  }
+
+  function setAnswerSuggestionActive(items, activeIndex) {
+    items.forEach((item, index) => {
+      const active = index === activeIndex;
+      item.classList.toggle('active', active);
+      item.setAttribute('aria-selected', active ? 'true' : 'false');
+    });
+    const input = byId('answer-input');
+    if (input && items[activeIndex]) {
+      input.setAttribute('aria-activedescendant', items[activeIndex].id);
+    }
   }
 
   function renderAnswerSuggestions(suggestions) {
@@ -1130,13 +1155,22 @@
     if (!list) return;
     list.innerHTML = suggestions.length
       ? suggestions.map((item, index) => `
-          <button type="button" class="answer-suggestion${index === 0 ? ' active' : ''}"
+          <button type="button" tabindex="-1"
+                  class="answer-suggestion${index === 0 ? ' active' : ''}"
+                  id="answer-suggestion-${index}" role="option"
+                  aria-selected="${index === 0 ? 'true' : 'false'}"
                   data-answer-suggestion="${escapeHtml(item.value)}">
             <strong>${escapeHtml(item.primary || item.value)}</strong>
             <small>${escapeHtml(item.secondary || '')}</small>
           </button>`).join('')
       : '<div class="answer-suggestion-empty">Aucune suggestion</div>';
-    list.classList.remove('hidden');
+    setAnswerSuggestionsOpen(true);
+    const input = byId('answer-input');
+    if (input) {
+      input.setAttribute('aria-expanded', 'true');
+      if (suggestions.length) input.setAttribute('aria-activedescendant', 'answer-suggestion-0');
+      else input.removeAttribute('aria-activedescendant');
+    }
   }
 
   function renderReveal() {
@@ -1406,7 +1440,7 @@
     const answer = input && input.value.trim();
     if (!answer) return toast('Écris une réponse.');
     const suggestions = byId('answer-suggestions');
-    if (suggestions) suggestions.classList.add('hidden');
+    if (suggestions) setAnswerSuggestionsOpen(false);
     playerAction('answer', { answer });
   }
 
@@ -1447,7 +1481,7 @@
       const input = byId('answer-input');
       if (input) {
         input.value = answerSuggestion.getAttribute('data-answer-suggestion') || '';
-        byId('answer-suggestions').classList.add('hidden');
+        setAnswerSuggestionsOpen(false);
         submitAnswer();
       }
       return;
@@ -1559,7 +1593,7 @@
 
     const suggestions = byId('answer-suggestions');
     if (suggestions && !event.target.closest('.answer-search')) {
-      suggestions.classList.add('hidden');
+      setAnswerSuggestionsOpen(false);
     }
   });
 
@@ -1576,21 +1610,20 @@
       let active = items.findIndex(item => item.classList.contains('active'));
       if ((event.key === 'ArrowDown' || event.key === 'ArrowUp') && items.length) {
         event.preventDefault();
-        if (active >= 0) items[active].classList.remove('active');
         active = event.key === 'ArrowDown'
           ? (active + 1) % items.length
           : (active - 1 + items.length) % items.length;
-        items[active].classList.add('active');
+        setAnswerSuggestionActive(items, active);
         items[active].scrollIntoView({ block: 'nearest' });
       } else if (event.key === 'Enter') {
         event.preventDefault();
         if (active >= 0 && list && !list.classList.contains('hidden')) {
           event.target.value = items[active].getAttribute('data-answer-suggestion') || '';
-          list.classList.add('hidden');
+          setAnswerSuggestionsOpen(false);
         }
         submitAnswer();
       } else if (event.key === 'Escape' && list) {
-        list.classList.add('hidden');
+        setAnswerSuggestionsOpen(false);
       }
     }
     if (event.key === 'Enter' && event.target.id === 'gift-query') giveMusicLink();

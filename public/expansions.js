@@ -1921,8 +1921,11 @@
         <div class="party-search-box">
           <span class="party-search-icon" aria-hidden="true">⌕</span>
           <input id="party-answer-input" maxlength="200" placeholder="${placeholder}"
-                 autocomplete="off"${inputMode}>
-          <div class="party-suggestions hidden" id="party-answer-suggestions"></div>
+                 autocomplete="off"${inputMode} role="combobox"
+                 aria-autocomplete="list" aria-controls="party-answer-suggestions"
+                 aria-expanded="false">
+          <div class="party-suggestions hidden" id="party-answer-suggestions"
+               role="listbox" aria-label="Suggestions de réponses"></div>
         </div>
         <div class="party-input-buttons">
           <button class="cta-btn" id="party-answer-btn" type="button">Envoyer</button>
@@ -1938,7 +1941,7 @@
     if (!input || !list) return;
     const query = input.value.trim();
     if (!query) {
-      list.classList.add('hidden');
+      setPartySuggestionsOpen(false);
       list.innerHTML = '';
       return;
     }
@@ -1953,9 +1956,31 @@
         if (!byId('party-answer-input') || byId('party-answer-input').value.trim() !== query) return;
         renderPartySuggestions(result.suggestions || []);
       } catch (_) {
-        list.classList.add('hidden');
+        setPartySuggestionsOpen(false);
       }
     }, 60);
+  }
+
+  function setPartySuggestionsOpen(open) {
+    const list = byId('party-answer-suggestions');
+    const input = byId('party-answer-input');
+    if (list) list.classList.toggle('hidden', !open);
+    if (input) {
+      input.setAttribute('aria-expanded', open ? 'true' : 'false');
+      if (!open) input.removeAttribute('aria-activedescendant');
+    }
+  }
+
+  function setPartySuggestionActive(items, activeIndex) {
+    items.forEach((item, index) => {
+      const active = index === activeIndex;
+      item.classList.toggle('active', active);
+      item.setAttribute('aria-selected', active ? 'true' : 'false');
+    });
+    const input = byId('party-answer-input');
+    if (input && items[activeIndex]) {
+      input.setAttribute('aria-activedescendant', items[activeIndex].id);
+    }
   }
 
   function renderPartySuggestions(suggestions) {
@@ -1963,13 +1988,22 @@
     if (!list) return;
     list.innerHTML = suggestions.length
       ? suggestions.map((item, index) => `
-          <button type="button" class="party-suggestion${index === 0 ? ' active' : ''}"
+          <button type="button" tabindex="-1"
+                  class="party-suggestion${index === 0 ? ' active' : ''}"
+                  id="party-suggestion-${index}" role="option"
+                  aria-selected="${index === 0 ? 'true' : 'false'}"
                   data-party-suggestion="${escapeHtml(String(item.value || ''))}">
             <strong>${escapeHtml(String(item.primary || item.value || ''))}</strong>
             <small>${escapeHtml(String(item.secondary || ''))}</small>
           </button>`).join('')
       : '<div class="party-suggestion-empty">Aucune suggestion</div>';
-    list.classList.remove('hidden');
+    setPartySuggestionsOpen(true);
+    const input = byId('party-answer-input');
+    if (input) {
+      input.setAttribute('aria-expanded', 'true');
+      if (suggestions.length) input.setAttribute('aria-activedescendant', 'party-suggestion-0');
+      else input.removeAttribute('aria-activedescendant');
+    }
   }
 
   async function partyCommand(action, data = {}) {
@@ -2005,7 +2039,7 @@
     const answer = input && input.value.trim();
     if (!answer) return showToast('Écris une réponse.', 'warn');
     const suggestions = byId('party-answer-suggestions');
-    if (suggestions) suggestions.classList.add('hidden');
+    if (suggestions) setPartySuggestionsOpen(false);
     partyPlayerAction('answer', { answer }).catch(showPartyError);
   }
 
@@ -2346,7 +2380,7 @@
         const input = byId('party-answer-input');
         if (input) {
           input.value = suggestion.getAttribute('data-party-suggestion') || '';
-          byId('party-answer-suggestions').classList.add('hidden');
+          setPartySuggestionsOpen(false);
           submitPartyAnswer();
         }
         return;
@@ -2455,21 +2489,20 @@
       let active = items.findIndex(item => item.classList.contains('active'));
       if ((event.key === 'ArrowDown' || event.key === 'ArrowUp') && items.length) {
         event.preventDefault();
-        if (active >= 0) items[active].classList.remove('active');
         active = event.key === 'ArrowDown'
           ? (active + 1) % items.length
           : (active - 1 + items.length) % items.length;
-        items[active].classList.add('active');
+        setPartySuggestionActive(items, active);
         items[active].scrollIntoView({ block: 'nearest' });
       } else if (event.key === 'Enter') {
         event.preventDefault();
         if (active >= 0 && list && !list.classList.contains('hidden')) {
           event.target.value = items[active].getAttribute('data-party-suggestion') || '';
-          list.classList.add('hidden');
+          setPartySuggestionsOpen(false);
         }
         submitPartyAnswer();
       } else if (event.key === 'Escape' && list) {
-        list.classList.add('hidden');
+        setPartySuggestionsOpen(false);
       }
     });
     byId('backup-import').addEventListener('change', event => {

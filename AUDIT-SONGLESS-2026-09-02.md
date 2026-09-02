@@ -172,6 +172,18 @@ Le seul événement réseau observé pendant la passe finale est l’annulation
 attendue d’une lecture audio lorsque le scénario automatisé change d’onglet.
 Il ne correspond ni à un fichier absent ni à une erreur de l’application.
 
+### Contrôle ciblé suggestions et renommage
+
+- 16 suggestions vérifiées en solo PC et sur contrôleur téléphone 360 px ;
+- listes déroulantes, défilement tactile/molette et titres longs contrôlés ;
+- aucun débordement horizontal, aucune troncature de la ligne longue testée ;
+- navigation par flèches et `aria-activedescendant` vérifiées ;
+- zéro erreur console, zéro erreur HTTP et zéro violation Axe sur les zones ;
+- crayon de renommage contrôlé après révélation sur le PC, absent des interfaces
+  TV, télécommande et joueur distant ;
+- captures et rapport reproductible dans le laboratoire visuel isolé, sans
+  écriture dans les profils ou métadonnées personnels.
+
 ## Points importants à traiter ensuite
 
 ### Architecture
@@ -193,7 +205,8 @@ Il ne correspond ni à un fichier absent ni à une erreur de l’application.
 - Classique, Buzzer, Battle Royale et Duel existent en multijoueur ;
 - solo limité, sans fin, entraînement, collections et défis existent côté PC ;
 - tous ne disposent pas encore d’une présentation TV et distante homogène ;
-- le duel final automatique à deux survivants n’existe pas encore ;
+- le duel final automatique à deux survivants est isolé, testé et visible sur
+  PC, TV, télécommande et contrôleur ;
 - Intrus, Enchères, Confiance, Coopération, Joker, Missions et handicap
   intelligent restent à construire.
 

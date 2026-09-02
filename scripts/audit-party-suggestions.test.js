@@ -70,4 +70,21 @@ test('une faute légère est tolérée seulement avec une requête assez longue'
   }), []);
 });
 
+test('la liste propose jusqu’à seize résultats par défaut sans dépasser le plafond', () => {
+  const manyFiles = Array.from({ length: 30 }, (_, index) => `titre-${index}.mp3`);
+  const manyMetadata = Object.fromEntries(manyFiles.map((file, index) => [file, {
+    title: `Chanson commune numéro ${index}`,
+    artist: `Artiste ${index}`,
+  }]));
+  const defaultResults = engine.suggestions({
+    query: 'chanson', answerMode: 'titre', fileNames: manyFiles, metadata: manyMetadata,
+  });
+  const cappedResults = engine.suggestions({
+    query: 'chanson', answerMode: 'titre', fileNames: manyFiles,
+    metadata: manyMetadata, limit: 100,
+  });
+  assert.strictEqual(defaultResults.length, 16);
+  assert.strictEqual(cappedResults.length, 24);
+});
+
 console.log(`\n${passed} tests de suggestions multijoueurs réussis.`);

@@ -210,6 +210,20 @@ fiabilisé.
 - conserver une icône d’onglet locale et valide ;
 - ne jamais confondre favicon du site et pochette musicale.
 
+### 6.3.1 Identité et renommage des morceaux
+
+- le tri par année, favori, genre ou sous-genre ne modifie jamais le titre source ;
+- aucune traduction, translittération ou réécriture automatique du titre affiché :
+  ces transformations créent des identités concurrentes et de faux doublons ;
+- le nom source reste la référence tant que l’utilisateur ne choisit pas de le
+  modifier explicitement ;
+- une option crayon discrète permet de renommer le titre affiché depuis chaque
+  mode, uniquement sur le PC local ou hôte et après la révélation ;
+- ce renommage manuel réutilise l’éditeur de la bibliothèque et ne modifie ni le
+  fichier audio, ni son identifiant stable ;
+- le bouton et les métadonnées éditables sont absents des vues TV et des
+  contrôleurs distants.
+
 ### 6.4 Détection des doublons
 
 - doublons exacts par empreinte de fichier ;
@@ -266,6 +280,16 @@ un morceau a été exclu et permet de prévisualiser la sélection restante.
 - mode plein écran et récupération après actualisation ;
 - téléphone administrateur conçu comme une télécommande, pas comme une copie du PC.
 
+### 7.1 Suggestions de réponse
+
+- proposer jusqu’à 16 réponses pertinentes au lieu d’une liste trop courte ;
+- volet déroulant borné à la fenêtre, avec défilement tactile et molette ;
+- titre et artiste visibles sur plusieurs lignes, sans ellipse ni coupe arbitraire ;
+- aucune ligne ne déborde horizontalement, y compris sur téléphone étroit ;
+- navigation complète par flèches, Entrée et Échap avec état annoncé aux lecteurs
+  d’écran ;
+- même contrat visuel et fonctionnel en solo PC, multijoueur PC et contrôleur.
+
 ## 8. Podium et portraits musicaux
 
 Le podium doit produire plusieurs distinctions factuelles et humoristiques à partir
@@ -298,6 +322,17 @@ Contraintes :
 - une partie des succès reste cachée jusqu’au déblocage ;
 - descriptions précises et conditions vérifiées côté moteur ;
 - pas de succès impossible à cause d’un mode ou d’une métadonnée absente.
+
+### Règle de révélation des easter eggs
+
+- le futur mode **Indice** est le seul où un easter egg peut fournir librement un
+  indice pendant la recherche ;
+- dans tous les autres modes, l’easter egg reste absent du DOM jusqu’au verdict
+  individuel autorisé : après un `guess true`, ou après un `guess false` seulement
+  lorsque toutes les tentatives du joueur sont épuisées ;
+- un `skip` ne vaut jamais `guess false` et ne déclenche aucun easter egg ;
+- les écrans partagés ne révèlent l’effet qu’au moment où la réponse elle-même est
+  autorisée, sans exposer auparavant de texte, attribut ou ressource révélatrice.
 
 ### Easter egg Portal validé
 
@@ -518,7 +553,7 @@ Une phase est terminée uniquement si :
 | Phase | État | Réalisé | Reste principal |
 |---|---|---|---|
 | 0 — Audit | Validée | Audit moteur, HTTP, bibliothèque, encodage, sécurité et contrôle Playwright/Axe multi-écrans | Rejouer administrativement les trois lanceurs sur une instance fraîche |
-| 1 — Moteur | Avancée | Registre des modes et modules testés pour manches, réponses, suggestions, accès, résultats, Buzzer, Duel et Battle Royale | Isoler les équipes puis stabiliser les contrats entre modules |
+| 1 — Moteur | Avancée | Registre des modes et modules testés pour manches, réponses, suggestions, accès, résultats, équipes, Buzzer, Duel et Battle Royale | Stabiliser les contrats entre modules |
 | 2 — Rôles | Avancée | Jetons distincts hôte, joueur, TV et télécommande ; expiration et révocation ; tests négatifs | Reconnexion et validation visuelle réelle |
 | 3 — TV/admin | Première version | `tv.html`, `remote.html`, boutons d’appairage et commandes limitées | Essais réels TV/téléphone, reprise après coupure et finitions |
 | 4 — Modes existants | En cours | Duel final Battle Royale à deux survivants, persistance du vrai vainqueur et interfaces PC/TV/télécommande/téléphone validées | Unification complète des autres modes et de leurs fins de partie |
