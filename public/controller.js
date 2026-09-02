@@ -1145,10 +1145,14 @@
 
   function renderRanking() {
     const sorted = [...state.players].sort((a, b) => (Number(b.score) || 0) - (Number(a.score) || 0) || a.nom.localeCompare(b.nom));
+    const rankByProfileId = new Map(sorted.map(item => [
+      item.profileId,
+      1 + sorted.filter(other => (Number(other.score) || 0) > (Number(item.score) || 0)).length,
+    ]));
     const me = currentPlayer();
     let podiumHeader = '';
     if (state.status === 'finished') {
-      const myRank = sorted.findIndex(item => item.profileId === state.viewerProfileId) + 1;
+      const myRank = rankByProfileId.get(state.viewerProfileId) || 0;
       const medal = myRank === 1 ? '🥇 1er' : myRank === 2 ? '🥈 2e' : myRank === 3 ? '🥉 3e' : `${myRank}e`;
       if (myRank === 1 && window.songlessTrophies) {
         window.songlessTrophies.unlock('party_first_place');
@@ -1173,12 +1177,15 @@
     }
 
     byId('ranking').innerHTML = podiumHeader + (sorted.length
-      ? sorted.map((item, index) => `
+      ? sorted.map(item => {
+          const rank = rankByProfileId.get(item.profileId) || 0;
+          return `
           <div class="rank-row${item.profileId === state.viewerProfileId ? ' me' : ''}">
-            <span>${index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : index + 1}</span>
+            <span>${rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : rank}</span>
             <span>${escapeHtml(item.emoji || '🎧')} ${escapeHtml(item.nom)}</span>
             <span class="rank-score">${Number(item.score) || 0}<small>${Number(item.session && item.session.correct) || 0}/${Number(item.session && item.session.rounds) || 0}</small></span>
-          </div>`).join('')
+          </div>`;
+        }).join('')
       : '<div class="wait-note">Aucun joueur n’a encore rejoint.</div>');
   }
 
@@ -1375,6 +1382,18 @@
   }
 
   function leaveParty() {
+    const leavingParty = party;
+    if (leavingParty && leavingParty.code && leavingParty.playerToken) {
+      void api(`/api/party/${encodeURIComponent(leavingParty.code)}/action`, {
+        method: 'POST',
+        keepalive: true,
+        body: JSON.stringify({
+          playerToken: leavingParty.playerToken,
+          action: 'leave',
+          data: {},
+        }),
+      }).catch(() => {});
+    }
     clearInterval(pollTimer);
     pollTimer = null;
     party = null;
@@ -1464,7 +1483,9 @@
     const joinTeamBtn = event.target.closest('[data-join-team]');
     if (joinTeamBtn) {
       const teamId = joinTeamBtn.getAttribute('data-join-team');
-      playerAction('request-join-team', { teamId }).then(() => toast('Demande envoyée au capitaine !'));
+      playerAction('request-join-team', { teamId }).then(success => {
+        if (success) toast('Demande envoyée au capitaine !');
+      });
       return;
     }
 
@@ -1501,7 +1522,9 @@
       const nameInput = byId('mobile-new-team-name');
       const name = nameInput && nameInput.value.trim();
       if (!name) return toast('Donne un nom à ton équipe.');
-      playerAction('create-team', { name }).then(() => toast(`Équipe « ${name} » créée !`));
+      playerAction('create-team', { name }).then(success => {
+        if (success) toast(`Équipe « ${name} » créée !`);
+      });
       return;
     }
 

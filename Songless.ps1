@@ -8,7 +8,10 @@
 # -Lan ouvre le jeu au réseau de la maison, pour jouer depuis le téléphone.
 # Les appareils du réseau sont alors en lecture seule (voir server.js).
 
-param([switch]$Lan)
+param(
+    [switch]$Lan,
+    [switch]$SkipBrowser
+)
 
 $ErrorActionPreference = 'Stop'
 
@@ -36,7 +39,7 @@ function Alerte($message) {
     [System.Windows.MessageBox]::Show($message, 'Songless', 'OK', 'Error') | Out-Null
 }
 
-# --- Déjà en route ? On n'en relance pas un second.
+# --- Déjà en route ? On ne relance rien et on n'ouvre pas un second onglet.
 if (Serveur-Repond) {
     # Sauf si on demande le mode réseau alors que le serveur en cours ne l'a
     # pas : ouvrir l'onglet sans rien dire laisserait croire que le téléphone
@@ -49,11 +52,12 @@ if (Serveur-Repond) {
         } catch { }
 
         if (-not $dejaLan) {
-            Alerte "Songless tourne déjà, mais sans le mode réseau.`n`nFerme la fenêtre « Songless - serveur », puis relance ce raccourci."
+            Alerte "Songless tourne deja, mais sans le mode reseau.`n`nFerme la fenetre Songless - serveur, puis relance ce raccourci."
             exit 1
         }
     }
-    Start-Process $url
+    Write-Host 'Songless est deja ouvert. Aucun second lancement.' `
+        -ForegroundColor Yellow
     exit 0
 }
 
@@ -87,11 +91,13 @@ Start-Process -FilePath 'cmd.exe' `
 $limite = 25
 for ($i = 0; $i -lt $limite; $i++) {
     if (Serveur-Repond) {
-        Start-Process $url
+        if (-not $SkipBrowser) {
+            Start-Process $url
+        }
         exit 0
     }
     Start-Sleep -Milliseconds 400
 }
 
-Alerte "Le serveur n'a pas répondu après 10 secondes.`n`nOuvre la fenêtre « Songless - serveur » pour voir le message d'erreur."
+Alerte "Le serveur n'a pas repondu apres 10 secondes.`n`nOuvre la fenetre Songless - serveur pour voir le message d'erreur."
 exit 1

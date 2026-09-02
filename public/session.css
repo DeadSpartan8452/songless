@@ -44,7 +44,7 @@
   font-size: 1.05rem;
   font-weight: 700;
   letter-spacing: 0.08em;
-  color: var(--accent);
+  color: #c084fc;
   background: rgba(168, 85, 247, 0.1);
   border: 1px solid rgba(168, 85, 247, 0.28);
   border-radius: 8px;
@@ -115,7 +115,7 @@
 }
 
 .playlist-hint {
-  opacity: 0.65;
+  opacity: 1;
   margin-left: 4px;
 }
 
@@ -201,7 +201,7 @@
   display: inline-block;
   background: rgba(168, 85, 247, 0.14);
   border: 1px solid rgba(168, 85, 247, 0.3);
-  color: var(--accent);
+  color: #c084fc;
   border-radius: 999px;
   padding: 3px 10px;
   font-size: 0.72rem;
@@ -452,7 +452,8 @@
 
 .track-item-original {
   font-style: italic;
-  opacity: 0.7;
+  color: var(--text-muted);
+  opacity: 1;
   margin-left: 6px;
 }
 
@@ -710,7 +711,7 @@
 /* Rappel de la règle anti-triche : présent, mais en retrait. */
 .shortcut-hint.subtle {
   font-size: 0.68rem;
-  opacity: 0.5;
+  opacity: 0.9;
   margin-top: 4px;
   max-width: 46ch;
   margin-left: auto;

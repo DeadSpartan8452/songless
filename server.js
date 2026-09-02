@@ -24,21 +24,21 @@ const PUBLIC_URL = /^https:\/\/[a-z0-9.-]+(?::\d+)?$/i.test(String(process.env.S
   ? String(process.env.SONGLESS_PUBLIC_URL).replace(/\/$/, '') : '';
 
 // ==========================================
-// MODE RÃ‰SEAU LOCAL
+// MODE RÉSEAU LOCAL
 // ==========================================
 //
-// Par dÃ©faut le serveur n'Ã©coute que la boucle locale : lui seul peut jouer.
-// Avec `--lan` (ou SONGLESS_LAN=1), il s'ouvre au rÃ©seau de la maison pour
-// qu'on joue depuis le tÃ©lÃ©phone. Les appareils distants deviennent des
-// manettes : ils peuvent rÃ©pondre et offrir un morceau, mais ne peuvent ni
-// consulter la bibliothÃ¨que, ni Ã©diter, supprimer ou commander la partie.
+// Par défaut le serveur n'écoute que la boucle locale : lui seul peut jouer.
+// Avec `--lan` (ou SONGLESS_LAN=1), il s'ouvre au réseau de la maison pour
+// qu'on joue depuis le téléphone. Les appareils distants deviennent des
+// manettes : ils peuvent répondre et offrir un morceau, mais ne peuvent ni
+// consulter la bibliothèque, ni éditer, supprimer ou commander la partie.
 const LAN = process.argv.includes('--lan') || process.env.SONGLESS_LAN === '1';
 const HOTE = LAN ? '0.0.0.0' : '127.0.0.1';
-// Secret Ã©phÃ©mÃ¨re transmis uniquement dans le QR affichÃ© sur l'ordinateur.
-// Un voisin sur le mÃªme Wi-Fi ne peut donc pas modifier les profils partagÃ©s.
+// Secret éphémère transmis uniquement dans le QR affiché sur l'ordinateur.
+// Un voisin sur le même Wi-Fi ne peut donc pas modifier les profils partagés.
 const LAN_PAIR_TOKEN = crypto.randomBytes(18).toString('base64url');
 
-/** Adresses IPv4 par lesquelles le tÃ©lÃ©phone peut joindre cette machine. */
+/** Adresses IPv4 par lesquelles le téléphone peut joindre cette machine. */
 function adresseRoutable(adresse) {
   return /^\d+\.\d+\.\d+\.\d+$/.test(adresse);
 }
@@ -111,15 +111,15 @@ function urlLan(paired = false) {
 }
 
 /**
- * La requÃªte vient-elle de la machine qui hÃ©berge le jeu ?
+ * La requête vient-elle de la machine qui héberge le jeu ?
  *
- * La boucle locale ne suffit pas : ouvrir soi-mÃªme http://192.168.1.x:3000 sur
- * le PC hÃ´te arrive par l'adresse rÃ©seau de la machine, et on se retrouverait
+ * La boucle locale ne suffit pas : ouvrir soi-même http://192.168.1.x:3000 sur
+ * le PC hôte arrive par l'adresse réseau de la machine, et on se retrouverait
  * en lecture seule chez soi. Ses propres adresses comptent donc comme locales.
  */
 function estLocal(req) {
   // Un tunnel arrive depuis la boucle locale. Sans ce test, cette connexion
-  // serait prise Ã  tort pour l'hÃ´te du jeu et recevrait les droits du PC.
+  // serait prise à tort pour l'hôte du jeu et recevrait les droits du PC.
   if (estEntreeInternet(req)) return false;
   const ip = String(req.socket.remoteAddress || '').replace(/^::ffff:/, '');
   if (ip === '127.0.0.1' || ip === '::1') return true;
@@ -135,7 +135,7 @@ function estEntreeInternet(req) {
 const MUSIC_DIR = path.join(__dirname, 'musiques');
 const PUBLIC_DIR = path.join(__dirname, 'public');
 
-// CrÃ©ation des dossiers s'ils n'existent pas
+// Création des dossiers s'ils n'existent pas
 if (!fs.existsSync(MUSIC_DIR)) {
   fs.mkdirSync(MUSIC_DIR, { recursive: true });
 }
@@ -151,7 +151,7 @@ const estArchive = (nom) => path.extname(nom).toLowerCase() === '.zip';
 // Configuration de Multer pour l'upload de musiques
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    // MÃªme un MP3 reste en quarantaine jusqu'au verdict antivirus.
+    // Même un MP3 reste en quarantaine jusqu'au verdict antivirus.
     fs.mkdirSync(UPLOAD_TMP, { recursive: true });
     cb(null, UPLOAD_TMP);
   },
@@ -177,7 +177,7 @@ const fileFilter = (req, file, cb) => {
   if (mimeTypes.includes(file.mimetype) || fileExts.includes(ext)) {
     cb(null, true);
   } else {
-    cb(new Error('Format non supportÃ©. Audio : MP3, WAV, OGG, M4A, FLAC, AAC, OPUS. Ou une archive .zip.'), false);
+    cb(new Error('Format non supporté. Audio : MP3, WAV, OGG, M4A, FLAC, AAC, OPUS. Ou une archive .zip.'), false);
   }
 };
 
@@ -245,7 +245,7 @@ function rateAllowed(req, bucket, limit, windowMs) {
 
 app.use('/api/', (req, res, next) => {
   if (!rateAllowed(req, 'api', 900, 60_000)) {
-    return res.status(429).json({ error: 'Trop de requÃªtes. RÃ©essaie dans une minute.' });
+    return res.status(429).json({ error: 'Trop de requêtes. Réessaie dans une minute.' });
   }
   next();
 });
@@ -256,9 +256,9 @@ function invitationFromRequest(req) {
   return partyStore.isInvited(codeValue, req.get('X-Songless-Invite'));
 }
 
-// Garde-fou du mode rÃ©seau : le tÃ©lÃ©phone ne reÃ§oit que les routes nÃ©cessaires
-// Ã  une tÃ©lÃ©commande Kahoot. Il peut crÃ©er son profil, rejoindre, rÃ©pondre et
-// offrir un morceau ; bibliothÃ¨que, rÃ©glages et commandes d'hÃ´te restent cachÃ©s.
+// Garde-fou du mode réseau : le téléphone ne reçoit que les routes nécessaires
+// à une télécommande Kahoot. Il peut créer son profil, rejoindre, répondre et
+// offrir un morceau ; bibliothèque, réglages et commandes d'hôte restent cachés.
 app.use((req, res, next) => {
   const local = estLocal(req);
   if (local) return next();
@@ -280,20 +280,22 @@ app.use((req, res, next) => {
     if (req.method === 'PUT') return next();
   }
 
-  // Le son d'une manche n'est accessible qu'avec le jeton alÃ©atoire remis au
-  // joueur aprÃ¨s son entrÃ©e dans cette partie. Une balise <audio> ne sait pas
-  // envoyer nos en-tÃªtes personnalisÃ©s, le jeton passe donc dans l'URL du flux.
+  // Le son d'une manche n'est accessible qu'avec le jeton aléatoire remis au
+  // joueur après son entrée dans cette partie. Une balise <audio> ne sait pas
+  // envoyer nos en-têtes personnalisés, le jeton passe donc dans l'URL du flux.
   const partyAudio = req.path.match(/^\/api\/party\/([^/]+)\/audio$/);
   if (req.method === 'GET' && partyAudio) {
     const party = partyStore.get(decodeURIComponent(partyAudio[1]));
-    if (party && partyStore.findPlayer(party, req.query.playerToken)) return next();
-    return res.status(403).json({ error: 'AccÃ¨s audio rÃ©servÃ© aux joueurs de cette partie.' });
+    const role = party && partyStore.accessRole(party, req.query.accessToken);
+    if (party && (partyStore.findPlayer(party, req.query.playerToken)
+      || role === 'tv' || role === 'remote_admin')) return next();
+    return res.status(403).json({ error: 'Accès audio réservé aux joueurs de cette partie.' });
   }
 
-  // Seule exception d'Ã©criture accordÃ©e aux tÃ©lÃ©phones : offrir un morceau
-  // Ã  la bibliothÃ¨que, par fichier ou par recherche/URL.
+  // Seule exception d'écriture accordée aux téléphones : offrir un morceau
+  // à la bibliothèque, par fichier ou par recherche/URL.
   if (req.path === '/api/upload' || req.path === '/api/download') {
-    if (!paired && !invited) return res.status(403).json({ error: 'Invitation Songless invalide ou expirÃ©e.' });
+    if (!paired && !invited) return res.status(403).json({ error: 'Invitation Songless invalide ou expirée.' });
     if (!rateAllowed(req, 'music', 10, 60 * 60_000)) {
       return res.status(429).json({ error: 'Limite de 10 propositions de musique par heure atteinte.' });
     }
@@ -301,21 +303,32 @@ app.use((req, res, next) => {
   }
 
   if (req.path.startsWith('/api/party/')) {
-    if (!paired && !invited) return res.status(403).json({ error: 'Invitation Songless invalide ou expirÃ©e.' });
-    if (req.path === '/api/party/create' || req.path.endsWith('/command')) {
-      return res.status(403).json({ error: 'Commande rÃ©servÃ©e Ã  lâ€™ordinateur hÃ´te.' });
+    const match = req.path.match(/^\/api\/party\/([^/]+)/);
+    const party = match && partyStore.get(decodeURIComponent(match[1]));
+    const accessRole = party && partyStore.accessRole(
+      party,
+      req.get('X-Songless-Access') || req.query.accessToken || (req.body && req.body.accessToken)
+    );
+    if (!paired && !invited && !accessRole) {
+      return res.status(403).json({ error: 'Invitation Songless invalide ou expirée.' });
+    }
+    if (req.path === '/api/party/create') {
+      return res.status(403).json({ error: 'Commande réservée à l’ordinateur hôte.' });
+    }
+    if (req.path.endsWith('/command') && accessRole !== 'remote_admin') {
+      return res.status(403).json({ error: 'Commande réservée à l’ordinateur hôte.' });
     }
     return next();
   }
 
   if (req.path === '/api/context') return next();
   if (req.path.startsWith('/api/')) {
-    return res.status(403).json({ error: 'Cette fonction est rÃ©servÃ©e Ã  lâ€™ordinateur hÃ´te.' });
+    return res.status(403).json({ error: 'Cette fonction est réservée à l’ordinateur hôte.' });
   }
 
   if (req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS') return next();
   res.status(403).json({
-    error: 'Le tÃ©lÃ©phone est une tÃ©lÃ©commande de jeu : aucune modification nâ€™est autorisÃ©e.',
+    error: 'Le téléphone est une télécommande de jeu : aucune modification n’est autorisée.',
   });
 });
 
@@ -326,8 +339,8 @@ app.get(['/', '/index.html'], (req, res, next) => {
 
 app.use(express.static(PUBLIC_DIR));
 
-// Court silence utilisÃ© par le bouton du tutoriel mobile pour autoriser le
-// son. iOS et Android exigent une premiÃ¨re lecture dÃ©clenchÃ©e par un geste.
+// Court silence utilisé par le bouton du tutoriel mobile pour autoriser le
+// son. iOS et Android exigent une première lecture déclenchée par un geste.
 app.get('/silence.wav', (req, res) => {
   const samples = 800;
   const dataSize = samples * 2;
@@ -349,8 +362,8 @@ app.get('/silence.wav', (req, res) => {
 
 /**
  * Route: contexte de la page.
- * Dit au navigateur s'il est sur la machine hÃ´te ou sur un appareil du rÃ©seau,
- * pour qu'il masque de lui-mÃªme ce qu'il n'a pas le droit de faire plutÃ´t que
+ * Dit au navigateur s'il est sur la machine hôte ou sur un appareil du réseau,
+ * pour qu'il masque de lui-même ce qu'il n'a pas le droit de faire plutôt que
  * de laisser le joueur buter sur un refus.
  */
 app.get('/api/context', (req, res) => {
@@ -372,22 +385,22 @@ app.get('/api/context', (req, res) => {
   });
 });
 
-/** Route: QR code de l'adresse Ã  scanner avec le tÃ©lÃ©phone. */
+/** Route: QR code de l'adresse à scanner avec le téléphone. */
 app.get('/api/lan/qr.svg', async (req, res) => {
   const url = urlLan(true);
-  if (!url) return res.status(404).json({ error: 'Aucune adresse rÃ©seau dÃ©tectÃ©e sur cette machine.' });
+  if (!url) return res.status(404).json({ error: 'Aucune adresse réseau détectée sur cette machine.' });
   try {
     const svg = await QRCode.toString(url, { type: 'svg', margin: 1, width: 220 });
     res.set('Content-Type', 'image/svg+xml');
     res.set('Cache-Control', 'no-store');
     res.send(svg);
   } catch (e) {
-    res.status(500).json({ error: 'QR code impossible Ã  produire.' });
+    res.status(500).json({ error: 'QR code impossible à produire.' });
   }
 });
 
 // ==========================================
-// PROFILS PARTAGÃ‰S ET SAUVEGARDES
+// PROFILS PARTAGÉS ET SAUVEGARDES
 // ==========================================
 
 app.get('/api/player/state', (req, res) => {
@@ -478,7 +491,7 @@ app.post('/api/player/import', (req, res) => {
 });
 
 // ==========================================
-// PARTIES MULTIJOUEURS SUR LE RÃ‰SEAU LOCAL
+// PARTIES MULTIJOUEURS SUR LE RÉSEAU LOCAL
 // ==========================================
 
 function profileById(id) {
@@ -489,6 +502,95 @@ function partyInviteUrl(base, party) {
   if (!base) return null;
   const query = new URLSearchParams({ party: party.code, invite: party.inviteToken });
   return `${base}/controller.html?${query}`;
+}
+
+function partyAccessUrl(base, party, issued) {
+  if (!base) return null;
+  const page = issued.role === 'tv' ? 'tv.html' : 'remote.html';
+  const query = new URLSearchParams({
+    party: party.code,
+    access: issued.accessToken,
+  });
+  return `${base}/${page}?${query}`;
+}
+
+function validPartyTrackIds(values) {
+  if (!Array.isArray(values)) return [];
+  const available = new Set(listAudioFiles());
+  const valid = [];
+  const seen = new Set();
+  for (const value of values.slice(0, 5000)) {
+    const id = String(value || '');
+    const resolved = resoudreMorceau(id);
+    if (!resolved || !available.has(resolved.fileName) || seen.has(id)) continue;
+    seen.add(id);
+    valid.push(id);
+  }
+  return valid;
+}
+
+async function partyTrackData(trackId) {
+  const resolved = resoudreMorceau(trackId);
+  if (!resolved || !fs.existsSync(resolved.filePath)) {
+    throw new Error('Le morceau de cette manche est introuvable.');
+  }
+  const track = await buildTrack(resolved.fileName, store.load().tracks[resolved.fileName]);
+  return {
+    track,
+    answer: {
+      mode: 'titre',
+      title: track.title,
+      originalTitle: track.originalTitle,
+      artist: track.artist,
+      year: track.year,
+      aliases: track.aliases || [],
+    },
+  };
+}
+
+function serverRoundOffset(party, track) {
+  const duration = Math.max(0, Number(track.duration) || 0);
+  if (party.settings.start === 'debut' || duration <= 20) return 0;
+  if (party.settings.start === 'refrain') return Math.max(0, Math.min(duration - 15, duration * 0.45));
+  const digest = crypto.createHash('sha256')
+    .update(`${party.seed}:${party.round + 1}:${track.id}`)
+    .digest();
+  const maximum = Math.max(0, Math.floor(duration - 20));
+  return maximum ? digest.readUInt32BE(0) % (maximum + 1) : 0;
+}
+
+async function startNextPartyRound(party) {
+  if (!party.trackIds.length) throw new Error('La playlist serveur de cette partie est vide.');
+  if (!party.infinite && party.round >= party.totalRounds) {
+    throw new Error('Toutes les manches prévues ont déjà été jouées.');
+  }
+  const index = party.infinite ? party.round % party.trackIds.length : party.round;
+  const trackId = party.trackIds[index];
+  const data = await partyTrackData(trackId);
+  data.answer.mode = party.settings.answer;
+  partyStore.command(party, party.hostToken, 'start-round', {
+    round: party.round + 1,
+    trackId,
+    playback: { offset: serverRoundOffset(party, data.track) },
+    answer: data.answer,
+  });
+}
+
+async function revealCurrentPartyRound(party, requested = {}) {
+  if (!party.currentTrackId) throw new Error('Aucune manche à révéler.');
+  const data = await partyTrackData(party.currentTrackId);
+  partyStore.command(party, party.hostToken, 'reveal', {
+    track: {
+      title: data.track.title,
+      originalTitle: data.track.originalTitle,
+      artist: data.track.artist,
+      genre: data.track.genre,
+    },
+    highlightOffset: Number(party.playback && party.playback.offset) || 0,
+    highlightDuration: 5,
+    autoNext: Boolean(requested.autoNext),
+    reason: ['correct', 'skip'].includes(requested.reason) ? requested.reason : 'manual',
+  });
 }
 
 function editDistanceLimited(left, right, limit = 2) {
@@ -545,8 +647,8 @@ app.post('/api/party/create', (req, res) => {
   try {
     const hostProfile = req.body.profileId ? profileById(req.body.profileId) : {
       id: 'host_player',
-      nom: 'ManaÃ«l',
-      emoji: 'ðŸŽ§',
+      nom: 'Manaël',
+      emoji: '🎧',
       multiplayer: {},
     };
     const rawSettings = req.body && req.body.settings && typeof req.body.settings === 'object'
@@ -563,6 +665,7 @@ app.post('/api/party/create', (req, res) => {
       totalRounds: req.body.totalRounds,
       seed: req.body.seed,
       settings: mergedSettings,
+      trackIds: validPartyTrackIds(req.body.trackIds),
     });
     const hostPlayer = partyStore.join(created.party.code, hostProfile).player;
     if (hostPlayer) hostPlayer.host = true;
@@ -570,11 +673,11 @@ app.post('/api/party/create', (req, res) => {
     const demoBots = [];
     if (req.body.demo) {
       const botProfiles = [
-        { id: 'bot_sarah', nom: 'Sarah', emoji: 'âš¡', persona: 'fast' },
-        { id: 'bot_lucas', nom: 'Lucas', emoji: 'ðŸš€', persona: 'quick' },
-        { id: 'bot_chloe', nom: 'ChloÃ©', emoji: 'ðŸŒ¸', persona: 'balanced' },
-        { id: 'bot_thomas', nom: 'Thomas', emoji: 'ðŸ›¡ï¸', persona: 'clutch' },
-        { id: 'bot_alexandre', nom: 'Alexandre', emoji: 'ðŸŽ°', persona: 'guesser' },
+        { id: 'bot_sarah', nom: 'Sarah', emoji: '⚡', persona: 'fast' },
+        { id: 'bot_lucas', nom: 'Lucas', emoji: '🚀', persona: 'quick' },
+        { id: 'bot_chloe', nom: 'Chloé', emoji: '🌸', persona: 'balanced' },
+        { id: 'bot_thomas', nom: 'Thomas', emoji: '🛡️', persona: 'clutch' },
+        { id: 'bot_alexandre', nom: 'Alexandre', emoji: '🎰', persona: 'guesser' },
       ];
       for (const bot of botProfiles) {
         const joined = partyStore.join(created.party.code, bot);
@@ -606,6 +709,49 @@ app.post('/api/party/create', (req, res) => {
     });
   } catch (error) {
     res.status(400).json({ error: error.message });
+  }
+});
+
+app.post('/api/party/:code/access', (req, res) => {
+  try {
+    if (!estLocal(req)) {
+      return res.status(403).json({ error: 'Appairage réservé à l’ordinateur hôte.' });
+    }
+    const party = partyStore.get(req.params.code);
+    if (!party) return res.status(404).json({ error: 'Partie introuvable.' });
+    const ttlMinutes = Math.min(720, Math.max(5, Number(req.body.ttlMinutes) || 120));
+    const issued = partyStore.issueAccessToken(
+      party,
+      req.body.hostToken,
+      req.body.role,
+      ttlMinutes * 60 * 1000
+    );
+    res.status(201).json({
+      id: issued.id,
+      role: issued.role,
+      expiresAt: issued.expiresAt,
+      accessToken: issued.accessToken,
+      urls: {
+        lan: partyAccessUrl(urlLan(), party, issued),
+        internet: partyAccessUrl(PUBLIC_URL, party, issued),
+      },
+    });
+  } catch (error) {
+    res.status(403).json({ error: error.message });
+  }
+});
+
+app.delete('/api/party/:code/access/:id', (req, res) => {
+  try {
+    if (!estLocal(req)) {
+      return res.status(403).json({ error: 'Révocation réservée à l’ordinateur hôte.' });
+    }
+    const party = partyStore.get(req.params.code);
+    if (!party) return res.status(404).json({ error: 'Partie introuvable.' });
+    partyStore.revokeAccessToken(party, req.body.hostToken, req.params.id);
+    res.status(204).end();
+  } catch (error) {
+    res.status(403).json({ error: error.message });
   }
 });
 
@@ -660,18 +806,24 @@ app.get('/api/party/:code', (req, res) => {
   const party = partyStore.get(req.params.code);
   if (!party) return res.status(404).json({ error: 'Partie introuvable.' });
   res.set('Cache-Control', 'no-store');
-  res.json(partyStore.publicState(party, req.query.playerToken, req.query.hostToken));
+  res.json(partyStore.publicState(
+    party,
+    req.query.playerToken,
+    req.query.hostToken,
+    req.query.accessToken || req.get('X-Songless-Access')
+  ));
 });
 
 app.get('/api/party/:code/audio', (req, res) => {
   try {
     const party = partyStore.get(req.params.code);
     const player = party && partyStore.findPlayer(party, req.query.playerToken);
-    if (!party || !player) {
-      return res.status(403).json({ error: 'AccÃ¨s audio rÃ©servÃ© aux joueurs de cette partie.' });
+    const accessRole = party && partyStore.accessRole(party, req.query.accessToken);
+    if (!party || (!player && accessRole !== 'tv' && accessRole !== 'remote_admin')) {
+      return res.status(403).json({ error: 'Accès audio réservé aux joueurs de cette partie.' });
     }
     if (Number(req.query.round) !== party.round || !party.currentTrackId) {
-      return res.status(409).json({ error: 'Cette manche nâ€™est plus active.' });
+      return res.status(409).json({ error: 'Cette manche n’est plus active.' });
     }
     const morceau = resoudreMorceau(party.currentTrackId);
     if (!morceau) return res.status(404).json({ error: 'Morceau introuvable.' });
@@ -687,7 +839,7 @@ app.get('/api/party/:code/suggestions', (req, res) => {
   const party = partyStore.get(req.params.code);
   const player = party && partyStore.findPlayer(party, req.query.playerToken);
   if (!party || !player) {
-    return res.status(403).json({ error: 'Suggestions rÃ©servÃ©es aux joueurs de cette partie.' });
+    return res.status(403).json({ error: 'Suggestions réservées aux joueurs de cette partie.' });
   }
   if (party.status !== 'round') return res.json({ suggestions: [] });
 
@@ -718,14 +870,14 @@ app.get('/api/party/:code/suggestions', (req, res) => {
       if (!year) continue;
       value = String(year);
       primary = value;
-      secondary = 'AnnÃ©e';
+      secondary = 'Année';
     } else {
       value = artist ? `${artist} - ${title}` : title;
       primary = title;
       secondary = [artist,
         originalTitle && T.norm(originalTitle) !== T.norm(title)
           ? `titre original : ${originalTitle}` : '']
-        .filter(Boolean).join(' Â· ');
+        .filter(Boolean).join(' · ');
     }
 
     const priority = partySuggestionScore(
@@ -748,11 +900,28 @@ app.get('/api/party/:code/suggestions', (req, res) => {
   res.json({ suggestions: results.slice(0, 8).map(({ priority, ...item }) => item) });
 });
 
-app.post('/api/party/:code/command', (req, res) => {
+app.post('/api/party/:code/command', async (req, res) => {
   try {
     const party = partyStore.get(req.params.code);
     if (!party) return res.status(404).json({ error: 'Partie introuvable.' });
-    partyStore.command(party, req.body.hostToken, req.body.action, req.body.data);
+    const accessRole = partyStore.accessRole(party, req.body.accessToken);
+    const remoteAdmin = accessRole === 'remote_admin';
+    if (remoteAdmin) {
+      if (req.body.action === 'start-next-round') await startNextPartyRound(party);
+      else if (req.body.action === 'reveal') await revealCurrentPartyRound(party, req.body.data);
+      else if (req.body.action === 'finish' || req.body.action === 'lobby') {
+        partyStore.command(party, party.hostToken, req.body.action, {});
+      } else {
+        throw new Error('Cette commande n’est pas autorisée sur la télécommande.');
+      }
+    } else if (req.body.action === 'start-next-round') {
+      if (!partyStore.publicState(party, null, req.body.hostToken).isHost) {
+        throw new Error('Commande réservée à l’hôte.');
+      }
+      await startNextPartyRound(party);
+    } else {
+      partyStore.command(party, req.body.hostToken, req.body.action, req.body.data);
+    }
     if (req.body.action === 'finish' && !party.statsCommitted) {
       const saved = playerStore.recordPartySessions(party.players);
       for (const result of saved) {
@@ -774,17 +943,22 @@ app.post('/api/party/:code/command', (req, res) => {
         winner: topWinner ? { nom: topWinner.nom, emoji: topWinner.emoji, score: topWinner.score } : null,
         winningTeam: teams.length ? teams[0] : null,
         playersCount: party.players.length,
-        players: sortedPlayers.map((p, idx) => ({
+        players: sortedPlayers.map(p => ({
           nom: p.nom,
           emoji: p.emoji,
           score: p.score,
-          rank: idx + 1,
+          rank: 1 + sortedPlayers.filter(other => other.score > p.score).length,
           teamId: p.teamId,
         })),
       });
       party.statsCommitted = true;
     }
-    res.json(partyStore.publicState(party, req.body.playerToken, req.body.hostToken));
+    res.json(partyStore.publicState(
+      party,
+      req.body.playerToken,
+      req.body.hostToken,
+      req.body.accessToken
+    ));
   } catch (error) {
     res.status(403).json({ error: error.message });
   }
@@ -792,7 +966,7 @@ app.post('/api/party/:code/command', (req, res) => {
 
 app.get('/api/party-history', (req, res) => {
   if (!estLocal(req)) {
-    return res.status(403).json({ error: 'Historique rÃ©servÃ© au poste hÃ´te.' });
+    return res.status(403).json({ error: 'Historique réservé au poste hôte.' });
   }
   res.set('Cache-Control', 'no-store');
   res.json({ history: playerStore.partyHistory() });
@@ -813,16 +987,16 @@ app.post('/api/party/:code/action', (req, res) => {
  * Traduit l'identifiant d'un morceau en chemin de fichier, sans jamais sortir
  * de `musiques/`.
  *
- * L'identifiant est le nom de fichier encodÃ© en base64url â€” donc contrÃ´lÃ© par
- * le client, qui peut y glisser ce qu'il veut. Sans vÃ©rification, un id valant
+ * L'identifiant est le nom de fichier encodé en base64url — donc contrôlé par
+ * le client, qui peut y glisser ce qu'il veut. Sans vérification, un id valant
  * `../package.json` faisait servir n'importe quel fichier de la machine par la
  * route audio, et surtout supprimer n'importe quel fichier par la route DELETE
- * (`fs.unlink`, sans corbeille). `path.join` ne protÃ¨ge de rien : il rÃ©sout
+ * (`fs.unlink`, sans corbeille). `path.join` ne protège de rien : il résout
  * les `..` sans broncher.
  *
- * On rÃ©sout donc le chemin pour de bon et on exige qu'il reste sous MUSIC_DIR.
+ * On résout donc le chemin pour de bon et on exige qu'il reste sous MUSIC_DIR.
  *
- * @param {string} id  identifiant base64url reÃ§u du client
+ * @param {string} id  identifiant base64url reçu du client
  * @returns {{fileName: string, filePath: string} | null}  null si hors dossier
  */
 function resoudreMorceau(id) {
@@ -837,19 +1011,19 @@ function resoudreMorceau(id) {
   const racine = path.resolve(MUSIC_DIR);
   const filePath = path.resolve(racine, fileName);
 
-  // Le sÃ©parateur final Ã©vite qu'un dossier voisin nommÃ© Â« musiques-old Â»
-  // passe le test par simple prÃ©fixe de chaÃ®ne.
+  // Le séparateur final évite qu'un dossier voisin nommé « musiques-old »
+  // passe le test par simple préfixe de chaîne.
   if (filePath !== racine && !filePath.startsWith(racine + path.sep)) return null;
 
   return { fileName, filePath };
 }
 
-// Helper: parse le nom de fichier en cas de mÃ©tadonnÃ©es manquantes
+// Helper: parse le nom de fichier en cas de métadonnées manquantes
 function parseFilename(fileName) {
   const ext = path.extname(fileName);
   const nameWithoutExt = path.basename(fileName, ext);
   
-  // ModÃ¨le classique: "Artiste - Titre"
+  // Modèle classique: "Artiste - Titre"
   const parts = nameWithoutExt.split(' - ');
   if (parts.length >= 2) {
     const artist = parts[0].trim();
@@ -860,8 +1034,8 @@ function parseFilename(fileName) {
   return { artist: 'Artiste Inconnu', title: nameWithoutExt.trim() };
 }
 
-// Cache mÃ©moire des tags lus sur disque, pour les fichiers pas encore enrichis.
-// ClÃ© : "nom|mtime|taille" â€” un fichier remplacÃ© est donc relu automatiquement.
+// Cache mémoire des tags lus sur disque, pour les fichiers pas encore enrichis.
+// Clé : "nom|mtime|taille" — un fichier remplacé est donc relu automatiquement.
 const tagCache = new Map();
 
 async function readTags(fileName) {
@@ -883,7 +1057,7 @@ async function readTags(fileName) {
     info.duration = meta.format.duration || 0;
     info.hasCover = !!(meta.common.picture && meta.common.picture.length > 0);
   } catch (err) {
-    console.warn(`MÃ©tadonnÃ©es illisibles pour ${fileName} : ${err.message}`);
+    console.warn(`Métadonnées illisibles pour ${fileName} : ${err.message}`);
   }
   tagCache.set(key, info);
   return info;
@@ -959,7 +1133,7 @@ app.get('/api/tracks', async (req, res) => {
   }
 });
 
-// Route: Genres prÃ©sents dans la bibliothÃ¨que, avec le nombre de morceaux
+// Route: Genres présents dans la bibliothèque, avec le nombre de morceaux
 app.get('/api/genres', (req, res) => {
   try {
     const audioFiles = new Set(listAudioFiles());
@@ -971,7 +1145,7 @@ app.get('/api/genres', (req, res) => {
       counts.set(genre, (counts.get(genre) || 0) + 1);
     }
 
-    // Ordre canonique d'abord, puis les genres personnalisÃ©s, "Autre" en dernier.
+    // Ordre canonique d'abord, puis les genres personnalisés, "Autre" en dernier.
     const known = T.GENRES.filter(g => counts.has(g) && g !== 'Autre');
     const custom = [...counts.keys()]
       .filter(g => !T.GENRES.includes(g))
@@ -981,7 +1155,7 @@ app.get('/api/genres', (req, res) => {
     res.json({
       total: audioFiles.size,
       genres: ordered.map(name => ({ name, count: counts.get(name) })),
-      all: T.GENRES,          // liste canonique, pour les menus dÃ©roulants
+      all: T.GENRES,          // liste canonique, pour les menus déroulants
     });
   } catch (error) {
     console.error('Erreur listing genres:', error);
@@ -1047,7 +1221,7 @@ app.get('/api/tracks/:id/audio', (req, res) => {
   }
 });
 
-// Route: RÃ©cupÃ©rer la pochette
+// Route: Récupérer la pochette
 function envoyerPochetteParDefaut(res) {
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="160" height="160" viewBox="0 0 160 160">
     <rect width="160" height="160" rx="18" fill="#201a35"/>
@@ -1087,25 +1261,26 @@ app.get('/api/tracks/:id/cover', async (req, res) => {
 /**
  * Route: Upload d'un fichier audio ou d'une archive .zip.
  *
- * Dans les deux cas, ce qui entre est triÃ© comme le reste de la bibliothÃ¨que
- * (titre lisible, genre, alias) et les doublons sont supprimÃ©s au passage.
+ * Dans les deux cas, ce qui entre est trié comme le reste de la bibliothèque
+ * (titre lisible, genre, alias). Les doublons probables sont signalés mais
+ * conservés ; parodies, remix et autres variantes ne sont jamais supprimés.
  */
 app.post('/api/upload', (req, res) => {
   const selectedUpload = req.songlessRemote ? remoteUpload : upload;
   selectedUpload.single('audio')(req, res, async (err) => {
     if (err) {
       console.error('Erreur upload:', err);
-      // Multer renvoie Â« File too large Â» en anglais : on explique quoi faire.
+      // Multer renvoie « File too large » en anglais : on explique quoi faire.
       const message = err.code === 'LIMIT_FILE_SIZE'
         ? (req.songlessRemote
-          ? 'Fichier trop volumineux depuis un tÃ©lÃ©phone (plafond 200 Mo).'
+          ? 'Fichier trop volumineux depuis un téléphone (plafond 200 Mo).'
           : `Archive trop volumineuse (plafond ${Math.round(TAILLE_MAX / 1073741824)} Go). `
             + 'Importe-la sans passer par le navigateur : node tools/import.js "chemin du .zip ou du dossier"')
         : err.message;
       return res.status(400).json({ error: message });
     }
     if (!req.file) {
-      return res.status(400).json({ error: 'Aucun fichier reÃ§u ou format incorrect' });
+      return res.status(400).json({ error: 'Aucun fichier reçu ou format incorrect' });
     }
 
     const nom = req.file.filename;
@@ -1123,9 +1298,9 @@ app.post('/api/upload', (req, res) => {
         });
       }
 
-      // L'archive n'a plus d'utilitÃ© une fois son contenu extrait.
+      // L'archive n'a plus d'utilité une fois son contenu extrait.
       if (archive) {
-        try { fs.unlinkSync(req.file.path); } catch (_) { /* dÃ©jÃ  parti */ }
+        try { fs.unlinkSync(req.file.path); } catch (_) { /* déjà parti */ }
       }
 
       res.json({
@@ -1141,7 +1316,7 @@ app.post('/api/upload', (req, res) => {
     } catch (e) {
       console.error('Erreur import:', e);
       // Un fichier qu'on n'a pas su traiter ne doit pas rester dans musiques/
-      try { fs.unlinkSync(req.file.path); } catch (_) { /* dÃ©jÃ  parti */ }
+      try { fs.unlinkSync(req.file.path); } catch (_) { /* déjà parti */ }
       res.status(400).json({ error: e.message });
     }
   });
@@ -1159,8 +1334,8 @@ app.delete('/api/tracks/:id', async (req, res) => {
     }
 
     await fs.promises.unlink(filePath);
-    store.remove(fileName);          // pas de mÃ©tadonnÃ©es orphelines
-    res.json({ success: true, message: 'Musique supprimÃ©e avec succÃ¨s' });
+    store.remove(fileName);          // pas de métadonnées orphelines
+    res.json({ success: true, message: 'Musique supprimée avec succès' });
   } catch (error) {
     console.error('Erreur suppression:', error);
     res.status(500).json({ error: 'Impossible de supprimer la musique' });
@@ -1168,7 +1343,7 @@ app.delete('/api/tracks/:id', async (req, res) => {
 });
 
 // ==========================================
-// MÃ‰TADONNÃ‰ES (titre affichÃ©, genre, alias)
+// MÉTADONNÉES (titre affiché, genre, alias)
 // ==========================================
 
 // Route: Corriger la fiche d'un morceau
@@ -1210,18 +1385,18 @@ app.patch('/api/tracks/:id/meta', (req, res) => {
     store.set(fileName, patch);
     res.json({ success: true, track: store.get(fileName) });
   } catch (error) {
-    console.error('Erreur mise Ã  jour mÃ©tadonnÃ©es:', error);
-    res.status(500).json({ error: 'Impossible de mettre Ã  jour la fiche' });
+    console.error('Erreur mise à jour métadonnées:', error);
+    res.status(500).json({ error: 'Impossible de mettre à jour la fiche' });
   }
 });
 
 // ==========================================
-// TÃ‰LÃ‰CHARGEMENT AUTOMATIQUE
+// TÉLÉCHARGEMENT AUTOMATIQUE
 // ==========================================
 
 /**
- * Ouvre un flux d'Ã©vÃ©nements (Server-Sent Events) et renvoie de quoi y Ã©crire.
- * Les traitements longs â€” tÃ©lÃ©chargement, import d'une playlist, diagnostic â€”
+ * Ouvre un flux d'événements (Server-Sent Events) et renvoie de quoi y écrire.
+ * Les traitements longs — téléchargement, import d'une playlist, diagnostic —
  * ont tous besoin de rendre compte pendant qu'ils travaillent.
  */
 function ouvrirFlux(res) {
@@ -1236,15 +1411,15 @@ function ouvrirFlux(res) {
   };
 }
 
-// Route: Ã‰tat des outils externes (yt-dlp / ffmpeg)
+// Route: État des outils externes (yt-dlp / ffmpeg)
 app.get('/api/download/status', (req, res) => {
   res.json(downloader.checkTools());
 });
 
-// Une compilation proposÃ©e depuis un tÃ©lÃ©phone reste raisonnable jusqu'Ã 
-// 30 titres. Au-delÃ , l'ordinateur hÃ´te choisit s'il souhaite importer le
-// reste. Les demandes ne sont jamais persistÃ©es et expirent aprÃ¨s deux
-// minutes : aucun lien, titre ou choix ne finit dans les donnÃ©es de profil.
+// Une compilation proposée depuis un téléphone reste raisonnable jusqu'à
+// 30 titres. Au-delà, l'ordinateur hôte choisit s'il souhaite importer le
+// reste. Les demandes ne sont jamais persistées et expirent après deux
+// minutes : aucun lien, titre ou choix ne finit dans les données de profil.
 const PHONE_COMPILATION_FREE_LIMIT = 30;
 const COMPILATION_HARD_LIMIT = 100;
 const DOWNLOAD_APPROVAL_TTL = 2 * 60_000;
@@ -1289,7 +1464,7 @@ app.get('/api/download/approvals', (req, res) => {
 app.post('/api/download/approvals/:id', (req, res) => {
   const approval = downloadApprovals.get(req.params.id);
   if (!approval) {
-    return res.status(404).json({ error: 'Cette demande a expirÃ© ou a dÃ©jÃ  Ã©tÃ© traitÃ©e.' });
+    return res.status(404).json({ error: 'Cette demande a expiré ou a déjà été traitée.' });
   }
   const accepted = req.body && req.body.accepted === true;
   downloadApprovals.delete(req.params.id);
@@ -1299,8 +1474,8 @@ app.post('/api/download/approvals/:id', (req, res) => {
 });
 
 /**
- * Route: TÃ©lÃ©charger un titre et l'ajouter Ã  la bibliothÃ¨que.
- * RÃ©ponse en flux (Server-Sent Events) pour suivre la progression en direct.
+ * Route: Télécharger un titre et l'ajouter à la bibliothèque.
+ * Réponse en flux (Server-Sent Events) pour suivre la progression en direct.
  */
 app.post('/api/download', async (req, res) => {
   const { query, genre, title, artist, force } = req.body || {};
@@ -1317,7 +1492,7 @@ app.post('/api/download', async (req, res) => {
       const allowed = candidate.protocol === 'https:'
         && ['youtube.com', 'youtu.be', 'music.youtube.com'].includes(host);
       if (!allowed) {
-        return res.status(400).json({ error: 'Ã€ distance, seules les URL HTTPS YouTube sont acceptÃ©es.' });
+        return res.status(400).json({ error: 'À distance, seules les URL HTTPS YouTube sont acceptées.' });
       }
     } catch (_) {
       // Ce n'est pas une URL : yt-dlp effectuera une recherche par titre/artiste.
@@ -1342,7 +1517,7 @@ app.post('/api/download', async (req, res) => {
 
     if (media && media.isCompilation) {
       if (!media.canSplit || media.entries.length < 2) {
-        throw new Error('Compilation dÃ©tectÃ©e, mais ses morceaux ne sont pas listÃ©s en chapitres. Songless refuse de tÃ©lÃ©charger toute la vidÃ©o comme un seul titre.');
+        throw new Error('Compilation détectée, mais ses morceaux ne sont pas listés en chapitres. Songless refuse de télécharger toute la vidéo comme un seul titre.');
       }
 
       let approvedBeyondThirty = true;
@@ -1428,7 +1603,7 @@ app.post('/api/download', async (req, res) => {
     });
     send('done', { track: entry });
   } catch (error) {
-    console.error('Erreur tÃ©lÃ©chargement:', error.message);
+    console.error('Erreur téléchargement:', error.message);
     send('error', { error: error.message });
   } finally {
     res.end();
@@ -1436,12 +1611,12 @@ app.post('/api/download', async (req, res) => {
 });
 
 /**
- * Route: importer une playlist entiÃ¨re.
+ * Route: importer une playlist entière.
  *
- * yt-dlp Ã©numÃ¨re la playlist, puis chaque titre passe par exactement le mÃªme
- * chemin qu'un ajout Ã  l'unitÃ© : titre lisible, genre, alias, Ã©cartement des
- * doublons. Un titre en Ã©chec n'interrompt pas les suivants â€” sur cinquante
- * morceaux, il y en a toujours un de bloquÃ© ou supprimÃ©.
+ * yt-dlp énumère la playlist, puis chaque titre passe par exactement le même
+ * chemin qu'un ajout à l'unité : titre lisible, genre, alias, écartement des
+ * doublons. Un titre en échec n'interrompt pas les suivants — sur cinquante
+ * morceaux, il y en a toujours un de bloqué ou supprimé.
  */
 app.post('/api/download/playlist', async (req, res) => {
   const { url, genre, limite } = req.body || {};
@@ -1458,7 +1633,7 @@ app.post('/api/download/playlist', async (req, res) => {
   const send = ouvrirFlux(res);
 
   // Le navigateur peut fermer l'onglet en cours de route : inutile de
-  // continuer Ã  tÃ©lÃ©charger dans le vide.
+  // continuer à télécharger dans le vide.
   let abandonne = false;
   req.on('close', () => { abandonne = true; });
 
@@ -1506,19 +1681,19 @@ app.post('/api/download/playlist', async (req, res) => {
 });
 
 // ==========================================
-// DIAGNOSTIC DE LA BIBLIOTHÃˆQUE
+// DIAGNOSTIC DE LA BIBLIOTHÈQUE
 // ==========================================
 
 /**
- * Route: passer la bibliothÃ¨que en revue.
- * `?deep=1` ajoute l'analyse audio par ffmpeg â€” plusieurs minutes sur une
- * grosse bibliothÃ¨que, d'oÃ¹ le flux de progression.
+ * Route: passer la bibliothèque en revue.
+ * `?deep=1` ajoute l'analyse audio par ffmpeg — plusieurs minutes sur une
+ * grosse bibliothèque, d'où le flux de progression.
  */
 app.get('/api/library/health', async (req, res) => {
   const deep = req.query.deep === '1';
   const send = ouvrirFlux(res);
 
-  // Une progression par fichier saturerait le flux : on n'Ã©crit qu'un cran
+  // Une progression par fichier saturerait le flux : on n'écrit qu'un cran
   // sur vingt, plus le tout dernier.
   let dernierEnvoi = 0;
 
@@ -1562,25 +1737,25 @@ process.on('unhandledRejection', (reason) => {
 // Lancement
 app.listen(PORT, HOTE, async () => {
   console.log(`==================================================`);
-  console.log(`ðŸ¾ Serveur Songless lancÃ© avec succÃ¨s !`);
-  console.log(`ðŸ‘‰ http://localhost:${PORT}`);
-  console.log(`ðŸ“ Dossier musiques : ${MUSIC_DIR}`);
+  console.log(`🐾 Serveur Songless lancé avec succès !`);
+  console.log(`👉 http://localhost:${PORT}`);
+  console.log(`📁 Dossier musiques : ${MUSIC_DIR}`);
 
   if (!LAN) {
-    console.log(`ðŸ”’ Ã‰coute sur ${HOTE} â€” accessible depuis cette machine seulement`);
-    console.log(`ðŸ“± Pour jouer depuis le tÃ©lÃ©phone : node server.js --lan`);
+    console.log(`🔒 Écoute sur ${HOTE} — accessible depuis cette machine seulement`);
+    console.log(`📱 Pour jouer depuis le téléphone : node server.js --lan`);
     console.log(`==================================================`);
     return;
   }
 
   const adresse = urlLan();
   const adresseAppairee = urlLan(true);
-  console.log(`ðŸ“± Mode rÃ©seau local : ${adresse || 'aucune adresse IPv4 dÃ©tectÃ©e'}`);
-  console.log(`ðŸ”’ Les tÃ©lÃ©phones rÃ©pondent et peuvent offrir un morceau ; le PC reste l'hÃ´te`);
+  console.log(`📱 Mode réseau local : ${adresse || 'aucune adresse IPv4 détectée'}`);
+  console.log(`🔒 Les téléphones répondent et peuvent offrir un morceau ; le PC reste l'hôte`);
 
   if (adresse) {
     try {
-      // QR code dans le terminal : le tÃ©lÃ©phone le scanne directement Ã  l'Ã©cran.
+      // QR code dans le terminal : le téléphone le scanne directement à l'écran.
       const qr = await QRCode.toString(adresseAppairee, { type: 'terminal', small: true });
       console.log(qr);
     } catch (_) {
@@ -1592,7 +1767,7 @@ app.listen(PORT, HOTE, async () => {
 
 if (INTERNET) {
   app.listen(PUBLIC_PORT, '127.0.0.1', () => {
-    console.log(`ðŸ” EntrÃ©e Internet isolÃ©e : http://127.0.0.1:${PUBLIC_PORT}`);
+    console.log(`🔐 Entrée Internet isolée : http://127.0.0.1:${PUBLIC_PORT}`);
   });
 }
 

@@ -132,6 +132,10 @@ h2 { margin: 0 0 14px; font-size: 1.05rem; }
 #room-code { font-size: 1.45rem; letter-spacing: .13em; }
 .room-actions { display: flex; gap: 12px; align-items: center; }
 .text-btn { border: 0; color: var(--muted); background: transparent; text-decoration: underline; }
+.room-actions .text-btn {
+  min-height: 40px;
+  padding: 8px 2px;
+}
 .status-card { text-align: center; }
 #room-subtitle { color: var(--muted); }
 .audio-sync-status {
@@ -400,7 +404,10 @@ h2 { margin: 0 0 14px; font-size: 1.05rem; }
 .tutorial-rule strong { color: var(--text); }
 .divider { display: flex; align-items: center; gap: 10px; margin: 20px 0 12px; color: var(--muted); font-size: .8rem; }
 .divider::before, .divider::after { content: ""; flex: 1; height: 1px; background: var(--border); }
-.create-profile { display: grid; grid-template-columns: 64px 1fr; gap: 9px; }
+.create-profile {
+  display: block;
+}
+.create-profile .picker-label { margin-bottom: 8px; }
 .create-profile input {
   min-width: 0;
   padding: 12px;
@@ -1050,7 +1057,8 @@ h2 { margin: 0 0 14px; font-size: 1.05rem; }
   background: rgba(234, 179, 8, 0.15);
   border: 1px solid rgba(234, 179, 8, 0.4);
   color: #fde047;
-  padding: 4px 10px;
+  min-height: 40px;
+  padding: 8px 10px;
   border-radius: 999px;
   font-size: 0.78rem;
   font-weight: 700;
@@ -1060,6 +1068,12 @@ h2 { margin: 0 0 14px; font-size: 1.05rem; }
 .topbar-palmares-btn:active {
   transform: scale(0.95);
   background: rgba(234, 179, 8, 0.25);
+}
+
+:where(button, a, input, select, textarea, [tabindex]):focus-visible {
+  outline: 3px solid #c084fc !important;
+  outline-offset: 3px;
+  box-shadow: 0 0 0 2px #111118;
 }
 
 /* Chat Typing Indicator */

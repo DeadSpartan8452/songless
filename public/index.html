@@ -372,6 +372,11 @@
               </div>
               <button class="ghost-btn accent" id="party-copy-lan">Copier le lien même wifi</button>
               <button class="ghost-btn" id="party-copy-internet">Lien Internet non activé</button>
+              <div class="party-device-access">
+                <button class="ghost-btn" id="party-create-tv">📺 Créer le lien TV</button>
+                <button class="ghost-btn" id="party-create-remote">🎛️ Créer la télécommande admin</button>
+                <small>Liens temporaires de 3 h, remplacés à chaque nouvelle création.</small>
+              </div>
               <a class="party-join-link hidden" id="party-internet-link"
                  target="_blank" rel="noopener noreferrer"></a>
             </div>
@@ -482,7 +487,7 @@
               <h3><i data-lucide="swords"></i> Duel Tir à la Corde (Sur PC)</h3>
               <p>Affronte un ami autour de l’écran ou défie un Bot avec la jauge de tir à la corde interactive.</p>
               <div class="mode-row">
-                <select id="solo-duel-opponent">
+                <select id="solo-duel-opponent" aria-label="Adversaire du duel sur PC">
                   <option value="bot">Face au Bot Solo</option>
                   <option value="friend">2 Joueurs (Même écran)</option>
                 </select>
@@ -550,13 +555,13 @@
               <p>Chaque téléphone choisit ou crée un profil partagé, puis rejoint la même partie.</p>
               <div class="party-setup" id="party-setup">
                 <div class="mode-row">
-                  <select id="party-mode">
+                  <select id="party-mode" aria-label="Mode de la soirée multijoueur">
                     <option value="classic">🎯 Réponses simultanées</option>
                     <option value="buzzer">🔔 Mode Buzzer</option>
                     <option value="royale">👑 Battle Royale (3 Vies)</option>
                     <option value="duel">🥊 Duel (Tir à la Corde)</option>
                   </select>
-                  <select id="party-rounds">
+                  <select id="party-rounds" aria-label="Nombre de manches de la soirée">
                     <option value="2">2 manches (démo rapide)</option>
                     <option value="5">5 manches</option>
                     <option value="10" selected>10 manches</option>

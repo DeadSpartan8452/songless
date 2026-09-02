@@ -1,3 +1,3 @@
 @echo off
-REM Ancien nom conserve : tout passe par l'unique lanceur principal.
-call "%~dp0Songless.bat"
+REM Raccourci explicite vers le mode reseau maison du lanceur principal.
+call "%~dp0Songless.bat" --lan

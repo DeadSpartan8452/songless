@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Songless — Télécommande</title>
+  <link rel="icon" href="favicon.svg">
+  <link rel="stylesheet" href="remote.css">
+</head>
+<body>
+  <main>
+    <header>
+      <p class="kicker">RÉGIE DE POCHE</p>
+      <div class="code">SONGLESS <strong id="party-code">—</strong></div>
+      <p id="connection">Connexion…</p>
+    </header>
+    <section class="now">
+      <span id="round-label">SALON</span>
+      <h1 id="state-title">En attente</h1>
+      <p id="state-detail">La télécommande se synchronise avec le PC.</p>
+    </section>
+    <section class="controls" aria-label="Commandes de partie">
+      <button class="primary" id="next-btn">Lancer la manche</button>
+      <button id="reveal-btn">Révéler la réponse</button>
+      <button id="lobby-btn">Retour au salon</button>
+      <button class="danger" id="finish-btn">Terminer la partie</button>
+    </section>
+    <section class="ranking">
+      <h2>En tête</h2>
+      <ol id="players"></ol>
+    </section>
+    <p class="notice">Accès temporaire et limité. La bibliothèque reste uniquement sur le PC hôte.</p>
+  </main>
+  <script src="remote.js"></script>
+</body>
+</html>

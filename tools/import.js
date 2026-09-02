@@ -12,7 +12,7 @@
  * C'est la voie à prendre pour une grosse archive : rien ne transite par le
  * navigateur, rien n'est recopié dans .cache, et aucun plafond de taille ne
  * s'applique. Le traitement est le même que par le site : titre rendu lisible,
- * genre, alias, et doublons écartés.
+ * genre, alias, et rapprochements de doublons signalés sans suppression.
  *
  * Options :
  *   --deplacer       vide le dossier source au lieu de copier (sans effet sur un .zip)
@@ -66,7 +66,7 @@ const plafondReseau = options.includes('--sans-plafond') ? Infinity : 250;
   const secondes = Math.round((Date.now() - debut) / 1000);
   console.log('\n─────────────────────────────');
   console.log(`${rapport.ajoutes.length} ajouté(s)`);
-  console.log(`${rapport.doublons.length} doublon(s) écarté(s)`);
+  console.log(`${rapport.doublons.length} rapprochement(s) conservé(s)`);
   if (rapport.erreurs.length) console.log(`${rapport.erreurs.length} en échec`);
   if (rapport.aRevoir.length) {
     console.log(`${rapport.aRevoir.length} titre(s) en alphabet non latin à renommer :`

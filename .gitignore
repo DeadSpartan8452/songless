@@ -4,6 +4,7 @@ musiques/
 metadata.json
 metadata-backups/
 songless-data.json
+.songless-tailscale-account
 *.log
 .DS_Store
 Thumbs.db

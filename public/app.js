@@ -2090,7 +2090,8 @@ function renderLibraryList() {
     item.setAttribute('data-review', track.needsReview ? '1' : '0');
     item.innerHTML = `
       <div class="preview-progress" aria-hidden="true"><span></span></div>
-      <input type="checkbox" class="track-select-checkbox" data-id="${track.id}">
+      <input type="checkbox" class="track-select-checkbox" data-id="${track.id}"
+             aria-label="Sélectionner ${escapeHtml(track.title)}">
       <div class="track-item-cover">${coverHtml}</div>
       <div class="track-item-details">
         <div class="track-item-title">${escapeHtml(track.title)} ${review}</div>
@@ -2415,13 +2416,15 @@ function handleFilesUpload(files) {
   xhr.send(formData);
 }
 
-/** Rend compte de ce qui a été ajouté, écarté ou refusé lors d'un import. */
+/** Rend compte de ce qui a été ajouté, rapproché ou refusé lors d'un import. */
 function afficherRapportImport(rapport) {
   const zone = document.getElementById('import-report');
   if (!zone) return;
 
   const ajoutes = rapport.ajoutes || [];
   const doublons = rapport.doublons || [];
+  const rapproches = doublons.filter(item => item && item.conserve);
+  const ecartes = doublons.filter(item => !item || !item.conserve);
   const erreurs = rapport.erreurs || [];
   const aRevoir = rapport.aRevoir || [];
 
@@ -2430,7 +2433,8 @@ function afficherRapportImport(rapport) {
     lignes.push(`<div class="report-line ok">🛡 ${escapeHtml(rapport.antivirus)}</div>`);
   }
   lignes.push(`<div class="report-head">${ajoutes.length} ajouté${ajoutes.length > 1 ? 's' : ''}`
-    + (doublons.length ? ` · ${doublons.length} doublon${doublons.length > 1 ? 's' : ''} écarté${doublons.length > 1 ? 's' : ''}` : '')
+    + (rapproches.length ? ` · ${rapproches.length} rapprochement${rapproches.length > 1 ? 's' : ''} conservé${rapproches.length > 1 ? 's' : ''}` : '')
+    + (ecartes.length ? ` · ${ecartes.length} déjà présent${ecartes.length > 1 ? 's' : ''}` : '')
     + (erreurs.length ? ` · ${erreurs.length} en échec` : '')
     + '</div>');
 
@@ -2442,7 +2446,7 @@ function afficherRapportImport(rapport) {
   if (ajoutes.length > 20) lignes.push(`<div class="report-line report-dim">… et ${ajoutes.length - 20} autres</div>`);
 
   for (const d of doublons.slice(0, 10)) {
-    lignes.push(`<div class="report-line dup">= déjà présent : ${escapeHtml(d.doublonDe)}</div>`);
+    lignes.push(`<div class="report-line dup">${d.conserve ? '≈ version conservée, proche de' : '= déjà présent'} : ${escapeHtml(d.doublonDe)}</div>`);
   }
   if (doublons.length > 10) lignes.push(`<div class="report-line report-dim">… et ${doublons.length - 10} autres doublons</div>`);
 
@@ -2461,7 +2465,7 @@ function afficherRapportImport(rapport) {
   zone.innerHTML = lignes.join('');
   zone.classList.remove('hidden');
 
-  if (ajoutes.length === 0 && doublons.length > 0) {
+  if (ajoutes.length === 0 && ecartes.length > 0) {
     showToast('Tout était déjà dans la bibliothèque.');
   } else if (ajoutes.length) {
     showToast(`${ajoutes.length} morceau${ajoutes.length > 1 ? 'x' : ''} ajouté${ajoutes.length > 1 ? 's' : ''}.`, 'ok');

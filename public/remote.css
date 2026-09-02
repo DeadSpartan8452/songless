@@ -1,0 +1,31 @@
+:root { --bg:#10110f; --panel:#1b1d19; --cream:#f4ecd8; --lime:#d9ff43; --red:#ff593f; --line:#393c34; }
+* { box-sizing: border-box; }
+body { margin:0; min-height:100vh; color:var(--cream); background:linear-gradient(145deg,#181a16,var(--bg) 45%); font-family:Bahnschrift,"Franklin Gothic Medium",sans-serif; }
+main { width:min(100%,560px); margin:auto; min-height:100vh; padding:24px 18px 36px; }
+header { border-bottom:1px solid var(--line); padding-bottom:18px; }
+.kicker { margin:0 0 8px; color:var(--red); font-weight:900; letter-spacing:.22em; font-size:.72rem; }
+.code { display:flex; justify-content:space-between; align-items:end; font:900 2rem/1 Impact,Haettenschweiler,sans-serif; }
+.code strong { color:var(--lime); letter-spacing:.14em; font-family:Georgia,serif; }
+#connection { color:#aaa; margin:9px 0 0; font-size:.85rem; }
+.now { padding:28px 0 22px; }
+.now span { display:inline-block; border:1px solid var(--line); border-radius:99px; padding:7px 12px; font-size:.75rem; font-weight:900; letter-spacing:.12em; }
+h1 { font:900 clamp(2.6rem,12vw,4.7rem)/.9 Impact,Haettenschweiler,sans-serif; text-transform:uppercase; margin:16px 0 8px; }
+.now p { color:#aaa; margin:0; }
+.controls { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+button { min-height:68px; border:1px solid var(--line); border-radius:4px; color:var(--cream); background:var(--panel); font:900 1rem/1.05 Bahnschrift,sans-serif; padding:12px; touch-action:manipulation; }
+button:active { transform:translateY(2px); }
+button:disabled { opacity:.32; }
+button.primary { grid-column:1/-1; min-height:94px; color:var(--bg); background:var(--lime); border-color:var(--lime); font-size:1.35rem; }
+button.danger { color:#ff9c8d; border-color:#ff593f66; }
+.ranking { border-top:1px solid var(--line); margin-top:24px; padding-top:16px; }
+h2 { font:italic 700 1.1rem Georgia,serif; color:#aaa; }
+ol { list-style:none; padding:0; margin:0; }
+li { display:flex; justify-content:space-between; padding:11px 2px; border-bottom:1px solid #ffffff12; font-weight:800; }
+.notice { color:#777; font-size:.78rem; line-height:1.45; margin-top:24px; }
+@media (prefers-reduced-motion:reduce) { * { transition:none!important; } }
+
+:where(button, a, input, select, textarea, [tabindex]):focus-visible {
+  outline: 3px solid #d6ff3f !important;
+  outline-offset: 3px;
+  box-shadow: 0 0 0 2px #090c0a;
+}

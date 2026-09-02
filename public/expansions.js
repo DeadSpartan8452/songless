@@ -628,6 +628,7 @@
             : Math.min(Number(roundChoice) || 10, trackIds.length),
           seed: currentSeed,
           settings,
+          trackIds,
         }),
       });
       party = {
@@ -730,6 +731,7 @@
           totalRounds: Math.min(2, trackIds.length),
           seed: currentSeed,
           settings,
+          trackIds,
           demo: true,
         }),
       });
@@ -2020,6 +2022,48 @@
     }
   }
 
+  async function createPartyAccess(role) {
+    if (!party || !party.hostToken || !partyState || !partyState.isHost) return;
+    const accessGrants = party.accessGrants || {};
+    const previous = accessGrants[role];
+    if (previous && previous.id) {
+      try {
+        await window.songlessShared.api(
+          `/api/party/${encodeURIComponent(party.code)}/access/${encodeURIComponent(previous.id)}`,
+          {
+            method: 'DELETE',
+            body: JSON.stringify({ hostToken: party.hostToken }),
+          }
+        );
+      } catch (_) {}
+    }
+    const result = await window.songlessShared.api(
+      `/api/party/${encodeURIComponent(party.code)}/access`,
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          hostToken: party.hostToken,
+          role,
+          ttlMinutes: 180,
+        }),
+      }
+    );
+    const url = result.urls && (result.urls.internet || result.urls.lan);
+    if (!url) throw new Error('Aucune adresse réseau disponible pour cet appareil.');
+    party.accessGrants = {
+      ...accessGrants,
+      [role]: { id: result.id, expiresAt: result.expiresAt, url },
+    };
+    saveParty();
+    const label = role === 'tv' ? 'Lien TV' : 'Lien de télécommande admin';
+    try {
+      await navigator.clipboard.writeText(url);
+      showToast(`${label} copié. Il reste valable 3 heures.`, 'ok');
+    } catch (_) {
+      prompt(`${label} — copie-le sur l’appareil concerné :`, url);
+    }
+  }
+
   function leaveParty() {
     clearDemoTimers();
     demoActive = false;
@@ -2124,6 +2168,16 @@
     byId('party-create-btn').addEventListener('click', createParty);
     if (byId('party-demo-btn')) byId('party-demo-btn').addEventListener('click', startDemoSimulation);
     byId('party-join-btn').addEventListener('click', joinParty);
+    if (byId('party-create-tv')) {
+      byId('party-create-tv').addEventListener('click', () => {
+        createPartyAccess('tv').catch(showPartyError);
+      });
+    }
+    if (byId('party-create-remote')) {
+      byId('party-create-remote').addEventListener('click', () => {
+        createPartyAccess('remote_admin').catch(showPartyError);
+      });
+    }
     byId('party-code-input').addEventListener('input', event => {
       event.target.value = event.target.value.toUpperCase().replace(/[^A-Z2-9]/g, '').slice(0, 5);
     });

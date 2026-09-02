@@ -6,7 +6,14 @@
   "scripts": {
     "start": "node server.js",
     "lan": "node server.js --lan",
-    "dev": "node --watch server.js"
+    "dev": "node --watch server.js",
+    "test": "npm run test:party && npm run test:store && npm run test:player-http && npm run test:dupes && npm run test:ui && npm run test:http",
+    "test:party": "node scripts/audit-party.test.js",
+    "test:store": "node scripts/audit-player-store.test.js",
+    "test:player-http": "node scripts/audit-player-http.test.js",
+    "test:dupes": "node scripts/audit-dupes.test.js",
+    "test:ui": "node scripts/audit-static-ui.test.js",
+    "test:http": "node scripts/audit-http.test.js"
   },
   "dependencies": {
     "adm-zip": "^0.6.0",

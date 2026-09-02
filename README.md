@@ -95,6 +95,14 @@ Le lancement se fait par **`Songless.bat`** après connexion gratuite
 à Tailscale. Les invités ouvrent le lien dans leur navigateur sans compte et
 sans installer Tailscale.
 
+Songless utilise un compte Tailscale distinct de tout tailnet professionnel.
+Le compte attendu est conservé uniquement dans le fichier local ignoré par Git
+`.songless-tailscale-account`. Le lanceur vérifie l'identité active avant de
+démarrer le serveur ou Funnel : si le compte Manapattes est actif, il s'arrête
+sans modifier le tunnel. La bascule de compte reste toujours manuelle depuis
+Tailscale, afin qu'un lancement de Songless ne puisse jamais déconnecter un
+accès professionnel en cours.
+
 Le lanceur est protégé par une instance unique : un second double-clic, même
 sur les anciens lanceurs téléphone ou Internet, n'ouvre ni onglet, ni console,
 ni tunnel supplémentaire.
@@ -112,13 +120,13 @@ ajouté au jeu avec son genre. La progression s'affiche en direct.
 Onglet **Bibliothèque** → zone de dépôt. Tu peux y glisser :
 
 - un fichier audio isolé ;
-- une **archive `.zip`** entière : elle est décompressée, chaque morceau est
-  trié (titre rendu lisible, genre, alias) et **les doublons sont supprimés
-  automatiquement** — qu'ils fassent doublon avec ta bibliothèque ou entre eux
-  à l'intérieur de l'archive.
+- une **archive `.zip`** entière : elle est décompressée et chaque morceau est
+  trié (titre rendu lisible, genre, alias). Les rapprochements probables sont
+  signalés mais conservés ; parodies, remix, reprises, sped-up, slowed, live,
+  acoustiques, instrumentales et remasters restent des morceaux distincts.
 
-Un rapport s'affiche à la fin : ce qui a été ajouté, ce qui a été écarté comme
-doublon, et ce qui a échoué. Sur une grosse archive, seuls les 40 premiers
+Un rapport s'affiche à la fin : ce qui a été ajouté, les rapprochements repérés
+et ce qui a échoué. Sur une grosse archive, seuls les 40 premiers
 genres inconnus sont cherchés en ligne (MusicBrainz impose une requête par
 seconde) ; `node tools/enrich.js` complète le reste ensuite.
 

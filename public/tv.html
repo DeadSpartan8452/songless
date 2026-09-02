@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Songless — Écran TV</title>
+  <link rel="icon" href="favicon.svg">
+  <link rel="stylesheet" href="tv.css">
+</head>
+<body>
+  <div class="scanlines" aria-hidden="true"></div>
+  <main class="stage">
+    <header class="masthead">
+      <div class="brand"><span class="brand-dot"></span>SONGLESS <small>LIVE</small></div>
+      <div class="round" id="round-label">CONNEXION…</div>
+      <div class="code">CODE <strong id="party-code">—</strong></div>
+    </header>
+
+    <section class="hero" id="hero">
+      <p class="eyebrow" id="eyebrow">ÉCRAN SPECTATEUR</p>
+      <h1 id="hero-title">Préparez vos oreilles.</h1>
+      <p class="subtitle" id="hero-subtitle">La régie prépare la soirée.</p>
+      <div class="pulse" id="pulse" aria-hidden="true">
+        <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+      </div>
+    </section>
+
+    <section class="scoreboard" aria-label="Classement">
+      <div class="scoreboard-head">
+        <span>CLASSEMENT EN DIRECT</span>
+        <span id="player-count">0 JOUEUR</span>
+      </div>
+      <ol id="players"></ol>
+    </section>
+
+    <div class="status" id="status" role="status">Connexion à la régie…</div>
+  </main>
+  <script src="tv.js"></script>
+</body>
+</html>
