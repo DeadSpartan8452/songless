@@ -7,6 +7,8 @@ songless-data.json
 .songless-tailscale-account
 .songless-instance-key
 dist/
+mobile/android-host/nodejs-assets/nodejs-project/
+mobile/android-host/android/app/debug.keystore
 *.log
 .DS_Store
 Thumbs.db

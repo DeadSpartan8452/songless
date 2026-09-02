@@ -12,6 +12,10 @@ test('les accents, espaces et signes ne changent pas une réponse', () => {
   assert.strictEqual(answers.cleanAnswer('  Éléonore — été ! '), 'eleonoreete');
 });
 
+test('les écritures non latines restent utilisables sans expressions Unicode natives', () => {
+  assert.strictEqual(answers.cleanAnswer('宇多田 ヒカル！'), '宇多田ヒカル');
+});
+
 test('un titre original ou un alias reste accepté', () => {
   const spec = answers.cleanAnswerSpec({
     mode: 'titre',

@@ -1,6 +1,6 @@
 const express = require('express');
 const multer = require('multer');
-const musicMetadata = require('music-metadata');
+const musicMetadata = require('./lib/music-metadata');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');

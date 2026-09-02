@@ -26,7 +26,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const musicMetadata = require('music-metadata');
+const musicMetadata = require('../lib/music-metadata');
 
 const T = require('../lib/titles');
 const store = require('../lib/store');
