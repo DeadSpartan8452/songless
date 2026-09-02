@@ -15,6 +15,7 @@ const health = require('./lib/health');
 const playerStore = require('./lib/player-store');
 const partyStore = require('./lib/party');
 const partyResults = require('./lib/party-results');
+const partyRounds = require('./lib/party-rounds');
 const modeRegistry = require('./lib/mode-registry');
 const antivirus = require('./lib/antivirus');
 
@@ -550,50 +551,17 @@ async function partyTrackData(trackId) {
   };
 }
 
-function serverRoundOffset(party, track) {
-  const duration = Math.max(0, Number(track.duration) || 0);
-  if (party.settings.start === 'debut' || duration <= 20) return 0;
-  if (party.settings.start === 'refrain') return Math.max(0, Math.min(duration - 15, duration * 0.45));
-  const digest = crypto.createHash('sha256')
-    .update(`${party.seed}:${party.round + 1}:${track.id}`)
-    .digest();
-  const maximum = Math.max(0, Math.floor(duration - 20));
-  return maximum ? digest.readUInt32BE(0) % (maximum + 1) : 0;
-}
-
 async function startNextPartyRound(party) {
-  if (!party.trackIds.length) throw new Error('La playlist serveur de cette partie est vide.');
-  const finalDuelActive = Boolean(party.finalDuel && party.finalDuel.active);
-  if (!party.infinite && !finalDuelActive && party.round >= party.totalRounds) {
-    throw new Error('Toutes les manches prévues ont déjà été jouées.');
-  }
-  const index = party.infinite || finalDuelActive
-    ? party.round % party.trackIds.length : party.round;
-  const trackId = party.trackIds[index];
-  const data = await partyTrackData(trackId);
-  data.answer.mode = party.settings.answer;
-  partyStore.command(party, party.hostToken, 'start-round', {
-    round: party.round + 1,
-    trackId,
-    playback: { offset: serverRoundOffset(party, data.track) },
-    answer: data.answer,
+  return partyRounds.startNextPartyRound(party, {
+    loadTrack: partyTrackData,
+    command: partyStore.command,
   });
 }
 
 async function revealCurrentPartyRound(party, requested = {}) {
-  if (!party.currentTrackId) throw new Error('Aucune manche à révéler.');
-  const data = await partyTrackData(party.currentTrackId);
-  partyStore.command(party, party.hostToken, 'reveal', {
-    track: {
-      title: data.track.title,
-      originalTitle: data.track.originalTitle,
-      artist: data.track.artist,
-      genre: data.track.genre,
-    },
-    highlightOffset: Number(party.playback && party.playback.offset) || 0,
-    highlightDuration: 5,
-    autoNext: Boolean(requested.autoNext),
-    reason: ['correct', 'skip'].includes(requested.reason) ? requested.reason : 'manual',
+  return partyRounds.revealCurrentPartyRound(party, requested, {
+    loadTrack: partyTrackData,
+    command: partyStore.command,
   });
 }
 
