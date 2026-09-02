@@ -4948,11 +4948,63 @@ const LIBELLES_PROBLEMES = {
 };
 
 let diagnosticEnCours = false;
+let preflightEnCours = false;
 
 function initHealthEvents() {
   const btn = document.getElementById('health-btn');
-  if (!btn) return;
-  btn.addEventListener('click', lancerDiagnostic);
+  if (btn) btn.addEventListener('click', lancerDiagnostic);
+  const preflightBtn = document.getElementById('preflight-btn');
+  if (preflightBtn) preflightBtn.addEventListener('click', lancerPreflight);
+}
+
+async function lancerPreflight() {
+  if (preflightEnCours) return;
+  const btn = document.getElementById('preflight-btn');
+  const badge = document.getElementById('preflight-badge');
+  const zone = document.getElementById('preflight-report');
+  preflightEnCours = true;
+  btn.disabled = true;
+  badge.className = 'preflight-badge is-running';
+  badge.innerText = 'Vérification…';
+  zone.classList.remove('hidden');
+  zone.innerHTML = '<p class="empty-note">Contrôle de chaque point et du salon temporaire…</p>';
+  try {
+    const response = await fetch('/api/preflight', { method: 'POST' });
+    const report = await response.json();
+    if (!response.ok) throw new Error(report.error || 'Diagnostic impossible.');
+    afficherPreflight(report);
+  } catch (error) {
+    badge.className = 'preflight-badge is-blocking';
+    badge.innerText = 'Bloquant';
+    zone.innerHTML = `<p class="preflight-error">${escapeHtml(error.message)}</p>`;
+  } finally {
+    preflightEnCours = false;
+    btn.disabled = false;
+  }
+}
+
+function afficherPreflight(report) {
+  const labels = { green: 'Prêt', check: 'À vérifier', blocking: 'Bloquant' };
+  const icons = { green: '✓', check: '!', blocking: '×' };
+  const badge = document.getElementById('preflight-badge');
+  badge.className = `preflight-badge is-${report.status}`;
+  badge.innerText = labels[report.status] || 'Terminé';
+  const checks = Array.isArray(report.checks) ? report.checks : [];
+  const rows = checks.map(check => `
+    <div class="preflight-row is-${escapeHtml(check.status)}">
+      <span class="preflight-icon" aria-hidden="true">${icons[check.status] || '?'}</span>
+      <div>
+        <strong>${escapeHtml(check.label)}</strong>
+        <p>${escapeHtml(check.detail)}</p>
+        ${check.action ? `<small>${escapeHtml(check.action)}</small>` : ''}
+      </div>
+    </div>`).join('');
+  document.getElementById('preflight-report').innerHTML = `
+    <div class="preflight-summary">
+      <strong>${report.summary.green} prêts</strong>
+      <span>${report.summary.check} à vérifier</span>
+      <span>${report.summary.blocking} bloquants</span>
+    </div>${rows}`;
 }
 
 async function lancerDiagnostic() {

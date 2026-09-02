@@ -24,6 +24,7 @@ const modeRegistry = require('./lib/mode-registry');
 const antivirus = require('./lib/antivirus');
 const blacklist = require('./lib/blacklist');
 const duplicateComparison = require('./lib/duplicate-comparison');
+const preflight = require('./lib/preflight');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -1505,6 +1506,30 @@ function ouvrirFlux(res) {
 // Route: État des outils externes (yt-dlp / ffmpeg)
 app.get('/api/download/status', (req, res) => {
   res.json(downloader.checkTools());
+});
+
+app.post('/api/preflight', async (req, res) => {
+  if (!estLocal(req)) {
+    return res.status(403).json({ error: 'Diagnostic réservé à l’ordinateur hôte.' });
+  }
+  try {
+    const tracks = store.load(true).tracks;
+    const dependenciesOk = Object.keys(require('./package.json').dependencies || {})
+      .every(name => {
+        try { require.resolve(name); return true; } catch (_) { return false; }
+      });
+    const report = await preflight.run({
+      root: __dirname, musicDir: MUSIC_DIR, tracks,
+      port: Number(PORT), publicPort: PUBLIC_PORT,
+      internetMode: INTERNET, publicUrl: PUBLIC_URL,
+      dependenciesOk, defender: antivirus.findDefender(),
+      tools: downloader.checkTools(), partyStore, qrCode: QRCode,
+    });
+    res.set('Cache-Control', 'no-store');
+    res.json(report);
+  } catch (error) {
+    res.status(500).json({ error: `Diagnostic impossible : ${error.message}` });
+  }
 });
 
 // Une compilation proposée depuis un téléphone reste raisonnable jusqu'à

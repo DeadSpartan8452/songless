@@ -52,6 +52,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "<ch
 | Télécommande Kahoot sur téléphone | `Songless (telephone).bat` + bouton 📱 |
 | Comparaison des doublons | onglet **Bibliothèque** → « Comparer les doublons » |
 | Diagnostic de la bibliothèque | onglet **Bibliothèque** → « État de la bibliothèque » |
+| Contrôle avant soirée | onglet **Bibliothèque** → « Diagnostic avant soirée » |
 | Exclusions temporaires par morceau, artiste, genre ou période | onglet **Bibliothèque** → « Blacklist temporaire » |
 
 ---
@@ -518,6 +519,14 @@ fonctionneront pas.
 ---
 
 ## 7. État de la bibliothèque
+
+Avant d’inviter les joueurs, clique sur **Diagnostic avant soirée → Tout
+vérifier**. Songless contrôle en une fois Node.js, ses dépendances, les ports,
+l’accès aux morceaux, les métadonnées, Microsoft Defender, ffmpeg, yt-dlp et le
+réseau utilisé. Il crée aussi un salon temporaire pour éprouver les accès hôte,
+TV et télécommande ainsi que le QR, puis le supprime automatiquement. Chaque
+ligne dit simplement **Prêt**, **À vérifier** ou **Bloquant**, avec l’action à
+faire si nécessaire.
 
 Onglet **Bibliothèque** → « État de la bibliothèque » → **Analyser**. Une
 bibliothèque de 1 700 morceaux accumule en silence des fiches bancales ; ce
