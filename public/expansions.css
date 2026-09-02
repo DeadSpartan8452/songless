@@ -319,6 +319,20 @@
 .party-intruder-verdict { color: #86efac; font-size: .74rem; font-weight: 900; letter-spacing: .1em; }
 .party-intruder-explanation, .party-intruder-final { display: grid; gap: 5px; padding: 13px; border-radius: 12px; color: #fef3c7; background: rgba(120,53,15,.28); border: 1px solid rgba(245,158,11,.3); }
 .party-intruder-explanation span, .party-intruder-final span { overflow-wrap: anywhere; line-height: 1.4; }
+.party-auction-panel { display: grid; gap: 12px; margin: 8px 0; }
+.party-auction-heading { display: flex; justify-content: space-between; gap: 12px; color: #67e8f9; font-weight: 850; }
+.party-auction-panel p { margin: 0; font-weight: 800; }
+.party-auction-options { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 9px; }
+.party-auction-options button { min-width: 0; padding: 12px 6px; border: 1px solid rgba(103,232,249,.24); border-radius: 11px; color: #f7edf7; background: rgba(8,145,178,.09); display: grid; gap: 4px; cursor: pointer; }
+.party-auction-options button:not(:disabled):hover { transform: translateY(-2px); border-color: #22d3ee; background: rgba(8,145,178,.2); }
+.party-auction-options button:disabled { opacity: .55; cursor: default; }
+.party-auction-options strong { font-size: 1rem; }
+.party-auction-options small { color: #b9adbf; font-size: .74rem; overflow-wrap: anywhere; }
+.party-auction-status, .party-auction-turn, .party-auction-result { padding: 13px; border-radius: 12px; background: rgba(8,145,178,.1); border: 1px solid rgba(103,232,249,.2); line-height: 1.4; }
+.party-auction-turn { display: grid; gap: 4px; }
+.party-auction-turn strong { color: #a5f3fc; }
+.party-auction-tie { color: #b9adbf; overflow-wrap: anywhere; }
+.party-auction-result { color: #a5f3fc; font-weight: 800; }
 .party-search-box { position: relative; width: 100%; }
 .party-search-icon {
   position: absolute;

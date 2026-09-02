@@ -52,6 +52,26 @@
     }
   }
 
+  function renderAuction(state) {
+    const board = byId('auction-board');
+    board.replaceChildren();
+    const auction = state.mode === 'auction' && state.auction;
+    if (!auction) return;
+    for (const bid of auction.bids || []) {
+      const player = (state.players || []).find(item => item.profileId === bid.profileId);
+      const card = document.createElement('article');
+      card.className = `tv-auction-player${auction.activeProfileId === bid.profileId ? ' active' : ''}`;
+      const name = document.createElement('strong');
+      const status = document.createElement('small');
+      name.textContent = `${player && player.emoji || '🎧'} ${player && player.nom || 'Joueur'}`;
+      status.textContent = auction.phase === 'bidding'
+        ? bid.submitted ? '🔒 Enchère verrouillée' : 'Réflexion en cours…'
+        : bid.seconds ? `${bid.seconds.toLocaleString('fr-FR')} seconde${bid.seconds > 1 ? 's' : ''}` : 'Sans enchère';
+      card.append(name, status);
+      board.append(card);
+    }
+  }
+
   function render(state) {
     const finalDuel = state.finalDuel;
     const finalists = finalDuel ? (finalDuel.contenders || []).map(entry => ({
@@ -69,9 +89,10 @@
         ? 'SOIRÉE TERMINÉE'
         : `MANCHE ${state.round}${state.infinite ? '' : ` / ${state.totalRounds}`}`);
     const hero = byId('hero');
-    hero.className = `hero ${state.status}${state.mode === 'intruder' ? ' intruder' : ''}`;
+    hero.className = `hero ${state.status}${state.mode === 'intruder' ? ' intruder' : ''}${state.mode === 'auction' ? ' auction' : ''}`;
     renderIntruder(state.mode === 'intruder' ? state.intruderChallenge : null,
       state.status !== 'round');
+    renderAuction(state);
     if (state.status === 'round') {
       setText('eyebrow', finalDuel && finalDuel.active ? '⚔️ DUEL FINAL' : 'À VOUS DE JOUER');
       setText('hero-title', finalDuel && finalDuel.active
@@ -80,12 +101,18 @@
           : state.mode === 'confidence' ? 'À quel point êtes-vous sûrs ?'
             : state.mode === 'cooperation' ? 'Une équipe. Un objectif.'
               : state.mode === 'intruder' ? 'Quel est l’intrus ?'
+                : state.mode === 'auction' && state.auction && state.auction.phase === 'bidding' ? 'À vos enchères.'
+                  : state.mode === 'auction' ? 'L’enchère gagnante joue.'
               : 'Qui reconnaît ce morceau ?');
       const coop = state.cooperation;
       setText('hero-subtitle', finalDuel && finalDuel.active
         ? `${finalScore} · premier à ${finalDuel.targetWins}. Une égalité ne rapporte rien.`
         : state.mode === 'intruder' && state.intruderChallenge
           ? `${{ easy: 'Facile', medium: 'Intermédiaire', hard: 'Difficile' }[state.intruderChallenge.difficulty] || 'Progressif'} · observez les quatre propositions, sans donner la réponse.`
+        : state.mode === 'auction' && state.auction
+          ? state.auction.phase === 'bidding'
+            ? `${Math.max(0, Math.ceil((Number(state.auction.deadlineAt) - Number(state.serverNow)) / 1000))} secondes · les durées restent secrètes jusqu’à la clôture.`
+            : `${Number(state.auction.activeSeconds).toLocaleString('fr-FR')} s · ${state.auction.tie ? state.auction.tieBreak : 'une erreur transmet la main.'}`
         : coop
           ? `${Number(coop.sharedPoints) || 0} / ${Number(coop.targetPoints) || 0} points · série ${Number(coop.streak) || 0}/${Number(coop.targetStreak) || 0} · ${'♥'.repeat(Number(coop.lives) || 0)}${'♡'.repeat(Math.max(0, 3 - (Number(coop.lives) || 0)))}`
         : 'Titre, artiste ou année : la régie attend vos réponses.');

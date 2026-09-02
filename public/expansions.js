@@ -1735,7 +1735,7 @@
       `;
     }
 
-    if (votes.skip) {
+    if (votes.skip && partyState.mode !== 'auction') {
       buttonsHtml += `
         <button class="party-vote${votes.skip.voted ? ' voted' : ''}"
                 id="party-vote-skip"${votes.skip.passed ? ' disabled' : ''}>
@@ -1828,6 +1828,42 @@
     </section>`;
   }
 
+  function partyAuctionHtml(me) {
+    const auctionState = partyState && partyState.auction;
+    if (!auctionState) return '';
+    const ownBid = (auctionState.bids || []).find(bid => (
+      me && bid.profileId === me.profileId));
+    if (auctionState.phase === 'bidding') {
+      return `<section class="party-auction-panel" aria-labelledby="party-auction-prompt">
+        <div class="party-auction-heading"><span>🔨 Enchères scellées</span><strong><span id="party-auction-timer">—</span> s</strong></div>
+        <p id="party-auction-prompt">De combien de secondes as-tu besoin ?</p>
+        <div class="party-auction-options">
+          ${(auctionState.options || []).map(option => `<button type="button"
+            data-party-auction="${Number(option.seconds)}" ${ownBid && ownBid.submitted ? 'disabled' : ''}>
+            <strong>${Number(option.seconds).toLocaleString('fr-FR')} s</strong>
+            <small>jusqu’à ${Number(option.points) || 0} pt</small>
+          </button>`).join('')}
+        </div>
+        <div class="party-auction-status">${ownBid && ownBid.submitted
+          ? `🔒 Ton enchère de <strong>${Number(ownBid.seconds).toLocaleString('fr-FR')} s</strong> est verrouillée.`
+          : 'Les durées adverses restent cachées jusqu’à la clôture.'}</div>
+      </section>`;
+    }
+    if (auctionState.phase === 'answering') {
+      const active = partyState.players.find(player => (
+        player.profileId === auctionState.activeProfileId));
+      const tie = auctionState.tie
+        ? `<small class="party-auction-tie">Égalité départagée : ${escapeHtml(auctionState.tieBreak)}</small>` : '';
+      if (me && me.profileId === auctionState.activeProfileId) {
+        return `<section class="party-auction-panel active"><div class="party-auction-turn"><strong>🔨 Ton enchère gagne : ${Number(auctionState.activeSeconds).toLocaleString('fr-FR')} s</strong><span>À toi de répondre.</span>${tie}</div>${partyAnswerBox()}</section>`;
+      }
+      return `<section class="party-auction-panel"><div class="party-auction-turn"><strong>${escapeHtml(active ? active.nom : 'Un joueur')} joue ${Number(auctionState.activeSeconds).toLocaleString('fr-FR')} s</strong><span>Une erreur transmettra la main à l’enchère suivante.</span>${tie}</div></section>`;
+    }
+    return `<div class="party-auction-result">${auctionState.result === 'solved'
+      ? `✅ Enchère remportée · +${Number(auctionState.points) || 0} pt`
+      : '⌛ Aucune enchère n’a trouvé cette manche.'}</div>`;
+  }
+
   function renderPartyChat() {
     const zone = byId('party-chat-messages');
     if (!zone || !partyState) return;
@@ -1871,7 +1907,9 @@
       ? `${partyState.cooperation.sharedPoints}:${partyState.cooperation.streak}:${partyState.cooperation.lives}` : '';
     const intruderKey = partyState.intruderChallenge
       ? `${partyState.intruderChallenge.id}:${partyState.intruderChallenge.answerId || ''}` : '';
-    const signature = `${partyState.status}:${partyState.round}:${partyState.mode}:${waitingForStart ? 'wait' : 'go'}:${me ? me.currentAttempt : 0}:${me ? me.found : false}:${me ? me.finished : false}:${me ? me.answer : ''}:${me ? me.lastAnswer : ''}:${me ? me.buzzerBlockedSeconds : 0}:${confidenceKey}:${cooperationKey}:${intruderKey}:${buzzer.activeProfileId || ''}:${buzzer.solvedByProfileId || ''}:${buzzer.solvedByProfileId && Number(buzzer.answerSecondsRemaining) > 0 ? 'paused' : 'played'}`;
+    const auctionKey = partyState.auction
+      ? `${partyState.auction.phase}:${partyState.auction.activeProfileId || ''}:${(partyState.auction.bids || []).map(bid => `${bid.profileId}:${bid.submitted}`).join(',')}` : '';
+    const signature = `${partyState.status}:${partyState.round}:${partyState.mode}:${waitingForStart ? 'wait' : 'go'}:${me ? me.currentAttempt : 0}:${me ? me.found : false}:${me ? me.finished : false}:${me ? me.answer : ''}:${me ? me.lastAnswer : ''}:${me ? me.buzzerBlockedSeconds : 0}:${confidenceKey}:${cooperationKey}:${intruderKey}:${auctionKey}:${buzzer.activeProfileId || ''}:${buzzer.solvedByProfileId || ''}:${buzzer.solvedByProfileId && Number(buzzer.answerSecondsRemaining) > 0 ? 'paused' : 'played'}`;
     const currentInput = byId('party-answer-input');
     const hadFocus = currentInput && document.activeElement === currentInput;
     const previousVal = currentInput ? currentInput.value : '';
@@ -1902,6 +1940,11 @@
     }
     if (waitingForStart) {
       zone.innerHTML = '<div class="mode-status">Prépare-toi… départ synchronisé dans <span id="party-action-timer">—</span> s.</div>';
+      updatePartyActionTimer();
+      return;
+    }
+    if (partyState.mode === 'auction' && partyState.auction) {
+      zone.innerHTML = partyAuctionHtml(me);
       updatePartyActionTimer();
       return;
     }
@@ -1975,6 +2018,11 @@
   }
 
   function updatePartyActionTimer() {
+    const auctionTimer = byId('party-auction-timer');
+    if (auctionTimer && partyState && partyState.auction && partyState.auction.deadlineAt) {
+      auctionTimer.innerText = Math.max(0, Math.ceil(
+        (Number(partyState.auction.deadlineAt) - Number(partyState.serverNow)) / 1000));
+    }
     const timer = byId('party-action-timer');
     if (!timer || !partyState) return;
     if (partyState.playback
@@ -2549,6 +2597,13 @@
         });
         return;
       }
+      const auctionBid = event.target.closest('[data-party-auction]');
+      if (auctionBid) {
+        partyPlayerAction('auction-bid', {
+          seconds: Number(auctionBid.getAttribute('data-party-auction')),
+        });
+        return;
+      }
       const confidenceBtn = event.target.closest('[data-party-confidence]');
       if (confidenceBtn) {
         partyPlayerAction('set-confidence', {
@@ -2648,6 +2703,7 @@
         const modeLabel = {
           buzzer: '🔔 Buzzer', royale: '👑 Battle Royale', duel: '🥊 Duel',
           confidence: '🎲 Confiance', cooperation: '🤝 Coopération',
+          intruder: '🕵️ Intrus', auction: '🔨 Enchères',
         }[item.mode] || '🎯 Réponses simultanées';
         return `
           <div class="party-history-card">

@@ -50,6 +50,15 @@ h1 { font: 900 clamp(3.2rem, 8.5vw, 9.5rem)/.84 Impact, Haettenschweiler, sans-s
 .tv-intruder-option.correct { border-color: var(--acid); background: #d9ff4320; }
 .tv-intruder-option.correct strong { color: var(--acid); }
 .tv-intruder-number { color: var(--signal); font-weight: 900; letter-spacing: .12em; }
+.hero.auction { align-self: stretch; max-width: 92vw; display: grid; align-content: center; }
+.hero.auction h1 { font-size: clamp(3rem, 6vw, 7rem); }
+.tv-auction-board { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1vw; margin: 1.5vh 0; }
+.tv-auction-board:empty { display: none; }
+.tv-auction-player { padding: 1.2vh 1vw; border: 1px solid #ffffff2b; border-top: 5px solid var(--cyan); background: #ffffff0c; display: grid; gap: .4vh; }
+.tv-auction-player strong { overflow-wrap: anywhere; font-size: clamp(1rem, 1.5vw, 1.6rem); }
+.tv-auction-player small { color: var(--muted); }
+.tv-auction-player.active { border-color: var(--acid); background: #d9ff4317; }
+.tv-auction-player.active strong { color: var(--acid); }
 
 .pulse { height: 8vh; display: flex; align-items: end; gap: min(1vw, 14px); margin-top: 3vh; }
 .pulse i { display: block; width: min(2.2vw, 30px); height: 18%; background: var(--signal); animation: meter .9s ease-in-out infinite alternate; }

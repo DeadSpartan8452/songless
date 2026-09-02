@@ -436,6 +436,12 @@
         <div class="tutorial-rule"><span>🔐</span><p>Il existe toujours <strong>un seul intrus certain</strong>, calculé avec les métadonnées de la bibliothèque.</p></div>
         <div class="tutorial-rule"><span>☝️</span><p>Tu n’as droit qu’à <strong>un choix par manche</strong>.</p></div>
         <div class="tutorial-rule"><span>💡</span><p>La réponse et sa justification apparaissent uniquement à la révélation.</p></div>`
+      : current.mode === 'auction'
+      ? `
+        <div class="tutorial-rule"><span>🔨</span><p>Annonce le <strong>plus court extrait</strong> dont tu penses avoir besoin.</p></div>
+        <div class="tutorial-rule"><span>🔐</span><p>Les enchères restent <strong>secrètes</strong> jusqu’à leur clôture.</p></div>
+        <div class="tutorial-rule"><span>⏱️</span><p>La plus petite durée répond en premier ; une égalité favorise l’enchère reçue en premier.</p></div>
+        <div class="tutorial-rule"><span>🔁</span><p>En cas d’erreur, la main passe à l’enchère suivante avec son propre extrait.</p></div>`
       : `
         <div class="tutorial-rule"><span>🎧</span><p>Écoute l’extrait sur ton téléphone ou le PC, puis écris <strong>${answerLabel}</strong>.</p></div>
         <div class="tutorial-rule"><span>📨</span><p><strong>Envoie une seule réponse</strong>, puis attends la révélation de l’hôte.</p></div>
@@ -455,7 +461,8 @@
         : current.mode === 'royale' ? 'Battle Royale'
           : current.mode === 'confidence' ? 'Mode Confiance'
             : current.mode === 'cooperation' ? 'Mode Coopération'
-              : current.mode === 'intruder' ? 'Mode Intrus' : 'Réponses simultanées';
+              : current.mode === 'intruder' ? 'Mode Intrus'
+                : current.mode === 'auction' ? 'Mode Enchères' : 'Réponses simultanées';
     byId('tutorial-gate').classList.remove('hidden');
   }
 
@@ -771,6 +778,12 @@
       badge.innerHTML = `<span>🕵️ Intrus · ${difficulty}</span>`;
       badge.className = 'mobile-mode-badge intruder';
       badge.classList.remove('hidden');
+    } else if (state.mode === 'auction') {
+      const auctionState = state.auction || {};
+      const active = state.players.find(player => player.profileId === auctionState.activeProfileId);
+      badge.innerHTML = `<span>🔨 ${auctionState.phase === 'bidding' ? 'Enchères ouvertes' : active ? `${escapeHtml(active.nom)} · ${Number(auctionState.activeSeconds)} s` : 'Enchères'}</span>`;
+      badge.className = 'mobile-mode-badge auction';
+      badge.classList.remove('hidden');
     } else {
       badge.classList.add('hidden');
     }
@@ -1008,6 +1021,42 @@
     </section>`;
   }
 
+  function auctionActionHtml(me) {
+    const auctionState = state && state.auction;
+    if (!auctionState) return '';
+    const ownBid = (auctionState.bids || []).find(bid => (
+      me && bid.profileId === me.profileId));
+    if (auctionState.phase === 'bidding') {
+      return `<section class="auction-panel" aria-labelledby="auction-prompt">
+        <div class="auction-heading"><span>🔨 Enchères scellées</span><strong><span id="auction-timer">—</span> s</strong></div>
+        <p id="auction-prompt">De combien de secondes as-tu besoin ?</p>
+        <div class="auction-options">
+          ${(auctionState.options || []).map(option => `<button type="button"
+            data-auction-bid="${Number(option.seconds)}" ${ownBid && ownBid.submitted ? 'disabled' : ''}>
+            <strong>${Number(option.seconds).toLocaleString('fr-FR')} s</strong>
+            <small>jusqu’à ${Number(option.points) || 0} pt</small>
+          </button>`).join('')}
+        </div>
+        <div class="auction-bid-status">${ownBid && ownBid.submitted
+          ? `🔒 Ton enchère de <strong>${Number(ownBid.seconds).toLocaleString('fr-FR')} s</strong> est verrouillée.`
+          : 'Les durées adverses restent cachées jusqu’à la clôture.'}</div>
+      </section>`;
+    }
+    if (auctionState.phase === 'answering') {
+      const active = state.players.find(player => (
+        player.profileId === auctionState.activeProfileId));
+      const tie = auctionState.tie
+        ? `<small class="auction-tie">Égalité départagée : ${escapeHtml(auctionState.tieBreak)}</small>` : '';
+      if (me && me.profileId === auctionState.activeProfileId) {
+        return `<section class="auction-panel active"><div class="auction-turn"><strong>🔨 Ton enchère gagne : ${Number(auctionState.activeSeconds).toLocaleString('fr-FR')} s</strong><span>À toi de répondre.</span>${tie}</div>${answerBox()}</section>`;
+      }
+      return `<section class="auction-panel"><div class="auction-turn"><strong>${escapeHtml(active ? active.nom : 'Un joueur')} joue ${Number(auctionState.activeSeconds).toLocaleString('fr-FR')} s</strong><span>Une erreur transmettra la main à l’enchère suivante.</span>${tie}</div></section>`;
+    }
+    return `<div class="auction-result">${auctionState.result === 'solved'
+      ? `✅ Enchère remportée · +${Number(auctionState.points) || 0} pt`
+      : '⌛ Aucune enchère n’a trouvé cette manche.'}</div>`;
+  }
+
   function renderAction() {
     const zone = byId('player-action');
     const me = currentPlayer();
@@ -1020,7 +1069,9 @@
       ? `${state.cooperation.sharedPoints}:${state.cooperation.streak}:${state.cooperation.lives}` : '';
     const intruderKey = state.intruderChallenge
       ? `${state.intruderChallenge.id}:${state.intruderChallenge.answerId || ''}` : '';
-    const signature = `${state.status}:${state.round}:${state.mode}:${startsIn > 0 ? 'wait' : 'go'}:${me ? me.currentAttempt : 0}:${me ? me.found : false}:${me ? me.finished : false}:${me ? me.answer : ''}:${me ? me.lastAnswer : ''}:${me ? me.buzzPosition : ''}:${me ? me.buzzerBlockedSeconds : 0}:${confidenceKey}:${cooperationKey}:${intruderKey}:${buzzer.activeProfileId || ''}:${buzzer.solvedByProfileId || ''}:${buzzer.solvedByProfileId && Number(buzzer.answerSecondsRemaining) > 0 ? 'paused' : 'played'}`;
+    const auctionKey = state.auction
+      ? `${state.auction.phase}:${state.auction.activeProfileId || ''}:${(state.auction.bids || []).map(bid => `${bid.profileId}:${bid.submitted}`).join(',')}` : '';
+    const signature = `${state.status}:${state.round}:${state.mode}:${startsIn > 0 ? 'wait' : 'go'}:${me ? me.currentAttempt : 0}:${me ? me.found : false}:${me ? me.finished : false}:${me ? me.answer : ''}:${me ? me.lastAnswer : ''}:${me ? me.buzzPosition : ''}:${me ? me.buzzerBlockedSeconds : 0}:${confidenceKey}:${cooperationKey}:${intruderKey}:${auctionKey}:${buzzer.activeProfileId || ''}:${buzzer.solvedByProfileId || ''}:${buzzer.solvedByProfileId && Number(buzzer.answerSecondsRemaining) > 0 ? 'paused' : 'played'}`;
     
     const currentInput = byId('answer-input');
     const hadFocus = currentInput && document.activeElement === currentInput;
@@ -1042,6 +1093,11 @@
     if (!me || state.status !== 'round') return;
     if (state.playback && Number(state.serverNow) < Number(state.playback.startedAt)) {
       zone.innerHTML = '<div class="wait-note">Prépare-toi… départ dans <span id="action-timer">—</span> s.</div>';
+      updateActionTimer();
+      return;
+    }
+    if (state.mode === 'auction' && state.auction) {
+      zone.innerHTML = auctionActionHtml(me);
       updateActionTimer();
       return;
     }
@@ -1117,6 +1173,11 @@
   }
 
   function updateActionTimer() {
+    const auctionTimer = byId('auction-timer');
+    if (auctionTimer && state && state.auction && state.auction.deadlineAt) {
+      auctionTimer.innerText = Math.max(0, Math.ceil(
+        (Number(state.auction.deadlineAt) - Number(state.serverNow)) / 1000));
+    }
     const timer = byId('action-timer');
     if (!timer || !state) return;
     if (state.playback && Number(state.serverNow) < Number(state.playback.startedAt)) {
@@ -1148,7 +1209,7 @@
       `;
     }
 
-    if (votes.skip) {
+    if (votes.skip && state.mode !== 'auction') {
       buttonsHtml += `
         <button type="button" class="vote-btn${votes.skip.voted ? ' voted' : ''}"
                 id="vote-skip-btn"${votes.skip.passed ? ' disabled' : ''}>
@@ -1662,6 +1723,11 @@
       playerAction('intruder-answer', {
         optionId: intruderOption.getAttribute('data-intruder-option'),
       });
+      return;
+    }
+    const auctionBid = event.target.closest('[data-auction-bid]');
+    if (auctionBid) {
+      playerAction('auction-bid', { seconds: Number(auctionBid.getAttribute('data-auction-bid')) });
       return;
     }
     const confidenceBtn = event.target.closest('[data-confidence]');

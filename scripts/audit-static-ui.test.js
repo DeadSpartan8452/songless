@@ -210,4 +210,17 @@ test('le mode Intrus propose quatre choix et révèle sa justification sur les t
   assert.match(tvHtml, /id="intruder-options"/);
 });
 
+test('le mode Enchères affiche durées, chrono et main active sur les trois écrans', () => {
+  const controller = read('controller.js');
+  const expansions = read('expansions.js');
+  const tv = read('tv.js');
+  const tvHtml = read('tv.html');
+  assert.match(controller, /data-auction-bid/);
+  assert.match(controller, /auction-timer/);
+  assert.match(expansions, /data-party-auction/);
+  assert.match(expansions, /party-auction-timer/);
+  assert.match(tv, /renderAuction/);
+  assert.match(tvHtml, /id="auction-board"/);
+});
+
 console.log(`\n${passed} tests statiques d’interface réussis.`);
