@@ -556,10 +556,7 @@
               <div class="party-setup" id="party-setup">
                 <div class="mode-row">
                   <select id="party-mode" aria-label="Mode de la soirée multijoueur">
-                    <option value="classic">🎯 Réponses simultanées</option>
-                    <option value="buzzer">🔔 Mode Buzzer</option>
-                    <option value="royale">👑 Battle Royale (3 Vies)</option>
-                    <option value="duel">🥊 Duel (Tir à la Corde)</option>
+                    <option value="classic">Chargement des modes…</option>
                   </select>
                   <select id="party-rounds" aria-label="Nombre de manches de la soirée">
                     <option value="2">2 manches (démo rapide)</option>
@@ -571,6 +568,7 @@
                   <button class="cta-btn" id="party-create-btn">Créer la partie</button>
                   <button class="ghost-btn accent" id="party-demo-btn" type="button" title="Lancer une simulation automatique avec 6 joueurs"><i data-lucide="bot"></i> Démo simulée (6 joueurs)</button>
                 </div>
+                <p class="party-mode-summary" id="party-mode-summary" aria-live="polite"></p>
                 <div class="party-tutorial">
                   <strong>Comment jouer ?</strong>
                   <span><b>🎯 Réponses simultanées :</b> la musique progresse par paliers (0,2s, 0,7s, 2,5s...). Chaque joueur a un bouton Passer et jusqu'à 6 essais. L'extrait boucle automatiquement avec une courte pause.</span>

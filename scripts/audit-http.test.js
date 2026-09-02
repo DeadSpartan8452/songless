@@ -107,6 +107,18 @@ async function main() {
     assert.match(security.response.headers.get('strict-transport-security') || '', /max-age=/);
     ok('les en-têtes de sécurité sont présents sur l’entrée Internet');
 
+    const modes = await request(LOCAL, '/api/party/modes');
+    assert.strictEqual(modes.status, 200);
+    assert.deepStrictEqual(
+      modes.body.modes.map(mode => mode.id),
+      ['classic', 'buzzer', 'royale', 'duel']
+    );
+    assert.strictEqual(modes.body.modes.every(mode => (
+      mode.surfaces.includes('tv') && mode.surfaces.includes('controller')
+    )), true);
+    assert.doesNotMatch(modes.text, /hostToken|inviteToken|accessToken/);
+    ok('le registre HTTP publie les capacités des modes sans aucun jeton');
+
     const create = await request(LOCAL, '/api/party/create', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

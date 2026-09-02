@@ -515,8 +515,8 @@ Une phase est terminée uniquement si :
 
 | Phase | État | Réalisé | Reste principal |
 |---|---|---|---|
-| 0 — Audit | Partielle | Audit moteur, HTTP, bibliothèque, encodage et sécurité | Contrôle visuel et console navigateur, bloqués par le navigateur intégré |
-| 1 — Moteur | En cours | Tests reproductibles, playlist de partie côté serveur, plusieurs fuites corrigées | Registre unique des modes et découpage des gros fichiers |
+| 0 — Audit | Validée | Audit moteur, HTTP, bibliothèque, encodage, sécurité et contrôle Playwright/Axe multi-écrans | Rejouer administrativement les trois lanceurs sur une instance fraîche |
+| 1 — Moteur | En cours | Tests reproductibles, playlist serveur et registre unique des quatre modes avec capacités PC/TV/téléphone | Découpage progressif des gros fichiers et centralisation des fins de partie |
 | 2 — Rôles | Avancée | Jetons distincts hôte, joueur, TV et télécommande ; expiration et révocation ; tests négatifs | Reconnexion et validation visuelle réelle |
 | 3 — TV/admin | Première version | `tv.html`, `remote.html`, boutons d’appairage et commandes limitées | Essais réels TV/téléphone, reprise après coupure et finitions |
 | 4 — Modes existants | Non commencée | Corrections ponctuelles Survie et confidentialité | Unification complète et duel final à deux survivants |

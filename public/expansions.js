@@ -478,6 +478,47 @@
         };
   }
 
+  let partyModeDefinitions = [];
+
+  function renderPartyModeSummary() {
+    const select = byId('party-mode');
+    const summary = byId('party-mode-summary');
+    if (!select || !summary) return;
+    const mode = partyModeDefinitions.find(item => item.id === select.value);
+    summary.textContent = mode
+      ? `${mode.emoji} ${mode.shortLabel} — ${mode.summary}`
+      : '';
+  }
+
+  async function loadPartyModes() {
+    const select = byId('party-mode');
+    if (!select) return;
+    const preferred = select.value || 'classic';
+    try {
+      const response = await window.songlessShared.api('/api/party/modes');
+      partyModeDefinitions = Array.isArray(response.modes) ? response.modes : [];
+      if (!partyModeDefinitions.length) throw new Error('Aucun mode disponible.');
+      select.replaceChildren(...partyModeDefinitions.map(mode => {
+        const option = document.createElement('option');
+        option.value = mode.id;
+        option.textContent = `${mode.emoji} ${mode.label}`;
+        return option;
+      }));
+      select.value = partyModeDefinitions.some(mode => mode.id === preferred)
+        ? preferred : 'classic';
+      renderPartyModeSummary();
+      renderPartyOptions();
+    } catch (error) {
+      select.replaceChildren();
+      const option = document.createElement('option');
+      option.value = 'classic';
+      option.textContent = 'Mode classique indisponible';
+      select.appendChild(option);
+      renderPartyModeSummary();
+      showToast(`Impossible de charger les modes : ${error.message}`, 'error');
+    }
+  }
+
   function normalizedPartyOptions(mode, value) {
     const defaults = defaultPartyOptions(mode);
     const source = value && typeof value === 'object' ? value : {};
@@ -2112,9 +2153,13 @@
   }
 
   function bindEvents() {
-    byId('party-mode').addEventListener('change', renderPartyOptions);
+    byId('party-mode').addEventListener('change', () => {
+      renderPartyOptions();
+      renderPartyModeSummary();
+    });
     byId('party-options').addEventListener('change', saveCurrentPartyOptions);
     renderPartyOptions();
+    loadPartyModes();
     byId('format-start-btn').addEventListener('click', () => {
       selectedKind = null;
       selectedTrackIds = null;

@@ -328,3 +328,12 @@ body.lecture-seule .local-only { display: none !important; }
   .app-container.party-active .game-party-layout { grid-template-columns: 1fr; }
   .party-game-panel { position: static; order: -1; }
 }
+.party-mode-summary {
+  margin: .75rem 0 0;
+  padding: .8rem 1rem;
+  border: 1px solid color-mix(in srgb, var(--accent) 42%, transparent);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--accent) 9%, transparent);
+  color: var(--text-muted);
+  line-height: 1.45;
+}

@@ -14,6 +14,7 @@ const importer = require('./lib/importer');
 const health = require('./lib/health');
 const playerStore = require('./lib/player-store');
 const partyStore = require('./lib/party');
+const modeRegistry = require('./lib/mode-registry');
 const antivirus = require('./lib/antivirus');
 
 const app = express();
@@ -642,6 +643,11 @@ function partySuggestionScore(query, primary, value, artist, originalTitle, alia
   }
   return best <= 2 ? 8 + best : Infinity;
 }
+
+app.get('/api/party/modes', (_req, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.json({ modes: modeRegistry.publicModes() });
+});
 
 app.post('/api/party/create', (req, res) => {
   try {
