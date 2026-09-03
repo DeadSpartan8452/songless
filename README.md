@@ -90,6 +90,24 @@ deux manches remporte la partie ; une manche où les deux joueurs trouvent ou
 
 En ligne de commande : `node server.js --lan`.
 
+### Héberger directement depuis Android
+
+L’application Android Songless peut héberger une partie sans PC. Elle conserve
+ses morceaux dans le stockage privé du téléphone, importe un dossier choisi avec
+le sélecteur Android et analyse chaque fichier avec ClamAV avant installation.
+Le service reste actif en arrière-plan avec une notification permanente et
+redémarre automatiquement après le redémarrage du téléphone.
+
+Sur Android, la recherche et l’import YouTube utilisent un moteur JavaScript
+embarqué et conservent directement le flux audio M4A. Ils ne demandent ni
+Python, ni `yt-dlp`, ni `ffmpeg`. Le fonctionnement local et LAN reste hors
+ligne ; seul un téléchargement demandé nécessite Internet.
+
+L’APK signé se trouve dans `dist/Songless-Android/Songless-Android.apk`. Il est
+actuellement validé en mode de compatibilité sur Android 17 avec pages mémoire
+de 16 Kio ; la compatibilité native 16 Kio reste à terminer avant de l’annoncer
+comme telle.
+
 ### Invitations et accès Internet
 
 Chaque soirée affiche un bouton **Copier le lien même wifi**. Le lien contient

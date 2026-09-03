@@ -12,6 +12,7 @@ const musicRoot = path.join(dataRoot, 'musiques');
 const backupRoot = path.join(dataRoot, 'metadata-backups');
 const inboxRoot = path.join(dataRoot, 'inbox');
 const bootstrapToken = crypto.randomBytes(32).toString('base64url');
+let readyUrl = '';
 
 for (const directory of [dataRoot, musicRoot, backupRoot, inboxRoot]) {
   fs.mkdirSync(directory, {recursive: true});
@@ -32,6 +33,12 @@ function send(message) {
   bridge.channel.send(message);
 }
 
+bridge.channel.on('message', message => {
+  if (message && message.type === 'request-ready' && readyUrl) {
+    send({type: 'ready', url: readyUrl});
+  }
+});
+
 function retry(attempt, detail) {
   if (attempt >= 30) {
     send({type: 'error', detail: `Serveur local indisponible : ${detail}`});
@@ -44,7 +51,8 @@ function waitForServer(attempt = 0) {
   const request = http.get(`http://127.0.0.1:${port}/api/context`, response => {
     response.resume();
     if (response.statusCode === 200) {
-      send({type: 'ready', url: `http://127.0.0.1:${port}/admin-bootstrap?token=${bootstrapToken}`});
+      readyUrl = `http://127.0.0.1:${port}/admin-bootstrap?token=${bootstrapToken}`;
+      send({type: 'ready', url: readyUrl});
       return;
     }
     retry(attempt, `HTTP ${response.statusCode}`);

@@ -7,7 +7,10 @@ import android.app.Service
 import android.content.Intent
 import android.os.Build
 import android.os.IBinder
+import android.util.Log
 import androidx.core.app.NotificationCompat
+import com.facebook.react.bridge.Arguments
+import com.janeasystems.rn_nodejs_mobile.RNNodeJsMobileModule
 
 class SonglessHostService : Service() {
   companion object {
@@ -47,6 +50,26 @@ class SonglessHostService : Service() {
       .setCategory(NotificationCompat.CATEGORY_SERVICE)
       .build()
     startForeground(NOTIFICATION_ID, notification)
+    startSonglessEngine()
+  }
+
+  private fun startSonglessEngine() {
+    val songlessApplication = application as? MainApplication ?: return
+    songlessApplication.withReactContext { context ->
+      try {
+        val module = context.getNativeModule(RNNodeJsMobileModule::class.java)
+        if (module == null) {
+          Log.e("SonglessHost", "Node Mobile module unavailable")
+          return@withReactContext
+        }
+        val options = Arguments.createMap().apply {
+          putBoolean("redirectOutputToLogcat", true)
+        }
+        module.startNodeProject("main.js", options)
+      } catch (error: Exception) {
+        Log.e("SonglessHost", "Unable to start Songless engine", error)
+      }
+    }
   }
 
   override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int = START_STICKY

@@ -33,8 +33,10 @@ function App(): React.JSX.Element {
   const [error, setError] = useState('');
 
   useEffect(() => {
+    let readyTimer: ReturnType<typeof setInterval> | undefined;
     const handleMessage = (payload: HostMessage) => {
       if (payload?.type === 'ready' && payload.url && LOCAL_URL.test(payload.url)) {
+        if (readyTimer) clearInterval(readyTimer);
         setAdminUrl(payload.url);
         setError('');
       }
@@ -48,7 +50,13 @@ function App(): React.JSX.Element {
       started.current = true;
       nodejs.start('main.js', {redirectOutputToLogcat: true});
     }
-    return () => nodejs.channel.removeListener('message', handleMessage);
+    readyTimer = setInterval(() => {
+      nodejs.channel.send({type: 'request-ready'});
+    }, 750);
+    return () => {
+      if (readyTimer) clearInterval(readyTimer);
+      nodejs.channel.removeListener('message', handleMessage);
+    };
   }, []);
 
   const sendFolderResult = (payload: Record<string, unknown>) => {

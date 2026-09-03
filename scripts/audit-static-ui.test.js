@@ -130,12 +130,14 @@ test('le sélecteur Android importe un dossier entier avant de rafraîchir la bi
 test('l’hôte Android reçoit des textes de bibliothèque adaptés à sa plateforme', () => {
   const index = read('index.html');
   const app = read('app.js');
+  const css = read('features.css');
   assert.match(index, /id="mobile-host-note"/);
   assert.match(index, /mobile-library-intro hidden/);
   assert.match(index, /<!-- Import d'une playlist entière -->\s*<div class="download-card desktop-downloader-only">/);
   assert.match(index, /<!-- Diagnostic de bibliothèque -->\s*<div class="download-card">/);
   assert.match(app, /if \(info\.mobileHost\)/);
-  assert.match(app, /Prévu pour Android/);
+  assert.match(app, /Moteur audio Android prêt/);
+  assert.doesNotMatch(css, /\.mobile-host \.desktop-downloader-only\s*\{[^}]*display:\s*none/);
   assert.match(app, /phone-address-list/);
 });
 

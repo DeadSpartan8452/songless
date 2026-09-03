@@ -397,10 +397,6 @@ body.lecture-seule #refresh-library-btn {
   .mobile-folder-panel .cta-btn { width: 100%; }
 }
 
-.mobile-host .desktop-downloader-only {
-  display: none;
-}
-
 .mobile-host .desktop-library-intro {
   display: none;
 }

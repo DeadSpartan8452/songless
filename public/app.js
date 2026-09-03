@@ -4723,16 +4723,16 @@ function initDownloadEvents() {
     .then(d => { window.__songlessGenres = d.all || []; renderGenreSelects(); })
     .catch(() => {});
 
-  // État des outils externes : autant le dire tout de suite si ffmpeg manque.
+  // État du moteur de téléchargement : outils locaux sur PC, moteur JS dans
+  // l'application Android autonome.
   fetch('/api/download/status')
     .then(r => r.json())
     .then(state => {
       if (!toolsState) return;
-      if (state.mobileHost && !state.ok) {
-        toolsState.innerHTML = '<span class="pending">Prévu pour Android</span>';
-        downloadBtn.disabled = true;
-      } else if (state.ok) {
-        toolsState.innerHTML = '<span class="ok">yt-dlp + ffmpeg prêts</span>';
+      if (state.ok) {
+        toolsState.innerHTML = state.mobileHost
+          ? '<span class="ok">Moteur audio Android prêt</span>'
+          : '<span class="ok">yt-dlp + ffmpeg prêts</span>';
       } else {
         toolsState.innerHTML = `<span class="ko">manquant : ${escapeHtml(state.missing.join(', '))}</span>`;
         downloadBtn.disabled = true;

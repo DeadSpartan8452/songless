@@ -6,8 +6,10 @@ import android.system.Os
 import com.facebook.react.PackageList
 import com.facebook.react.ReactApplication
 import com.facebook.react.ReactHost
+import com.facebook.react.ReactInstanceManager
 import com.facebook.react.ReactNativeHost
 import com.facebook.react.ReactPackage
+import com.facebook.react.bridge.ReactContext
 import com.facebook.react.defaults.DefaultNewArchitectureEntryPoint.load
 import com.facebook.react.defaults.DefaultReactHost.getDefaultReactHost
 import com.facebook.react.defaults.DefaultReactNativeHost
@@ -43,6 +45,24 @@ class MainApplication : Application(), ReactApplication {
     if (BuildConfig.IS_NEW_ARCHITECTURE_ENABLED) {
       // If you opted-in for the New Architecture, we load the native entry point for this app.
       load()
+    }
+  }
+
+  fun withReactContext(action: (ReactContext) -> Unit) {
+    val manager = reactNativeHost.reactInstanceManager
+    manager.currentReactContext?.let {
+      action(it)
+      return
+    }
+    val listener = object : ReactInstanceManager.ReactInstanceEventListener {
+      override fun onReactContextInitialized(context: ReactContext) {
+        manager.removeReactInstanceEventListener(this)
+        action(context)
+      }
+    }
+    manager.addReactInstanceEventListener(listener)
+    if (!manager.hasStartedCreatingInitialContext()) {
+      manager.createReactContextInBackground()
     }
   }
 

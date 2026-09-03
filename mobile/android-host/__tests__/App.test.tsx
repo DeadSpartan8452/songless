@@ -13,5 +13,11 @@ import {it} from '@jest/globals';
 import renderer from 'react-test-renderer';
 
 it('renders correctly', () => {
-  renderer.create(<App />);
+  let app: renderer.ReactTestRenderer;
+  renderer.act(() => {
+    app = renderer.create(<App />);
+  });
+  renderer.act(() => {
+    app.unmount();
+  });
 });
