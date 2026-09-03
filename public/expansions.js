@@ -96,6 +96,7 @@
     };
     selectedKind = kind || null;
     selectedTrackIds = Array.isArray(ids) ? [...ids] : null;
+    setNextGameAction(false);
     applySeed(randomSeed());
     updateLimitedStatus();
     openGameTab();
@@ -112,8 +113,10 @@
       kind: 'duel',
       opponent: opp,
       finished: false,
+      results: [],
     };
     selectedKind = 'duel';
+    setNextGameAction(false);
     applySeed(randomSeed());
     updateLimitedStatus();
     openGameTab();
@@ -128,8 +131,10 @@
       lives: 3,
       kind: 'royale',
       finished: false,
+      results: [],
     };
     selectedKind = 'royale';
+    setNextGameAction(false);
     applySeed(randomSeed());
     updateLimitedStatus();
     openGameTab();
@@ -147,6 +152,7 @@
     if (training) training.classList.remove('session-finished');
     if (duelStatus) duelStatus.classList.remove('session-finished');
     if (royaleStatus) royaleStatus.classList.remove('session-finished');
+    document.querySelectorAll('.local-session-stop').forEach(button => button.classList.add('hidden'));
 
     if (!limitedGame) {
       if (format) format.innerText = 'Aucune partie limitée en cours.';
@@ -177,6 +183,7 @@
           ? `· 🏁 Survie terminée (${limitedGame.wins} trouvés)`
           : `· 👑 Survie : ${hearts} · Manche ${limitedGame.completed + 1} (${limitedGame.wins} trouvés)`;
       }
+      showLimitedStop(royaleStatus);
       return;
     }
 
@@ -193,18 +200,24 @@
           ? `· 🏁 Duel terminé (${scoreStr})`
           : `· 🥊 Duel : ${scoreStr} · Manche ${limitedGame.completed + 1}/${limitedGame.total}`;
       }
+      showLimitedStop(duelStatus);
       return;
     }
 
     const target = limitedGame.kind === 'training' ? training : format;
-    const label = limitedGame.kind === 'training' ? 'Entraînement' : (limitedGame.kind === 'challenge' ? 'Défi' : 'Partie');
+    const label = {
+      training: 'Entraînement',
+      challenge: 'Défi',
+      collection: 'Collection',
+    }[limitedGame.kind] || 'Partie';
     if (limitedGame.finished) {
       const losses = limitedGame.completed - limitedGame.wins;
+      const ending = limitedGame.stopped ? 'arrêtée' : 'terminée';
       if (target) {
-        target.innerText = `${label} terminée : ${limitedGame.wins} trouvé${limitedGame.wins > 1 ? 's' : ''}, ${losses} raté${losses > 1 ? 's' : ''} sur ${limitedGame.total}.`;
+        target.innerText = `${label} ${ending} : ${limitedGame.wins} trouvé${limitedGame.wins > 1 ? 's' : ''}, ${losses} raté${losses > 1 ? 's' : ''} sur ${limitedGame.completed} joué${limitedGame.completed > 1 ? 's' : ''}.`;
         target.classList.add('session-finished');
       }
-      if (playlistHint) playlistHint.innerText = `· 🏁 ${label} terminée (${limitedGame.wins}/${limitedGame.total} trouvés)`;
+      if (playlistHint) playlistHint.innerText = `· 🏁 ${label} ${ending} (${limitedGame.wins}/${limitedGame.completed} trouvés)`;
     } else if (limitedGame.total === 'infinite') {
       if (target) target.innerText = `${label} sans fin en cours : ${limitedGame.completed} joué${limitedGame.completed > 1 ? 's' : ''} (${limitedGame.wins} trouvé${limitedGame.wins > 1 ? 's' : ''}).`;
       if (playlistHint) playlistHint.innerText = `· 🎯 ${label} sans fin (${limitedGame.wins} trouvé${limitedGame.wins > 1 ? 's' : ''})`;
@@ -214,6 +227,53 @@
     }
     if (format && target !== format) format.innerText = 'Aucune partie limitée en cours.';
     if (training && target !== training) training.innerText = '';
+    showLimitedStop(target);
+  }
+
+  function setNextGameAction(finished) {
+    const button = byId('next-game-btn');
+    if (!button) return;
+    button.textContent = finished ? 'Voir le bilan' : 'Nouvelle chanson →';
+  }
+
+  function finishLimitedGame() {
+    if (!limitedGame || limitedGame.finished) return;
+    limitedGame.finished = true;
+    limitedGame.stopped = true;
+    setNextGameAction(true);
+    updateLimitedStatus();
+    showToast('Session arrêtée : le bilan est prêt.', 'ok');
+  }
+
+  function showLimitedStop(target) {
+    if (!target || !limitedGame || limitedGame.finished) return;
+    const id = `${target.id}-stop`;
+    let button = byId(id);
+    if (!button) {
+      button = document.createElement('button');
+      button.type = 'button';
+      button.id = id;
+      button.className = 'ghost-btn local-session-stop';
+      button.textContent = 'Arrêter et voir le bilan';
+      button.addEventListener('click', finishLimitedGame);
+      target.insertAdjacentElement('afterend', button);
+    }
+    button.classList.remove('hidden');
+
+    let gameButton = byId('game-session-stop');
+    if (!gameButton) {
+      const gameCard = document.querySelector('.game-card');
+      if (gameCard) {
+        gameButton = document.createElement('button');
+        gameButton.type = 'button';
+        gameButton.id = 'game-session-stop';
+        gameButton.className = 'ghost-btn local-session-stop game-session-stop';
+        gameButton.textContent = 'Arrêter la session et voir le bilan';
+        gameButton.addEventListener('click', finishLimitedGame);
+        gameCard.appendChild(gameButton);
+      }
+    }
+    if (gameButton) gameButton.classList.remove('hidden');
   }
 
   function trainingOrder(source) {
@@ -304,7 +364,7 @@
       <div class="saved-row">
         <div class="saved-row-main">
           <strong>${escapeHtml(String(item.nom || 'Sans nom'))}</strong>
-          <span>${Number(item.totalRounds) || 10} manches · seed ${escapeHtml(formatSeed(String(item.seed || '')))}</span>
+          <span>${item.totalRounds === 'infinite' ? 'Sans fin' : `${Number(item.totalRounds) || 10} manches`} · seed ${escapeHtml(formatSeed(String(item.seed || '')))}</span>
         </div>
         <button class="ghost-btn accent" data-challenge-play="${escapeHtml(String(item.id))}">Rejouer</button>
         <button class="danger-btn-text" data-challenge-delete="${escapeHtml(String(item.id))}">Supprimer</button>
@@ -325,13 +385,11 @@
   function playCollection(id) {
     const item = collections.find(entry => entry.id === id);
     if (!item) return;
-    selectedKind = 'collection';
-    selectedTrackIds = [...(item.trackIds || [])];
-    limitedGame = null;
-    applySeed(randomSeed());
-    updateLimitedStatus();
-    openGameTab();
-    showToast(`Collection « ${item.nom} » activée.`);
+    const ids = [...(item.trackIds || [])];
+    const format = byId('format-rounds').value;
+    if (startLimited(format === '0' ? 'infinite' : Number(format), 'collection', ids)) {
+      showToast(`Collection « ${item.nom} » lancée.`);
+    }
   }
 
   function currentChallenge(name) {
@@ -366,14 +424,18 @@
     reglages = { ...reglagesParDefaut(), ...(item.settings || {}) };
     selectedKind = 'challenge';
     selectedTrackIds = [...(item.trackIds || [])];
+    const challengeTotal = item.totalRounds === 'infinite'
+      ? 'infinite'
+      : Math.min(Math.max(1, Number(item.totalRounds) || 10), selectedTrackIds.length || 1);
     limitedGame = {
-      total: Math.min(Math.max(1, Number(item.totalRounds) || 10), selectedTrackIds.length || 1),
+      total: challengeTotal,
       completed: 0,
       wins: 0,
       results: [],
       finished: false,
       kind: 'challenge',
     };
+    setNextGameAction(false);
     renderGenreChips();
     renderDecadeChips();
     appliquerReglages({ relancer: false });
@@ -2603,14 +2665,7 @@
       selectedKind = null;
       selectedTrackIds = null;
       const rounds = Number(byId('format-rounds').value);
-      if (rounds <= 0) {
-        limitedGame = null;
-        applySeed(randomSeed());
-        updateLimitedStatus();
-        byId('format-status').innerText = 'Mode sans fin en cours.';
-        return;
-      }
-      startLimited(rounds, 'format', null);
+      startLimited(rounds <= 0 ? 'infinite' : rounds, 'format', null);
     });
     document.querySelectorAll('.training-btn').forEach(button => {
       button.addEventListener('click', () => {
@@ -3097,6 +3152,7 @@
       attempt: result && result.attempt ? Number(result.attempt) : null,
     });
     if (limitedGame.total !== 'infinite' && limitedGame.completed >= limitedGame.total) limitedGame.finished = true;
+    if (limitedGame.finished) setNextGameAction(true);
     updateLimitedStatus();
   }
 
@@ -3107,7 +3163,9 @@
     }
     if (limitedGame && limitedGame.finished) {
       updateLimitedStatus();
-      showToast('Cette partie est terminée : son bilan est dans l’onglet Modes.', 'ok');
+      const modesTab = document.querySelector('[data-tab="modes-tab"]');
+      if (modesTab) modesTab.click();
+      showToast('Partie terminée : voici son bilan.', 'ok');
       return false;
     }
     return true;

@@ -566,6 +566,16 @@ body.lecture-seule .local-only { display: none !important; }
 .party-mode-details p { margin: .55rem 0 0; color: #c4b5d4; }
 .party-mode-details b { color: #f4eaff; }
 
+.local-session-stop {
+  width: 100%;
+  margin-top: .55rem;
+}
+.game-session-stop {
+  margin-top: 1rem;
+  border-color: rgba(248, 113, 113, .45);
+  color: #fca5a5;
+}
+
 @media (max-width: 760px) {
   .party-mode-guide { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }

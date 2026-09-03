@@ -66,7 +66,15 @@ assert.match(expansions, /renderLocalModeGuides/);
 for (const id of ['solo_limited', 'solo_infinite', 'solo_duel', 'solo_royale', 'training', 'collections', 'challenges']) {
   assert.match(expansions, new RegExp(`['"]${id}['"]`));
 }
+assert.ok((expansions.match(/results:\s*\[\]/g) || []).length >= 4);
+assert.match(expansions, /startLimited\(rounds <= 0 \? 'infinite' : rounds, 'format'/);
+assert.match(expansions, /startLimited\(format === '0' \? 'infinite' : Number\(format\), 'collection'/);
+assert.match(expansions, /item\.totalRounds === 'infinite'[\s\S]*?challengeTotal/);
+assert.match(expansions, /Arrêter et voir le bilan/);
+assert.match(expansions, /game-session-stop/);
+assert.match(expansions, /modesTab\.click\(\)/);
 assert.match(css, /\.party-mode-guide/);
+assert.match(css, /\.local-session-stop/);
 assert.match(css, /@media \(max-width: 760px\)[\s\S]*?\.party-mode-guide/);
 
 console.log(`OK  catalogue de ${catalog.length} formats, dont ${modes.length} modes multijoueurs, validé`);
