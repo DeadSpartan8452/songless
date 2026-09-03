@@ -21,6 +21,7 @@ $sourceRelative = 'app\build\outputs\apk\release\app-release.apk'
 $sourceApk = Join-Path $androidRoot $sourceRelative
 $outputApk = Join-Path $outputRoot 'Songless-Android.apk'
 $payloadBuilder = Join-Path $projectRoot 'scripts\build-android-payload.js'
+$alignmentAudit = Join-Path $projectRoot 'scripts\audit-android-native-alignment.js'
 
 function Get-JavaTool([string]$name) {
     if ($env:JAVA_HOME) {
@@ -177,6 +178,16 @@ $hashLine = $hash + '  Songless-Android.apk'
     [Text.Encoding]::ASCII
 )
 
+Write-Host 'Controle de la compatibilite native 16 Kio...'
+& $node.Source $alignmentAudit $outputApk
+$alignmentExit = $LASTEXITCODE
+if ($alignmentExit -eq 1) {
+    throw 'Le controle des bibliotheques natives Android a echoue.'
+}
+if ($alignmentExit -eq 2) {
+    Write-Warning 'APK fonctionnel en compatibilite 16 Kio, pas encore natif 16 Kio.'
+}
+
 Remove-Item Env:SONGLESS_ANDROID_STORE_PASSWORD -ErrorAction SilentlyContinue
 Remove-Item Env:SONGLESS_ANDROID_KEY_PASSWORD -ErrorAction SilentlyContinue
 
@@ -184,3 +195,4 @@ Write-Host ''
 Write-Host ('APK : ' + $outputApk)
 Write-Host ('SHA-256 : ' + $hash)
 Write-Host 'La cle privee reste hors du projet.'
+exit 0

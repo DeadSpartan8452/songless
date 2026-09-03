@@ -4,6 +4,7 @@ const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
 const builder = require('./build-android-payload');
+const alignmentAudit = require('./audit-android-native-alignment');
 
 const root = path.join(__dirname, '..');
 const host = path.join(root, 'mobile', 'android-host');
@@ -29,6 +30,20 @@ const releaseLauncher = fs.readFileSync(
   path.join(root, 'packaging', 'android', 'Construire APK Songless.bat'),
   'utf8'
 );
+
+function makeElf64(alignment) {
+  const elf = Buffer.alloc(64 + 56);
+  Buffer.from([0x7f, 0x45, 0x4c, 0x46]).copy(elf, 0);
+  elf[4] = 2;
+  elf[5] = 1;
+  elf.writeBigUInt64LE(64n, 32);
+  elf.writeUInt16LE(64, 52);
+  elf.writeUInt16LE(56, 54);
+  elf.writeUInt16LE(1, 56);
+  elf.writeUInt32LE(1, 64);
+  elf.writeBigUInt64LE(BigInt(alignment), 64 + 48);
+  return elf;
+}
 
 assert.match(main, /crypto\.randomBytes\(32\)/);
 assert.match(main, /SONGLESS_INSTANCE_SECRET/);
@@ -77,11 +92,14 @@ assert.match(releaseBuilder, /ConvertFrom-SecureString/);
 assert.match(releaseBuilder, /apksigner\.bat/);
 assert.match(releaseBuilder, /assembleRelease --no-daemon/);
 assert.match(releaseBuilder, /build-android-payload\.js/);
+assert.match(releaseBuilder, /audit-android-native-alignment\.js/);
 assert.match(releaseLauncher, /ExecutionPolicy Bypass/);
 assert.match(metadataAdapter, /import\('music-metadata'\)/);
 assert.doesNotMatch(answers, /\\p\{/);
 assert.doesNotMatch(titles, /\\p\{/);
 assert.strictEqual(path.basename(builder.safePayload()), 'nodejs-project');
+assert.strictEqual(alignmentAudit.inspectElf(makeElf64(0x4000)).compatible16K, true);
+assert.strictEqual(alignmentAudit.inspectElf(makeElf64(0x1000)).compatible16K, false);
 
 for (const forbidden of ['musiques', 'metadata.json', 'songless-data.json', '.songless-instance-key']) {
   assert.strictEqual(builder.APP_FILES.includes(forbidden), false);

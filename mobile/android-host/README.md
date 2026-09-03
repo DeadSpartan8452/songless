@@ -19,6 +19,10 @@ n’acceptera une future mise à jour de Songless que si elle porte la même sig
 Le fichier `Songless-Android.sha256.txt` permet de vérifier que l’APK transféré
 n’a pas été altéré.
 
+Le constructeur produit aussi `Songless-Android-compatibilite-16K.txt`. Ce
+rapport lit le champ `p_align` de chaque segment ELF `PT_LOAD` ; l’alignement de
+l’archive seul n’est pas considéré comme une preuve de compatibilité native.
+
 ## Installation sur le téléphone
 
 Transférer uniquement l’APK, l’ouvrir depuis le téléphone et autoriser
@@ -28,10 +32,10 @@ peut être retirée juste après l’installation.
 Android 7 ou plus récent est requis. Le paquet contient les architectures ARM64
 pour les téléphones et x86-64 pour l’émulateur de contrôle.
 
-État de compatibilité : l’APK fonctionne sur l’émulateur Android 17 à pages de
-16 Kio grâce au mode de compatibilité Android, mais plusieurs bibliothèques natives
-restent alignées à 4 Kio. La compatibilité native 16 Kio sans avertissement reste
-donc un chantier ouvert ; elle ne doit pas être annoncée comme livrée.
+État contrôlé sur l’APK Release actuel : 56 bibliothèques natives examinées,
+dont 22 ont encore un alignement minimal de 4 Kio. L’APK fonctionne sur
+l’émulateur Android 17 à pages de 16 Kio grâce au mode de compatibilité Android,
+mais la compatibilité native 16 Kio sans avertissement reste un chantier ouvert.
 
 ## Développement
 
