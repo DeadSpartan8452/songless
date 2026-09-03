@@ -23,6 +23,18 @@ Le constructeur produit aussi `Songless-Android-compatibilite-16K.txt`. Ce
 rapport lit le champ `p_align` de chaque segment ELF `PT_LOAD` ; l’alignement de
 l’archive seul n’est pas considéré comme une preuve de compatibilité native.
 
+## Sauvegarder la signature des futures mises à jour
+
+1. Double-cliquer sur `packaging\android\Sauvegarder signature Android.bat`.
+2. Choisir un mot de passe d’au moins 14 caractères.
+3. Copier `dist\Songless-Sauvegarde-Signature` sur un autre support.
+4. Conserver le mot de passe séparément de ce support.
+
+Sur un nouveau PC, placer la sauvegarde dans ce même dossier puis double-cliquer
+sur `Restaurer signature Android.bat`. La restauration refuse d’écraser une
+signature locale existante. La clé restaurée est immédiatement reprotégée avec
+Windows DPAPI pour le nouvel utilisateur.
+
 ## Installation sur le téléphone
 
 Transférer uniquement l’APK, l’ouvrir depuis le téléphone et autoriser

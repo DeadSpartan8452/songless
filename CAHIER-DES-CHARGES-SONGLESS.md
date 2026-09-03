@@ -714,6 +714,12 @@ Une phase est terminée uniquement si :
 | 7 — Personnalité | Livrée | Catalogue porté de 105 à 206 succès : **100/100 nouveaux succès** déclaratifs plus le succès secret Portal, persistants, dédupliqués et contrôlés sur PC/téléphone ; succès secrets masqués avant déblocage ; **50/50 titres de podium** factuels et uniques ; Portal déclaratif et anti-spoiler contrôlé sur PC/téléphone/TV ; carte souvenir PNG privée par défaut, copie, téléchargement et animations accessibles contrôlés sur PC/téléphone | — |
 | 8 — Finition | Avancée | Carte souvenir documentée ; diagnostic avant soirée ; kit Windows x64 autonome construit et audité ; contrôle visuel Android automatisé par émulateur isolé, ayant permis de corriger le chargement ESM de `music-metadata` et les expressions Unicode incompatibles avec Node mobile ; test de charge HTTP reproductible validé quatre fois avec 32 joueurs, 32 réponses simultanées, 640 états et 8 flux audio concurrents (p95 de 26 à 33 ms) ; matrice finale des permissions validant invitation, joueur, TV et télécommande, puis le refus de 41 routes administratives même avec une invitation valide ; joueur téléphone, télécommande administrateur et démarrage Android réharmonisés avec le Songless original puis vérifiés à 390 × 844 sans débordement, tandis que la TV validée reste inchangée ; constructeur Android en double clic détectant JDK et SDK, régénérant le moteur embarqué, signant l’APK avec la clé privée réutilisable, vérifiant la signature, l’alignement de l’archive, l’empreinte SHA-256 et l’absence de données privées ; le contrôle Android 17 a établi séparément que plusieurs bibliothèques ELF restent alignées à 4 Kio et exigent encore le mode de compatibilité 16 Kio | Parcours complets, compatibilité native 16 Kio, sauvegarde de signature, validation POCO et finitions du kit transférable |
 
+**Signature Android au 3 septembre 2026** : les outils d’export PKCS12 chiffré
+et de restauration sans écrasement ont été validés de bout en bout sur une clé
+factice ; le certificat restauré est strictement identique et le nouveau secret
+local est reprotégé par DPAPI. La sauvegarde de la vraie clé reste à déclencher
+par Manaël afin que son mot de passe ne soit ni enregistré ni exposé à un agent.
+
 Un élément n’est considéré comme livré que s’il respecte les critères de la
 section 13. Une présence dans le présent document signifie « demandé », pas
 « déjà développé ».

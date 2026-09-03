@@ -30,6 +30,22 @@ const releaseLauncher = fs.readFileSync(
   path.join(root, 'packaging', 'android', 'Construire APK Songless.bat'),
   'utf8'
 );
+const signingBackup = fs.readFileSync(
+  path.join(root, 'packaging', 'android', 'Sauvegarder-Signature-Android.ps1'),
+  'utf8'
+);
+const signingRestore = fs.readFileSync(
+  path.join(root, 'packaging', 'android', 'Restaurer-Signature-Android.ps1'),
+  'utf8'
+);
+const signingBackupLauncher = fs.readFileSync(
+  path.join(root, 'packaging', 'android', 'Sauvegarder signature Android.bat'),
+  'utf8'
+);
+const signingRestoreLauncher = fs.readFileSync(
+  path.join(root, 'packaging', 'android', 'Restaurer signature Android.bat'),
+  'utf8'
+);
 
 function makeElf64(alignment) {
   const elf = Buffer.alloc(64 + 56);
@@ -94,6 +110,15 @@ assert.match(releaseBuilder, /assembleRelease --no-daemon/);
 assert.match(releaseBuilder, /build-android-payload\.js/);
 assert.match(releaseBuilder, /audit-android-native-alignment\.js/);
 assert.match(releaseLauncher, /ExecutionPolicy Bypass/);
+assert.match(signingBackup, /-deststoretype', 'PKCS12'/);
+assert.match(signingBackup, /SONGLESS_BACKUP_PASSWORD/);
+assert.doesNotMatch(signingBackup, /Write-Host.*backupPassword/i);
+assert.match(signingBackup, /sauvegarde portable existe deja/);
+assert.match(signingRestore, /ConvertFrom-SecureString/);
+assert.match(signingRestore, /Elle ne sera jamais ecrasee/);
+assert.match(signingRestore, /Remove-Item -LiteralPath \$keystore/);
+assert.match(signingBackupLauncher, /ExecutionPolicy Bypass/);
+assert.match(signingRestoreLauncher, /ExecutionPolicy Bypass/);
 assert.match(metadataAdapter, /import\('music-metadata'\)/);
 assert.doesNotMatch(answers, /\\p\{/);
 assert.doesNotMatch(titles, /\\p\{/);
