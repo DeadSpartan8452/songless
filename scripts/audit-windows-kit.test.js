@@ -27,6 +27,10 @@ const launcher = fs.readFileSync(path.join(__dirname, '..', 'packaging', 'window
 assert.match(launcher, /SONGLESS_MUSIC_DIR/);
 assert.match(launcher, /runtime/);
 
+const appLauncher = fs.readFileSync(path.join(__dirname, '..', 'Songless.ps1'), 'utf8');
+assert.match(appLauncher, /Add-Type -AssemblyName System\.Security/);
+assert.match(appLauncher, /Security\.Cryptography\.ProtectedData/);
+
 const menuLauncher = fs.readFileSync(path.join(__dirname, '..', 'packaging', 'windows', 'Songless.bat'), 'utf8');
 assert.doesNotMatch(menuLauncher, /WindowStyle Hidden/i);
 assert.match(menuLauncher, /-Mode menu/i);

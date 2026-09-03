@@ -20,6 +20,10 @@ $port    = 3000
 $url     = "http://localhost:$port"
 
 # Clé propre à cette installation, chiffrée par Windows pour l’utilisateur.
+# PowerShell 5.1 ne charge pas toujours cet assembly automatiquement sur une
+# installation fraîche. Sans lui, ProtectedData est inconnu et la boîte
+# d'erreur du lanceur peut rester cachée derrière la fenêtre réduite.
+Add-Type -AssemblyName System.Security
 $keyPath = Join-Path $dossier '.songless-instance-key'
 try {
     if (Test-Path -LiteralPath $keyPath) {
