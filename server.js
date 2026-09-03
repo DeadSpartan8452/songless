@@ -1652,15 +1652,18 @@ app.post('/api/preflight', async (req, res) => {
   }
   try {
     const tracks = store.load(true).tracks;
-    const dependenciesOk = Object.keys(require('./package.json').dependencies || {})
-      .every(name => {
-        try { require.resolve(name); return true; } catch (_) { return false; }
-      });
+    const dependencyCheck = preflight.checkDependencies(
+      __dirname,
+      require('./package.json').dependencies
+    );
     const report = await preflight.run({
       root: __dirname, musicDir: MUSIC_DIR, tracks,
       port: Number(PORT), publicPort: PUBLIC_PORT,
       internetMode: INTERNET, publicUrl: PUBLIC_URL,
-      dependenciesOk, antivirus: antivirus.status(),
+      dependenciesOk: dependencyCheck.ok,
+      missingDependencies: dependencyCheck.missing,
+      mobileHost: MOBILE_HOST,
+      antivirus: antivirus.status(),
       tools: downloader.checkTools(), partyStore, qrCode: QRCode,
     });
     res.set('Cache-Control', 'no-store');

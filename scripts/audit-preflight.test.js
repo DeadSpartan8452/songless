@@ -21,6 +21,32 @@ async function test(name, fn) {
   fs.mkdirSync(musicDir);
   fs.writeFileSync(path.join(musicDir, 'test.mp3'), Buffer.from('ID3 test audio'));
   try {
+    await test('les dépendances sont résolues depuis la racine embarquée', () => {
+      const esmRoot = path.join(root, 'node_modules', 'module-esm-only');
+      fs.mkdirSync(esmRoot, { recursive: true });
+      fs.writeFileSync(path.join(esmRoot, 'package.json'), JSON.stringify({
+        name: 'module-esm-only',
+        type: 'module',
+        exports: { import: './index.js' },
+      }));
+      fs.writeFileSync(path.join(esmRoot, 'index.js'), 'export default true;');
+      const available = preflight.checkDependencies(
+        path.join(__dirname, '..'),
+        { qrcode: '^1.5.4' }
+      );
+      assert.deepStrictEqual(available, { ok: true, missing: [] });
+      const esmOnly = preflight.checkDependencies(root, {
+        'module-esm-only': '1.0.0',
+      });
+      assert.deepStrictEqual(esmOnly, { ok: true, missing: [] });
+      const unavailable = preflight.checkDependencies(root, {
+        'module-songless-absent': '1.0.0',
+      });
+      assert.deepStrictEqual(unavailable, {
+        ok: false,
+        missing: ['module-songless-absent'],
+      });
+    });
     await test('un fichier réel lisible valide le contrôle audio', () => {
       const files = preflight.listAudioFiles(musicDir);
       assert.deepStrictEqual(files, ['test.mp3']);
@@ -42,6 +68,21 @@ async function test(name, fn) {
       assert.strictEqual(report.checks.find(item => item.id === 'speakers').status, 'check');
       assert.strictEqual(report.summary.blocking, 0);
       assert.strictEqual(report.status, 'check');
+    });
+    await test('Android reçoit une réparation adaptée et le module absent', async () => {
+      const report = await preflight.run({
+        root, musicDir, tracks: { 'test.mp3': { title: 'Test' } },
+        port: 3000, publicPort: 0, internetMode: false, publicUrl: '',
+        dependenciesOk: false,
+        missingDependencies: ['module-test'],
+        mobileHost: true,
+        antivirus: { available: true, name: 'ClamAV' },
+        tools: { ok: true, missing: [] }, partyStore, qrCode: QRCode,
+      });
+      const dependency = report.checks.find(item => item.id === 'node');
+      assert.strictEqual(dependency.status, 'blocking');
+      assert.match(dependency.detail, /module-test/);
+      assert.match(dependency.action, /APK Songless/);
     });
     await test('la route et l’interface sont réservées au diagnostic hôte', () => {
       const server = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
