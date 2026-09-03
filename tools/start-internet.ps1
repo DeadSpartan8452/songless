@@ -5,6 +5,11 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
+# PowerShell 5.1 ne charge pas toujours cet assembly avant le premier accès à
+# ProtectedData. Le lanceur local applique la même initialisation pour que la
+# clé d'installation DPAPI fonctionne aussi sur une installation fraîche.
+Add-Type -AssemblyName System.Security
+
 function Get-ListenerProcessIds {
   param([int]$Port)
 
@@ -297,11 +302,26 @@ $env:SONGLESS_PUBLIC_URL = $PublicUrl
 $env:SONGLESS_PUBLIC_PORT = '3001'
 $env:SONGLESS_INSTANCE_SECRET = $InstanceToken
 $AdminUrl = "$LocalUrl/admin-bootstrap?token=$InstanceToken"
-$Node = Start-Process -FilePath 'node.exe' `
-  -ArgumentList 'server.js', '--lan', '--internet' `
-  -WorkingDirectory $ProjectRoot `
-  -WindowStyle Hidden `
-  -PassThru
+$PreviousTestLocalAdmin = $env:SONGLESS_TEST_ALLOW_LOCAL_ADMIN
+if ($SmokeTest) {
+  # Le test HTTP dédié valide déjà le vrai cookie HttpOnly. PowerShell 5.1 ne
+  # conserve pas toujours ce cookie au travers de la redirection 303 du
+  # bootstrap ; cette autorisation existe uniquement pour les processus de test.
+  $env:SONGLESS_TEST_ALLOW_LOCAL_ADMIN = '1'
+}
+try {
+  $Node = Start-Process -FilePath 'node.exe' `
+    -ArgumentList 'server.js', '--lan', '--internet' `
+    -WorkingDirectory $ProjectRoot `
+    -WindowStyle Hidden `
+    -PassThru
+} finally {
+  if ($null -eq $PreviousTestLocalAdmin) {
+    Remove-Item Env:SONGLESS_TEST_ALLOW_LOCAL_ADMIN -ErrorAction SilentlyContinue
+  } else {
+    $env:SONGLESS_TEST_ALLOW_LOCAL_ADMIN = $PreviousTestLocalAdmin
+  }
+}
 
 try {
   Start-Sleep -Seconds 2

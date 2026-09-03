@@ -295,14 +295,23 @@ automatique.
 - `music-metadata` possède une mise à jour corrective mineure, à appliquer dans
   une phase dédiée avec tests avant/après.
 
-## Contrôle restant avant clôture administrative de la phase zéro
+## Clôture administrative de la phase zéro — 3 septembre 2026
 
-Rejouer les trois lanceurs sur une instance fraîche, puis vérifier l’arrêt et la
-libération des ports. Le port 3000 est actuellement occupé par une instance
-Songless déjà ouverte, qui n’a volontairement pas été arrêtée pendant l’audit.
+Les lanceurs local et Wi-Fi ont été rejoués sur une installation fraîche et
+isolée. Le lanceur Internet a ensuite été validé avec le compte Tailscale
+Songless : démarrage des deux entrées, activation du Funnel HTTPS, création
+d'un salon, génération du QR, ouverture de l'invitation publique, arrêt du
+serveur, coupure du Funnel et libération des ports 3000 et 3001.
+
+Ce dernier parcours a découvert puis corrigé deux défauts du test frais : le
+chargement manquant de l'assembly DPAPI sous PowerShell 5.1 et la conservation
+irrégulière du cookie à travers une redirection par le client PowerShell. Le
+second point utilise désormais l'autorisation locale déjà réservée au seul
+processus `-SmokeTest`; les tests distincts continuent de vérifier le vrai
+cookie HttpOnly et les refus distants.
 
 ## État de la phase zéro
 
-**Techniquement validée.** Moteur, données, sécurité HTTP, rendu réel et
-accessibilité disposent maintenant de contrôles reproductibles. Seul le rejeu
-administratif des trois lanceurs sur un port 3000 libéré reste à consigner.
+**Livrée.** Moteur, données, sécurité HTTP, rendu réel, accessibilité et les
+trois parcours de lancement disposent de contrôles reproductibles. Le dernier
+test a confirmé qu'aucun Funnel ni port Songless ne reste actif après fermeture.
