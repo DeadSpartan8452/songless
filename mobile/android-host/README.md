@@ -1,4 +1,34 @@
-This is a new [**React Native**](https://reactnative.dev) project, bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
+# Songless pour Android
+
+Cette application transforme un téléphone Android en appareil hôte Songless. Elle
+embarque le serveur local, ouvre l’administration complète et permet aux joueurs,
+à la TV et à la télécommande administrateur de rejoindre la soirée par QR code.
+
+## Construire l’APK transférable sous Windows
+
+1. Ouvrir le dossier `packaging\android`.
+2. Double-cliquer sur `Construire APK Songless.bat`.
+3. Attendre le message « APK Songless prêt à être transféré ».
+4. Récupérer `dist\Songless-Android\Songless-Android.apk`.
+
+Au premier lancement, le constructeur crée une clé de signature privée dans le
+dossier local de l’utilisateur Windows. Son mot de passe est chiffré avec Windows
+DPAPI et n’entre jamais dans le dépôt. Cette clé doit être sauvegardée : Android
+n’acceptera une future mise à jour de Songless que si elle porte la même signature.
+
+Le fichier `Songless-Android.sha256.txt` permet de vérifier que l’APK transféré
+n’a pas été altéré.
+
+## Installation sur le téléphone
+
+Transférer uniquement l’APK, l’ouvrir depuis le téléphone et autoriser
+ponctuellement l’installation depuis l’application de fichiers. Cette autorisation
+peut être retirée juste après l’installation.
+
+Android 7 ou plus récent est requis. Le paquet contient les architectures ARM64
+pour les téléphones et x86-64 pour l’émulateur de contrôle.
+
+## Développement
 
 # Getting Started
 

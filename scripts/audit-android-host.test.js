@@ -21,6 +21,14 @@ const foregroundService = fs.readFileSync(path.join(host, 'android', 'app', 'src
 const metadataAdapter = fs.readFileSync(path.join(root, 'lib', 'music-metadata.js'), 'utf8');
 const answers = fs.readFileSync(path.join(root, 'lib', 'party-answers.js'), 'utf8');
 const titles = fs.readFileSync(path.join(root, 'lib', 'titles.js'), 'utf8');
+const releaseBuilder = fs.readFileSync(
+  path.join(root, 'packaging', 'android', 'Construire-APK-Songless.ps1'),
+  'utf8'
+);
+const releaseLauncher = fs.readFileSync(
+  path.join(root, 'packaging', 'android', 'Construire APK Songless.bat'),
+  'utf8'
+);
 
 assert.match(main, /crypto\.randomBytes\(32\)/);
 assert.match(main, /SONGLESS_INSTANCE_SECRET/);
@@ -59,6 +67,17 @@ assert.match(foregroundService, /setOngoing\(true\)/);
 assert.match(properties, /newArchEnabled=false/);
 assert.match(properties, /reactNativeArchitectures=arm64-v8a,x86_64/);
 assert.match(buildGradle, /abiFilters "arm64-v8a", "x86_64"/);
+assert.match(buildGradle, /SONGLESS_ANDROID_KEYSTORE/);
+assert.match(buildGradle, /signingConfig signingConfigs\.release/);
+assert.doesNotMatch(
+  buildGradle,
+  /release\s*\{\s*signingConfig signingConfigs\.debug/
+);
+assert.match(releaseBuilder, /ConvertFrom-SecureString/);
+assert.match(releaseBuilder, /apksigner\.bat/);
+assert.match(releaseBuilder, /assembleRelease --no-daemon/);
+assert.match(releaseBuilder, /build-android-payload\.js/);
+assert.match(releaseLauncher, /ExecutionPolicy Bypass/);
 assert.match(metadataAdapter, /import\('music-metadata'\)/);
 assert.doesNotMatch(answers, /\\p\{/);
 assert.doesNotMatch(titles, /\\p\{/);
