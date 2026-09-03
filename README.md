@@ -112,6 +112,21 @@ de 16 Kio. Après la migration vers React Native 0.77.3 et la recompilation du
 pont Node Mobile, seules les deux variantes de `libnode.so` restent à reconstruire
 sur Linux avant d’annoncer une compatibilité native 16 Kio complète.
 
+### Compatibilité réellement vérifiée
+
+| Plateforme | État vérifié | Livrable |
+|---|---|---|
+| Windows 11 x64 | Validé : installation, réparation, conservation des données, désinstallation, modes local/Wi-Fi/Internet et manifeste complet | `dist/Songless-Windows-x64` |
+| Android x86-64 | Validé sur émulateur Android 17 à pages de 16 Kio, en mode de compatibilité | `dist/Songless-Android/Songless-Android.apk` |
+| Android ARM64 / POCO X5 Pro | APK construit et signé, mais test sur le téléphone réel encore requis | même APK |
+| Linux x64 | Non validé : aucun paquet hôte autonome n’est encore livré | aucun |
+| macOS | Non validé : application signée et notarisation encore requises | aucun |
+| iPhone / iPad | Non validé : compilation et distribution Apple encore requises | aucun |
+
+Un navigateur reste utilisable comme joueur, TV ou télécommande sur les systèmes
+modernes. Cela ne transforme pas le navigateur en hôte autonome : le serveur
+Songless doit toujours tourner sur un hôte validé.
+
 ### Invitations et accès Internet
 
 Chaque soirée affiche un bouton **Copier le lien même wifi**. Le lien contient
