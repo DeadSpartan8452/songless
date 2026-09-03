@@ -683,7 +683,7 @@
       start: oneOf(source.start, ['seed', 'refrain', 'debut'], defaults.start),
       excerpt: oneOf(Number(source.excerpt), [5, 10, 15, 30, 60], defaults.excerpt),
       points: oneOf(Number(source.points), [500, 1000, 1500, 2000], defaults.points),
-      mystery: Boolean(source.mystery),
+      mystery: mode !== 'intruder' && Boolean(source.mystery),
       teamsMode: Boolean(source.teamsMode),
       smartHandicap: Boolean(source.smartHandicap),
     };
@@ -729,6 +729,10 @@
     if (byId('party-smart-handicap')) byId('party-smart-handicap').value = String(Boolean(value.smartHandicap));
     const excerptContainer = byId('party-excerpt-container');
     if (excerptContainer) excerptContainer.classList.toggle('hidden', mode !== 'buzzer');
+    const mysteryContainer = byId('party-mystery') && byId('party-mystery').closest('label');
+    const modeDefinition = partyModeDefinitions.find(item => item.id === mode);
+    const mysteryAllowed = !modeDefinition || modeDefinition.capabilities.mystery !== false;
+    if (mysteryContainer) mysteryContainer.classList.toggle('hidden', !mysteryAllowed);
   }
 
   function saveCurrentPartyOptions() {

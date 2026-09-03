@@ -65,6 +65,26 @@ test('une mauvaise réponse applique la pénalité puis reprend la musique', () 
   assert.strictEqual(state.playback.startedAt, 1500);
 });
 
+test('le Champ de Mines applique les 200 points réellement annoncés', () => {
+  const first = player('a');
+  const state = party([first]);
+  state.roundModifier = { penaltyHeavy: 200 };
+  buzzer.begin(state, first, 2000);
+  buzzer.submitAnswer(state, first, 'Mauvaise réponse', false, 2500);
+  assert.strictEqual(first.score, 300);
+  assert.strictEqual(first.lastPenaltyPoints, 200);
+});
+
+test('la Mort Subite interdit réellement une deuxième tentative', () => {
+  const first = player('a');
+  const state = party([first]);
+  state.roundModifier = { singleAttempt: true };
+  buzzer.begin(state, first, 2000);
+  buzzer.submitAnswer(state, first, 'Mauvaise réponse', false, 2500);
+  assert.strictEqual(first.finished, true);
+  assert.throws(() => buzzer.begin(state, first, 6000), /terminés/i);
+});
+
 test('une bonne réponse attribue les points et ferme le buzzer', () => {
   const first = player('a');
   const state = party([first]);

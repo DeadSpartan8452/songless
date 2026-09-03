@@ -85,6 +85,35 @@ test('les points augmentent quand la durée annoncée diminue', () => {
   assert.strictEqual(auction.pointsFor(1000, -1), 0);
 });
 
+test('le multiplicateur mystère est visible puis appliqué au gain', () => {
+  const context = activeParty();
+  context.party.roundModifier = { multiplier: 2 };
+  partyStore.playerAction(context.party, context.first.token, 'auction-bid', { seconds: 2 });
+  partyStore.playerAction(context.party, context.second.token, 'auction-bid', { seconds: 3 });
+  const shown = partyStore.publicState(context.party, context.first.token, null)
+    .auction.options.find(option => option.seconds === 2).points;
+  context.party.roundStartedAt = Date.now() - 1;
+  context.party.playback.startedAt = Date.now() - 1;
+  partyStore.playerAction(context.party, context.first.token, 'answer', {
+    answer: 'Bonne réponse',
+  });
+  assert.strictEqual(shown, auction.pointsFor(1000, 2) * 2);
+  assert.strictEqual(context.first.score, shown);
+});
+
+test('le Champ de Mines pénalise aussi une enchère ratée', () => {
+  const context = activeParty();
+  context.first.score = 500;
+  context.party.roundModifier = { penaltyHeavy: 200 };
+  partyStore.playerAction(context.party, context.first.token, 'auction-bid', { seconds: 1 });
+  partyStore.playerAction(context.party, context.second.token, 'auction-bid', { seconds: 3 });
+  context.party.roundStartedAt = Date.now() - 1;
+  context.party.playback.startedAt = Date.now() - 1;
+  partyStore.playerAction(context.party, context.first.token, 'answer', { answer: 'Raté' });
+  assert.strictEqual(context.first.score, 300);
+  assert.strictEqual(context.first.lastPenaltyPoints, 200);
+});
+
 test('les enchères adverses restent secrètes jusqu’à la clôture', () => {
   const value = party();
   const now = Date.now();

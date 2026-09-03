@@ -58,6 +58,25 @@ test('un mode inconnu revient au mode classique', () => {
   assert.strictEqual(ctx.party.mode, 'classic');
 });
 
+test('le mode Intrus refuse les contraintes mystère sans effet', () => {
+  const ctx = makeParty('intruder', { mystery: true });
+  assert.strictEqual(ctx.party.settings.mystery, false);
+  assert.deepStrictEqual(partyStore.mysteryModifiersForMode('intruder'), []);
+  ctx.party.settings.mystery = true;
+  assert.strictEqual(
+    partyStore.publicState(ctx.party, null, ctx.hostToken).settings.mystery,
+    false
+  );
+});
+
+test('les Enchères excluent la fausse contrainte à tentative unique', () => {
+  const ids = partyStore.mysteryModifiersForMode('auction').map(modifier => modifier.id);
+  assert.ok(ids.length > 0);
+  assert.strictEqual(ids.includes('clutch_only'), false);
+  assert.strictEqual(partyStore.mysteryModifiersForMode('classic').length,
+    partyStore.MYSTERY_MODIFIERS.length);
+});
+
 test('une commande hôte refuse un faux jeton', () => {
   const ctx = makeParty();
   assert.throws(

@@ -30,12 +30,15 @@ for (const mode of modes) {
   assert.ok(mode.surfaces.includes('remote_admin'));
   assert.strictEqual(typeof mode.capabilities.elimination, 'boolean');
   assert.strictEqual(typeof mode.capabilities.teams, 'boolean');
+  assert.strictEqual(typeof mode.capabilities.mystery, 'boolean');
   assert.ok(mode.guide && mode.guide.duration && mode.guide.winCondition);
   assert.ok(Array.isArray(mode.guide.playerActions) && mode.guide.playerActions.length >= 2);
   assert.ok(Array.isArray(mode.guide.hostControls) && mode.guide.hostControls.length >= 2);
   assert.ok(mode.guide.tvContent);
   assert.deepStrictEqual(mode.guide.compatibility, { local: true, remote: true });
 }
+assert.strictEqual(modes.find(mode => mode.id === 'intruder').capabilities.mystery, false);
+assert.strictEqual(modes.filter(mode => mode.id !== 'intruder').every(mode => mode.capabilities.mystery), true);
 
 for (const mode of catalog.filter(item => item.kind === 'local')) {
   assert.deepStrictEqual(mode.surfaces, ['host']);
@@ -73,6 +76,8 @@ assert.match(expansions, /item\.totalRounds === 'infinite'[\s\S]*?challengeTotal
 assert.match(expansions, /Arrêter et voir le bilan/);
 assert.match(expansions, /game-session-stop/);
 assert.match(expansions, /modesTab\.click\(\)/);
+assert.match(expansions, /mode !== 'intruder' && Boolean\(source\.mystery\)/);
+assert.match(expansions, /mysteryContainer\.classList\.toggle\('hidden', !mysteryAllowed\)/);
 assert.match(css, /\.party-mode-guide/);
 assert.match(css, /\.local-session-stop/);
 assert.match(css, /@media \(max-width: 760px\)[\s\S]*?\.party-mode-guide/);
