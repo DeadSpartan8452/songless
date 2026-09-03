@@ -1127,7 +1127,7 @@ async function buildTrack(fileName, meta) {
   const classification = trackMetadata.readClassification(meta);
 
   if (meta && meta.title) {
-    return {
+    const track = {
       id,
       fileName,
       title: meta.title,
@@ -1142,6 +1142,7 @@ async function buildTrack(fileName, meta) {
       easterEgg: meta.easterEgg || null,
       enriched: true,
     };
+    return {...track, classificationReview: trackMetadata.reviewStatus(track)};
   }
 
   // Pas encore enrichi : on fait au mieux avec les tags et le nom de fichier.
@@ -1150,7 +1151,7 @@ async function buildTrack(fileName, meta) {
   const title = T.cleanTitle(tags.title) || fromName.title || fileName;
   const artist = T.cleanTitle(tags.artist) || fromName.artist || 'Artiste inconnu';
 
-  return {
+  const track = {
     id,
     fileName,
     title,
@@ -1165,6 +1166,7 @@ async function buildTrack(fileName, meta) {
     easterEgg: null,
     enriched: false,
   };
+  return {...track, classificationReview: trackMetadata.reviewStatus(track)};
 }
 
 // Route: Lister les musiques

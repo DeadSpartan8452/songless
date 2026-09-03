@@ -10,6 +10,33 @@ function test(name, fn) {
   console.log(`OK  ${name}`);
 }
 
+test('la file de validation distingue les champs absents et incertains', () => {
+  const missing = metadata.reviewStatus({artist: '', genre: 'Autre'});
+  assert.strictEqual(missing.genre, true);
+  assert.strictEqual(missing.year, true);
+  assert.strictEqual(missing.missing, true);
+
+  const uncertain = metadata.reviewStatus({
+    artist: 'Artiste test',
+    genre: 'Rock',
+    genreConfidence: 'low',
+    year: 2000,
+    yearConfidence: 'unknown',
+  });
+  assert.strictEqual(uncertain.genreUncertain, true);
+  assert.strictEqual(uncertain.yearUncertain, true);
+  assert.strictEqual(uncertain.missing, false);
+
+  const confirmed = metadata.reviewStatus({
+    artist: 'Artiste test',
+    genre: 'Rock',
+    genreConfidence: 'medium',
+    year: 2000,
+    yearConfidence: 'high',
+  });
+  assert.strictEqual(confirmed.any, false);
+});
+
 test('les anciens favoris convergent vers un booléen unique', () => {
   assert.strictEqual(metadata.readClassification({ favori: true }).favorite, true);
   assert.strictEqual(metadata.readClassification({ coupDeCoeur: 1 }).favorite, true);

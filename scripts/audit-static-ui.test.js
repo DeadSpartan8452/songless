@@ -189,6 +189,12 @@ test('le classement en lot exige un aperçu distinct avant application', () => {
   assert.match(app, /fetch\('\/api\/tracks\/meta-preview'/);
   assert.match(app, /fetch\('\/api\/tracks\/meta-apply'/);
   assert.match(app, /bulkMetadataPreviewToken/);
+  for (const id of [
+    'library-validation-filter', 'edit-genre-source', 'edit-genre-confidence',
+  ]) assert.match(index, new RegExp(`id=["']${id}["']`));
+  assert.match(app, /classificationReview\.genreUncertain/);
+  assert.match(app, /genreSource:\s*document\.getElementById\('edit-genre-source'\)\.value/);
+  assert.match(app, /Array\.isArray\(track\.aliases\)[\s\S]*?track\.aliases\.join/);
 });
 
 test('la blacklist exige un aperçu, filtre le solo et reste administrable', () => {

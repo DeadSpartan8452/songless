@@ -1039,6 +1039,12 @@
                   <option value="favorite">★ Coups de cœur</option>
                   <option value="regular">☆ Non favoris</option>
                 </select>
+                <select id="library-validation-filter" aria-label="File de validation manuelle">
+                  <option value="">Toute la bibliothèque</option>
+                  <option value="genre-uncertain">Genres présents à confirmer</option>
+                  <option value="year-uncertain">Années présentes à confirmer</option>
+                  <option value="missing">Champs manquants</option>
+                </select>
                 <!-- Le drapeau needsReview existait sans moyen de lister ce qu'il
                      marque : il fallait parcourir 1500 lignes à l'œil. -->
                 <button class="review-filter-btn" id="review-filter-btn"
@@ -1191,8 +1197,31 @@
       <label for="edit-artist">Artiste</label>
       <input type="text" id="edit-artist">
 
-      <label for="edit-genre">Genre</label>
-      <select id="edit-genre"></select>
+      <div class="edit-classification-grid">
+        <div>
+          <label for="edit-genre">Genre</label>
+          <select id="edit-genre"></select>
+        </div>
+        <div>
+          <label for="edit-genre-source">Source</label>
+          <select id="edit-genre-source">
+            <option value="unknown">Inconnue</option>
+            <option value="manual">Saisie manuelle</option>
+            <option value="musicbrainz">MusicBrainz</option>
+            <option value="tag">Fichier audio</option>
+            <option value="filename">Nom du fichier</option>
+          </select>
+        </div>
+        <div>
+          <label for="edit-genre-confidence">Confiance</label>
+          <select id="edit-genre-confidence">
+            <option value="unknown">Inconnue</option>
+            <option value="high">Élevée</option>
+            <option value="medium">Moyenne</option>
+            <option value="low">Faible</option>
+          </select>
+        </div>
+      </div>
 
       <label for="edit-genre-detail">Sous-genre précis <span class="label-hint">facultatif</span></label>
       <input type="text" id="edit-genre-detail" maxlength="80" placeholder="Synthwave, city pop…">

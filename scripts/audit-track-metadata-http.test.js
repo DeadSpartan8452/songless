@@ -73,6 +73,8 @@ async function main() {
     const [initial] = await initialResponse.json();
     assert.strictEqual(initial.favorite, false);
     assert.strictEqual(initial.needsReview, true);
+    assert.strictEqual(initial.classificationReview.genre, true);
+    assert.strictEqual(initial.classificationReview.yearMissing, true);
 
     const favoriteResponse = await fetch(`${base}/api/tracks/${initial.id}/meta`, {
       method: 'PATCH',
@@ -105,6 +107,8 @@ async function main() {
     assert.strictEqual(updated.yearSource, 'manual');
     assert.strictEqual(updated.yearConfidence, 'high');
     assert.strictEqual(updated.title, 'Titre de test');
+    assert.strictEqual(updated.classificationReview.year, false);
+    assert.strictEqual(updated.classificationReview.genre, true);
 
     const portalResponse = await fetch(`${base}/api/tracks/${initial.id}/meta`, {
       method: 'PATCH',
@@ -154,6 +158,7 @@ async function main() {
     assert.strictEqual(afterApply[0].genreSource, 'manual');
     assert.strictEqual(afterApply[0].genreConfidence, 'high');
     assert.strictEqual(afterApply[0].title, 'Titre de test');
+    assert.strictEqual(afterApply[0].classificationReview.any, false);
     const replayResponse = await fetch(`${base}/api/tracks/meta-apply`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

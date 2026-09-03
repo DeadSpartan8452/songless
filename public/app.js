@@ -153,6 +153,7 @@ const libraryGenreFilter = document.getElementById('library-genre-filter');
 const libraryGenreDetailFilter = document.getElementById('library-genre-detail-filter');
 const libraryYearFilter = document.getElementById('library-year-filter');
 const libraryFavoriteFilter = document.getElementById('library-favorite-filter');
+const libraryValidationFilter = document.getElementById('library-validation-filter');
 const blacklistTargetType = document.getElementById('blacklist-target-type');
 const blacklistTrackValue = document.getElementById('blacklist-track-value');
 const blacklistTargetValue = document.getElementById('blacklist-target-value');
@@ -2151,6 +2152,10 @@ function renderLibraryList() {
     item.setAttribute('data-year', track.year || '');
     item.setAttribute('data-favorite', track.favorite ? '1' : '0');
     item.setAttribute('data-review', track.needsReview ? '1' : '0');
+    const classificationReview = track.classificationReview || {};
+    item.setAttribute('data-genre-uncertain', classificationReview.genreUncertain ? '1' : '0');
+    item.setAttribute('data-year-uncertain', classificationReview.yearUncertain ? '1' : '0');
+    item.setAttribute('data-metadata-missing', classificationReview.missing ? '1' : '0');
     item.innerHTML = `
       <div class="preview-progress" aria-hidden="true"><span></span></div>
       <input type="checkbox" class="track-select-checkbox" data-id="${track.id}"
@@ -2218,6 +2223,7 @@ function renderLibraryList() {
 
   updateBulkActionsUI();
   majCompteurARenommer();
+  majCompteursValidation();
   filterLibraryDisplay();   // la liste vient d'être reconstruite : on réapplique les filtres
   dessinerIcones();
 }
@@ -2789,6 +2795,7 @@ function filterLibraryDisplay() {
   const genreDetail = libraryGenreDetailFilter ? libraryGenreDetailFilter.value : '';
   const yearFilter = libraryYearFilter ? libraryYearFilter.value : '';
   const favoriteFilter = libraryFavoriteFilter ? libraryFavoriteFilter.value : '';
+  const validationFilter = libraryValidationFilter ? libraryValidationFilter.value : '';
   const items = tracksListContainer.querySelectorAll('.track-item');
 
   let visibles = 0;
@@ -2812,9 +2819,16 @@ function filterLibraryDisplay() {
       || (favoriteFilter === 'favorite' && itemFavorite)
       || (favoriteFilter === 'regular' && !itemFavorite);
     const matchesReview = !filtreARenommer || item.getAttribute('data-review') === '1';
+    const matchesValidation = !validationFilter
+      || (validationFilter === 'genre-uncertain'
+        && item.getAttribute('data-genre-uncertain') === '1')
+      || (validationFilter === 'year-uncertain'
+        && item.getAttribute('data-year-uncertain') === '1')
+      || (validationFilter === 'missing'
+        && item.getAttribute('data-metadata-missing') === '1');
 
     const visible = matchesText && matchesGenre && matchesGenreDetail
-      && matchesYear && matchesFavorite && matchesReview;
+      && matchesYear && matchesFavorite && matchesReview && matchesValidation;
     item.classList.toggle('hidden', !visible);
     if (visible) visibles++;
   });
@@ -2822,8 +2836,28 @@ function filterLibraryDisplay() {
   // Le compteur du titre suit ce qui est réellement affiché : sinon « Musiques
   // installées (1564) » au-dessus de 12 lignes filtrées prête à confusion.
   const filtreActif = query || genre || genreDetail || yearFilter
-    || favoriteFilter || filtreARenommer;
+    || favoriteFilter || validationFilter || filtreARenommer;
   tracksCountSpan.innerText = filtreActif ? `${visibles} / ${tracks.length}` : tracks.length;
+}
+
+function majCompteursValidation() {
+  if (!libraryValidationFilter) return;
+  const counts = tracks.reduce((total, track) => {
+    const review = track.classificationReview || {};
+    if (review.genreUncertain) total.genreUncertain++;
+    if (review.yearUncertain) total.yearUncertain++;
+    if (review.missing) total.missing++;
+    return total;
+  }, {genreUncertain: 0, yearUncertain: 0, missing: 0});
+  const labels = {
+    'genre-uncertain': `Genres présents à confirmer (${counts.genreUncertain})`,
+    'year-uncertain': `Années présentes à confirmer (${counts.yearUncertain})`,
+    missing: `Champs manquants (${counts.missing})`,
+  };
+  Object.entries(labels).forEach(([value, label]) => {
+    const option = libraryValidationFilter.querySelector(`option[value="${value}"]`);
+    if (option) option.textContent = label;
+  });
 }
 
 /** Bascule le filtre « à renommer » et rafraîchit l'affichage. */
@@ -4748,7 +4782,8 @@ function initDownloadEvents() {
   if (libraryGenreFilter) {
     libraryGenreFilter.addEventListener('change', filterLibraryDisplay);
   }
-  [libraryGenreDetailFilter, libraryYearFilter, libraryFavoriteFilter]
+  [libraryGenreDetailFilter, libraryYearFilter, libraryFavoriteFilter,
+    libraryValidationFilter]
     .filter(Boolean)
     .forEach(select => select.addEventListener('change', filterLibraryDisplay));
 }
@@ -5354,11 +5389,14 @@ function openEditModal(track) {
   document.getElementById('edit-file-name').innerText = track.fileName || '';
   document.getElementById('edit-title').value = track.title || '';
   document.getElementById('edit-artist').value = track.artist || '';
-  document.getElementById('edit-aliases').value = '';
+  document.getElementById('edit-aliases').value = Array.isArray(track.aliases)
+    ? track.aliases.join(', ') : '';
   document.getElementById('edit-genre-detail').value = track.genreDetail || '';
   document.getElementById('edit-year').value = track.year || '';
   document.getElementById('edit-year-source').value = track.yearSource || 'unknown';
   document.getElementById('edit-year-confidence').value = track.yearConfidence || 'unknown';
+  document.getElementById('edit-genre-source').value = track.genreSource || 'unknown';
+  document.getElementById('edit-genre-confidence').value = track.genreConfidence || 'unknown';
   document.getElementById('edit-favorite').checked = track.favorite === true;
   document.getElementById('edit-easter-egg').value = typeof track.easterEgg === 'string'
     ? track.easterEgg : (track.easterEgg && track.easterEgg.id) || '';
@@ -5390,6 +5428,15 @@ function initEditModalEvents() {
     });
   }
   document.getElementById('edit-cancel-btn').addEventListener('click', closeEditModal);
+  document.getElementById('edit-genre').addEventListener('change', () => {
+    document.getElementById('edit-genre-source').value = 'manual';
+    document.getElementById('edit-genre-confidence').value = 'high';
+  });
+  document.getElementById('edit-year').addEventListener('input', () => {
+    const hasYear = Boolean(document.getElementById('edit-year').value);
+    document.getElementById('edit-year-source').value = hasYear ? 'manual' : 'unknown';
+    document.getElementById('edit-year-confidence').value = hasYear ? 'high' : 'unknown';
+  });
   modal.addEventListener('click', (e) => {
     if (e.target === modal) closeEditModal();
   });
@@ -5404,8 +5451,8 @@ function initEditModalEvents() {
       artist: document.getElementById('edit-artist').value.trim(),
       genre: document.getElementById('edit-genre').value,
       genreDetail: document.getElementById('edit-genre-detail').value.trim(),
-      genreSource: 'manual',
-      genreConfidence: 'high',
+      genreSource: document.getElementById('edit-genre-source').value,
+      genreConfidence: document.getElementById('edit-genre-confidence').value,
       year: document.getElementById('edit-year').value,
       yearSource: document.getElementById('edit-year-source').value,
       yearConfidence: document.getElementById('edit-year-confidence').value,
