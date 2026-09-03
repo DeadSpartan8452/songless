@@ -285,6 +285,21 @@ node tools/enrich.js --force        # réécrit même les fiches validées
 MusicBrainz impose une requête par seconde : le premier passage est long, les
 suivants lisent le cache disque (`.cache/`) et sont immédiats.
 
+Pour compléter uniquement les genres encore incertains sans réécrire les
+titres, artistes ou années, les outils dédiés séparent toujours l'aperçu de
+l'application :
+
+```bash
+node tools/metadata-tags.js
+node tools/metadata-tags.js --apply .cache/metadata-tags-preview.json
+node tools/metadata-musicbrainz-cache.js
+node tools/metadata-musicbrainz-cache.js --apply .cache/metadata-musicbrainz-preview.json
+```
+
+Chaque application relit l'état courant, ignore les fichiers absents, refuse
+d'écraser une valeur fiable ou divergente et crée une sauvegarde tournante de
+`metadata.json` avant l'écriture atomique.
+
 ---
 
 ## 4. Seed aléatoire
