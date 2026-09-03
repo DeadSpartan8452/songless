@@ -6,6 +6,7 @@ const os = require('os');
 const path = require('path');
 const builder = require('./build-android-payload');
 const alignmentAudit = require('./audit-android-native-alignment');
+const nodeMobile16K = require('./patch-node-mobile-16k');
 
 const root = path.join(__dirname, '..');
 const host = path.join(root, 'mobile', 'android-host');
@@ -121,6 +122,8 @@ assert.match(releaseBuilder, /apksigner\.bat/);
 assert.match(releaseBuilder, /assembleRelease --no-daemon/);
 assert.match(releaseBuilder, /build-android-payload\.js/);
 assert.match(releaseBuilder, /audit-android-native-alignment\.js/);
+assert.match(releaseBuilder, /patch-node-mobile-16k\.js/);
+assert.match(releaseBuilder, /dist\\node-mobile-16k/);
 assert.match(releaseBuilder, /build\\nodejs-assets/);
 assert.match(releaseBuilder, /app\\build/);
 assert.match(releaseBuilder, /nodejs-mobile-react-native\\android/);
@@ -145,6 +148,48 @@ assert.doesNotMatch(titles, /\\p\{/);
 assert.strictEqual(path.basename(builder.safePayload()), 'nodejs-project');
 assert.strictEqual(alignmentAudit.inspectElf(makeElf64(0x4000)).compatible16K, true);
 assert.strictEqual(alignmentAudit.inspectElf(makeElf64(0x1000)).compatible16K, false);
+
+const nodeMobileRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'songless-node-mobile-'));
+fs.mkdirSync(path.join(nodeMobileRoot, 'android'));
+fs.writeFileSync(path.join(nodeMobileRoot, 'package.json'), JSON.stringify({
+  name: 'nodejs-mobile-react-native', version: nodeMobile16K.SUPPORTED_VERSION,
+}));
+fs.writeFileSync(path.join(nodeMobileRoot, 'android', 'CMakeLists.txt'), [
+  'add_library(nodejs-mobile-react-native-native-lib SHARED native-lib.cpp)',
+  'target_link_libraries(nodejs-mobile-react-native-native-lib libnode)',
+].join('\n'));
+for (const abi of ['arm64-v8a', 'x86_64']) {
+  fs.mkdirSync(path.join(nodeMobileRoot, 'android', 'libnode', 'bin', abi), {
+    recursive: true,
+  });
+}
+const customNodeRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'songless-libnode-16k-'));
+for (const abi of ['arm64-v8a', 'x86_64']) {
+  fs.mkdirSync(path.join(customNodeRoot, abi), {recursive: true});
+  fs.writeFileSync(path.join(customNodeRoot, abi, 'libnode.so'), makeElf64(0x4000));
+}
+try {
+  assert.strictEqual(nodeMobile16K.patchNodeMobile(nodeMobileRoot), true);
+  assert.strictEqual(nodeMobile16K.patchNodeMobile(nodeMobileRoot), false);
+  const patchedNodeMobile = fs.readFileSync(
+    path.join(nodeMobileRoot, 'android', 'CMakeLists.txt'), 'utf8'
+  );
+  assert.match(patchedNodeMobile, /max-page-size=16384/);
+  assert.strictEqual((patchedNodeMobile.match(/SONGLESS_16K_LINK_FLAGS/g) || []).length, 1);
+  assert.strictEqual(
+    nodeMobile16K.installCustomLibnode(nodeMobileRoot, customNodeRoot),
+    2
+  );
+  for (const abi of ['arm64-v8a', 'x86_64']) {
+    const installed = fs.readFileSync(path.join(
+      nodeMobileRoot, 'android', 'libnode', 'bin', abi, 'libnode.so'
+    ));
+    assert.strictEqual(alignmentAudit.inspectElf(installed).compatible16K, true);
+  }
+} finally {
+  fs.rmSync(nodeMobileRoot, {recursive: true, force: true});
+  fs.rmSync(customNodeRoot, {recursive: true, force: true});
+}
 
 const patchRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'songless-path-to-regexp-'));
 const patchTarget = path.join(

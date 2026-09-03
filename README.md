@@ -108,8 +108,9 @@ ligne ; seul un téléchargement demandé nécessite Internet.
 
 L’APK signé se trouve dans `dist/Songless-Android/Songless-Android.apk`. Il est
 actuellement validé en mode de compatibilité sur Android 17 avec pages mémoire
-de 16 Kio ; la compatibilité native 16 Kio reste à terminer avant de l’annoncer
-comme telle.
+de 16 Kio. Après la migration vers React Native 0.77.3 et la recompilation du
+pont Node Mobile, seules les deux variantes de `libnode.so` restent à reconstruire
+sur Linux avant d’annoncer une compatibilité native 16 Kio complète.
 
 ### Invitations et accès Internet
 

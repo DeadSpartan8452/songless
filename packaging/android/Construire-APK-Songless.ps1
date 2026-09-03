@@ -26,6 +26,8 @@ $nodeMobileRoot = Join-Path $projectRoot `
 $generatedNodeMobileBuild = Join-Path $nodeMobileRoot 'build'
 $outputApk = Join-Path $outputRoot 'Songless-Android.apk'
 $payloadBuilder = Join-Path $projectRoot 'scripts\build-android-payload.js'
+$nodeMobilePatch = Join-Path $projectRoot 'scripts\patch-node-mobile-16k.js'
+$customNodeRoot = Join-Path $projectRoot 'dist\node-mobile-16k'
 $alignmentAudit = Join-Path $projectRoot 'scripts\audit-android-native-alignment.js'
 
 function Get-JavaTool([string]$name) {
@@ -141,6 +143,14 @@ $node = Get-Command 'node.exe' -ErrorAction Stop
 & $node.Source $payloadBuilder
 if ($LASTEXITCODE -ne 0) {
     throw 'Preparation du moteur Android impossible.'
+}
+
+Write-Host 'Preparation du pont natif Node Mobile pour les pages 16 Kio...'
+& $node.Source $nodeMobilePatch `
+    (Split-Path -Parent $nodeMobileRoot) `
+    $customNodeRoot
+if ($LASTEXITCODE -ne 0) {
+    throw 'Preparation 16 Kio du pont Node Mobile impossible.'
 }
 
 $androidRootFull = [IO.Path]::GetFullPath($androidRoot).TrimEnd('\')

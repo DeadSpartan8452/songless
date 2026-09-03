@@ -44,10 +44,14 @@ peut être retirée juste après l’installation.
 Android 7 ou plus récent est requis. Le paquet contient les architectures ARM64
 pour les téléphones et x86-64 pour l’émulateur de contrôle.
 
-État contrôlé sur l’APK Release actuel : 56 bibliothèques natives examinées,
-dont 22 ont encore un alignement minimal de 4 Kio. L’APK fonctionne sur
-l’émulateur Android 17 à pages de 16 Kio grâce au mode de compatibilité Android,
-mais la compatibilité native 16 Kio sans avertissement reste un chantier ouvert.
+État contrôlé sur l’APK Release actuel : React Native 0.77.3 a ramené le bilan
+de 22 à 4 bibliothèques incompatibles, puis la recompilation du pont Node Mobile
+l’a ramené à 2 sur les 56 bibliothèques natives examinées. Il ne reste que
+`libnode.so` pour ARM64 et x86-64. Le constructeur Linux reproductible
+`scripts/build-node-mobile-16k-linux.sh` prépare leur recompilation depuis le tag
+Node Mobile v18.20.4 vérifié ; il doit encore être exécuté sur Linux avec le NDK
+r28. En attendant, l’APK fonctionne sur l’émulateur Android 17 à pages de 16 Kio
+grâce au mode de compatibilité Android.
 
 ## Développement
 
