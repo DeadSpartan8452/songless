@@ -743,6 +743,15 @@
               </button>
               <small>Protection incluse et utilisable hors ligne. Aucun morceau n’est envoyé.</small>
             </div>
+            <div class="mobile-folder-panel">
+              <div>
+                <strong>Importer toute une collection</strong>
+                <span id="mobile-folder-state">Sous-dossiers inclus, jusqu’à 5 000 morceaux.</span>
+              </div>
+              <button class="cta-btn" id="mobile-folder-picker" type="button">
+                Choisir un dossier musical
+              </button>
+            </div>
           </div>
 
           <!-- Téléchargement automatique -->
@@ -1039,7 +1048,8 @@
                   <i data-lucide="tags"></i> Classer la sélection
                 </button>
                 <button class="delete-selected-btn" id="delete-selected-btn">
-                  <i data-lucide="trash-2"></i> Supprimer la sélection (<span id="selected-tracks-count">0</span>)
+                  <i data-lucide="trash-2"></i>
+                  <span>Supprimer la sélection (<strong id="selected-tracks-count">0</strong>)</span>
                 </button>
               </div>
               <div class="tracks-list-container" id="tracks-list-container">

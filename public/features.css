@@ -358,6 +358,45 @@ body.lecture-seule #refresh-library-btn {
   .mobile-antivirus-panel .ghost-btn { width: 100%; }
 }
 
+.mobile-folder-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px 18px;
+  margin-top: 15px;
+  padding: 15px;
+  border: 1px solid rgba(78, 224, 201, .26);
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(78, 224, 201, .08), rgba(168, 85, 247, .06));
+}
+
+.mobile-folder-panel strong {
+  margin: 0 0 4px;
+  color: #f7f0dd;
+}
+
+.mobile-folder-panel span {
+  display: block;
+  color: var(--text-muted);
+  font-size: .8rem;
+  line-height: 1.45;
+}
+
+.mobile-folder-panel span.working { color: #fbbf24; }
+.mobile-folder-panel span.ready { color: #4ee0c9; }
+.mobile-folder-panel span.error { color: #fb7185; }
+
+.mobile-folder-panel .cta-btn {
+  min-height: 44px;
+  padding: 9px 15px;
+  white-space: nowrap;
+}
+
+@media (max-width: 620px) {
+  .mobile-folder-panel { grid-template-columns: 1fr; }
+  .mobile-folder-panel .cta-btn { width: 100%; }
+}
+
 .mobile-host .desktop-downloader-only {
   display: none;
 }

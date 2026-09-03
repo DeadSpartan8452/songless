@@ -1,6 +1,7 @@
 import React, {useEffect, useRef, useState} from 'react';
 import {
   ActivityIndicator,
+  NativeModules,
   SafeAreaView,
   StatusBar,
   StyleSheet,
@@ -16,10 +17,18 @@ type HostMessage = {
   detail?: string;
 };
 
+type FolderResult = {
+  cancelled?: boolean;
+  batchId?: string;
+  files?: number;
+  bytes?: number;
+};
+
 const LOCAL_URL = /^http:\/\/(127\.0\.0\.1|localhost):3000(?:\/|$)/i;
 
 function App(): React.JSX.Element {
   const started = useRef(false);
+  const webView = useRef<WebView>(null);
   const [adminUrl, setAdminUrl] = useState('');
   const [error, setError] = useState('');
 
@@ -42,11 +51,46 @@ function App(): React.JSX.Element {
     return () => nodejs.channel.removeListener('message', handleMessage);
   }, []);
 
+  const sendFolderResult = (payload: Record<string, unknown>) => {
+    const json = JSON.stringify(payload)
+      .replace(/</g, '\\u003c')
+      .replace(/\u2028/g, '\\u2028')
+      .replace(/\u2029/g, '\\u2029');
+    webView.current?.injectJavaScript(
+      `window.dispatchEvent(new CustomEvent('songless-folder-result',{detail:${json}}));true;`,
+    );
+  };
+
+  const handleWebMessage = async (event: {nativeEvent: {data: string}}) => {
+    let message: {type?: string} = {};
+    try {
+      message = JSON.parse(event.nativeEvent.data);
+    } catch (_) {
+      return;
+    }
+    if (message.type !== 'choose-music-folder') return;
+    const picker = NativeModules.SonglessFolderPicker;
+    if (!picker || typeof picker.pickFolder !== 'function') {
+      sendFolderResult({error: 'Le sélecteur de dossier Android est indisponible.'});
+      return;
+    }
+    try {
+      const result: FolderResult = await picker.pickFolder();
+      sendFolderResult(result || {cancelled: true});
+    } catch (pickerError) {
+      const detail = pickerError instanceof Error
+        ? pickerError.message
+        : 'Android n’a pas pu lire ce dossier.';
+      sendFolderResult({error: detail});
+    }
+  };
+
   if (adminUrl) {
     return (
       <SafeAreaView style={styles.webShell}>
         <StatusBar barStyle="light-content" backgroundColor="#0a0810" />
         <WebView
+          ref={webView}
           source={{uri: adminUrl}}
           style={styles.webview}
           javaScriptEnabled
@@ -56,6 +100,7 @@ function App(): React.JSX.Element {
           mixedContentMode="never"
           allowsBackForwardNavigationGestures
           onShouldStartLoadWithRequest={request => LOCAL_URL.test(request.url)}
+          onMessage={handleWebMessage}
           onError={event => setError(event.nativeEvent.description)}
         />
       </SafeAreaView>

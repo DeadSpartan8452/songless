@@ -448,9 +448,58 @@
 
 /* Sous 520 px, le badge mange toute la place utile : on le masque, le genre
    reste consultable par le crayon et par le filtre au-dessus. */
-@media (max-width: 520px) {
+@media (max-width: 820px) {
   .genre-badge.small { display: none; }
   .track-item { gap: 8px; padding: 10px 8px; }
+
+  /* L'hôte Android garde les quatre actions accessibles sans sacrifier le
+     titre : chaque contrôle a sa colonne, seul le texte peut se réduire. */
+  .mobile-host .track-item {
+    display: grid;
+    grid-template-columns: 16px 40px minmax(0, 1fr) repeat(4, 30px);
+    gap: 4px;
+  }
+
+  .mobile-host .track-item-details {
+    min-width: 0;
+  }
+
+  .mobile-host .genre-badge.small,
+  .mobile-host .preview-time {
+    display: none;
+  }
+
+  .mobile-host .favorite-track-btn,
+  .mobile-host .preview-track-btn,
+  .mobile-host .edit-track-btn,
+  .mobile-host .delete-track-btn {
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .mobile-host .tracks-bulk-actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+  }
+
+  .mobile-host .tracks-bulk-actions.hidden {
+    display: none;
+  }
+
+  .mobile-host .select-all-label {
+    grid-column: 1 / -1;
+  }
+
+  .mobile-host .tracks-bulk-actions button {
+    min-width: 0;
+    width: 100%;
+    justify-content: center;
+    white-space: normal;
+  }
 }
 
 .track-item-original {

@@ -19,6 +19,7 @@ let victoryAutoPlay = false;
 // Contexte serveur : mode réseau local, et droit d'écrire ou non.
 let contexte = { lan: false, local: true, mobileHost: false, readOnly: false, url: null };
 let mobileAntivirusBound = false;
+let mobileFolderBound = false;
 
 // Les gestionnaires JavaScript écrits directement dans le HTML sont bloqués
 // par notre politique de sécurité. On traite donc les pochettes cassées avec
@@ -4302,6 +4303,7 @@ function initContexte() {
         const mobileNote = document.getElementById('mobile-host-note');
         if (mobileNote) mobileNote.classList.remove('hidden');
         initMobileAntivirus();
+        initMobileFolderPicker();
       }
       if (info.readOnly) {
         document.body.classList.add('lecture-seule');
@@ -4387,6 +4389,80 @@ function initMobileAntivirus() {
       const state = document.getElementById('mobile-antivirus-state');
       if (state) state.classList.add('error');
       showToast(error.message, 'error');
+    }
+  });
+}
+
+function setMobileFolderState(message, kind = '') {
+  const state = document.getElementById('mobile-folder-state');
+  if (!state) return;
+  state.textContent = message;
+  state.classList.remove('working', 'error', 'ready');
+  if (kind) state.classList.add(kind);
+}
+
+function initMobileFolderPicker() {
+  const button = document.getElementById('mobile-folder-picker');
+  if (!button || mobileFolderBound) return;
+  mobileFolderBound = true;
+
+  if (!window.ReactNativeWebView || typeof window.ReactNativeWebView.postMessage !== 'function') {
+    button.disabled = true;
+    setMobileFolderState('Sélecteur disponible uniquement dans l’application Android.', 'error');
+    return;
+  }
+
+  button.addEventListener('click', () => {
+    button.disabled = true;
+    button.textContent = 'Choix Android ouvert…';
+    setMobileFolderState('Choisissez le dossier qui contient vos musiques.', 'working');
+    window.ReactNativeWebView.postMessage(JSON.stringify({type: 'choose-music-folder'}));
+  });
+
+  window.addEventListener('songless-folder-result', async event => {
+    const result = event.detail || {};
+    if (result.cancelled) {
+      button.disabled = false;
+      button.textContent = 'Choisir un dossier musical';
+      setMobileFolderState('Aucun dossier sélectionné.');
+      return;
+    }
+    if (result.error || !result.batchId) {
+      button.disabled = false;
+      button.textContent = 'Réessayer';
+      setMobileFolderState(result.error || 'Dossier Android invalide.', 'error');
+      return;
+    }
+
+    const count = Number(result.files) || 0;
+    button.textContent = 'Analyse en cours…';
+    setMobileFolderState(
+      `${count} morceau${count > 1 ? 'x' : ''} copié${count > 1 ? 's' : ''} · contrôle ClamAV…`,
+      'working'
+    );
+    try {
+      const response = await fetch('/api/android/import-folder', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({batchId: result.batchId}),
+      });
+      const rapport = await response.json();
+      if (!response.ok) throw new Error(rapport.error || 'Import du dossier impossible.');
+      afficherRapportImport(rapport);
+      loadLibrary();
+      const added = Array.isArray(rapport.ajoutes) ? rapport.ajoutes.length : 0;
+      setMobileFolderState(
+        `${added} morceau${added > 1 ? 'x' : ''} installé${added > 1 ? 's' : ''} après contrôle local.`,
+        'ready'
+      );
+      showToast('Dossier musical importé et contrôlé.', 'ok');
+      button.textContent = 'Choisir un autre dossier';
+    } catch (error) {
+      setMobileFolderState(error.message, 'error');
+      showToast(error.message, 'error');
+      button.textContent = 'Réessayer';
+    } finally {
+      button.disabled = false;
     }
   });
 }

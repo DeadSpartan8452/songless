@@ -164,6 +164,9 @@ if (!fs.existsSync(PUBLIC_DIR)) {
 
 // Les archives transitent par un dossier temporaire, pas par musiques/
 const UPLOAD_TMP = path.join(__dirname, '.cache', 'upload');
+const ANDROID_INBOX = process.env.SONGLESS_ANDROID_INBOX
+  ? path.resolve(process.env.SONGLESS_ANDROID_INBOX)
+  : path.join(__dirname, '.cache', 'android-inbox');
 
 const estArchive = (nom) => path.extname(nom).toLowerCase() === '.zip';
 
@@ -1373,6 +1376,59 @@ app.post('/api/upload', (req, res) => {
       res.status(400).json({ error: e.message });
     }
   });
+});
+
+/**
+ * Importe en une passe un dossier choisi avec le sélecteur natif Android.
+ * Le module natif ne touche jamais directement à la bibliothèque : il copie
+ * d’abord dans un lot privé, que ClamAV contrôle intégralement avant tout tri.
+ */
+app.post('/api/android/import-folder', async (req, res) => {
+  if (!MOBILE_HOST || !estLocal(req)) {
+    return res.status(403).json({error: 'Import de dossier réservé à l’application Android hôte.'});
+  }
+  const batchId = String(req.body && req.body.batchId || '');
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(batchId)) {
+    return res.status(400).json({error: 'Lot Android invalide.'});
+  }
+  const batch = path.resolve(ANDROID_INBOX, batchId);
+  if (path.dirname(batch) !== ANDROID_INBOX || !fs.existsSync(batch)) {
+    return res.status(404).json({error: 'Lot Android introuvable ou déjà traité.'});
+  }
+
+  try {
+    const files = fs.readdirSync(batch)
+      .filter(name => importer.AUDIO_EXT.includes(path.extname(name).toLowerCase()))
+      .map(name => path.join(batch, name));
+    if (files.length === 0) throw new Error('Ce dossier ne contient aucun fichier audio compatible.');
+    if (files.length > 5000) throw new Error('Ce dossier dépasse la limite de 5000 musiques.');
+
+    const scanResult = await antivirus.scan(batch, {timeout: 60 * 60 * 1000});
+    const installation = importer.installer(files, {deplacer: true});
+    if (installation.ecrits.length !== files.length) {
+      for (const installed of installation.ecrits) {
+        try { fs.unlinkSync(path.join(importer.MUSIC_DIR, installed)); } catch (_) { /* absent */ }
+      }
+      throw new Error('Certains morceaux n’ont pas pu être installés : import arrêté.');
+    }
+    const rapport = await importer.trier(installation.ecrits, {
+      nomsOrigine: installation.nomsOrigine,
+    });
+    res.json({
+      success: true,
+      antivirus: `${scanResult.engine} : dossier sain`,
+      ajoutes: rapport.ajoutes,
+      doublons: rapport.doublons,
+      erreurs: rapport.erreurs,
+      aRevoir: rapport.aRevoir,
+      genresIncomplets: rapport.genresIncomplets,
+    });
+  } catch (error) {
+    console.error('Erreur import dossier Android:', error.message);
+    res.status(400).json({error: error.message});
+  } finally {
+    try { fs.rmSync(batch, {recursive: true, force: true}); } catch (_) { /* lot déjà vidé */ }
+  }
 });
 
 // Route: Supprimer une musique

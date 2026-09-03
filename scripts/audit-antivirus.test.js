@@ -17,6 +17,10 @@ assert.deepStrictEqual(
   antivirus.scanArguments({ id: 'clamav' }, sample),
   ['--no-summary', '--', sample],
 );
+assert.deepStrictEqual(
+  antivirus.scanArguments({id: 'clamav'}, sample, {recursive: true}),
+  ['--recursive=yes', '--no-summary', '--', sample],
+);
 assert.throws(
   () => antivirus.scanArguments({ id: 'inconnu' }, sample),
   /non pris en charge/,

@@ -114,6 +114,19 @@ test('le panneau Android expose clairement l’état et la mise à jour antiviru
   assert.match(css, /\.mobile-antivirus-state\.error/);
 });
 
+test('le sélecteur Android importe un dossier entier avant de rafraîchir la bibliothèque', () => {
+  const index = read('index.html');
+  const app = read('app.js');
+  const css = read('features.css');
+  assert.match(index, /id="mobile-folder-picker"/);
+  assert.match(index, /id="mobile-folder-state"/);
+  assert.match(app, /choose-music-folder/);
+  assert.match(app, /songless-folder-result/);
+  assert.match(app, /\/api\/android\/import-folder/);
+  assert.match(app, /afficherRapportImport\(rapport\)[\s\S]*?loadLibrary\(\)/);
+  assert.match(css, /\.mobile-folder-panel/);
+});
+
 test('l’hôte Android reçoit des textes de bibliothèque adaptés à sa plateforme', () => {
   const index = read('index.html');
   const app = read('app.js');
@@ -124,6 +137,15 @@ test('l’hôte Android reçoit des textes de bibliothèque adaptés à sa plate
   assert.match(app, /if \(info\.mobileHost\)/);
   assert.match(app, /Prévu pour Android/);
   assert.match(app, /phone-address-list/);
+});
+
+test('la bibliothèque Android compacte les longues lignes sans couper leurs actions', () => {
+  const css = read('session.css');
+  assert.match(css, /@media \(max-width: 820px\)/);
+  assert.match(css, /\.mobile-host \.track-item\s*\{[\s\S]*?grid-template-columns:\s*16px 40px minmax\(0, 1fr\) repeat\(4, 30px\)/);
+  assert.match(css, /\.mobile-host \.genre-badge\.small,[\s\S]*?\.mobile-host \.preview-time\s*\{\s*display:\s*none/);
+  assert.match(css, /\.mobile-host \.tracks-bulk-actions\s*\{[\s\S]*?grid-template-columns:\s*minmax\(0, 1fr\)/);
+  assert.match(css, /\.mobile-host \.tracks-bulk-actions\.hidden\s*\{\s*display:\s*none/);
 });
 
 test('les filtres de bibliothèque couvrent genre précis, année et favoris sans renommer', () => {

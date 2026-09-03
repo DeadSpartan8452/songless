@@ -10,9 +10,10 @@ const port = 3000;
 const dataRoot = path.join(bridge.app.datadir(), 'Songless-Data');
 const musicRoot = path.join(dataRoot, 'musiques');
 const backupRoot = path.join(dataRoot, 'metadata-backups');
+const inboxRoot = path.join(dataRoot, 'inbox');
 const bootstrapToken = crypto.randomBytes(32).toString('base64url');
 
-for (const directory of [dataRoot, musicRoot, backupRoot]) {
+for (const directory of [dataRoot, musicRoot, backupRoot, inboxRoot]) {
   fs.mkdirSync(directory, {recursive: true});
 }
 
@@ -21,6 +22,7 @@ process.env.SONGLESS_LAN = '1';
 process.env.SONGLESS_MOBILE_HOST = '1';
 process.env.SONGLESS_INSTANCE_SECRET = bootstrapToken;
 process.env.SONGLESS_MUSIC_DIR = musicRoot;
+process.env.SONGLESS_ANDROID_INBOX = inboxRoot;
 process.env.SONGLESS_METADATA_FILE = path.join(dataRoot, 'metadata.json');
 process.env.SONGLESS_METADATA_BACKUP_DIR = backupRoot;
 process.env.SONGLESS_DATA_FILE = path.join(dataRoot, 'songless-data.json');
