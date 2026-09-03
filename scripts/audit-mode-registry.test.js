@@ -7,12 +7,18 @@ const registry = require('../lib/mode-registry');
 const partyStore = require('../lib/party');
 
 const modes = registry.publicModes();
+const catalog = registry.publicCatalog();
 
 assert.deepStrictEqual(
   modes.map(mode => mode.id),
   ['classic', 'buzzer', 'royale', 'duel', 'confidence', 'cooperation', 'intruder', 'auction', 'joker', 'missions']
 );
 assert.strictEqual(new Set(modes.map(mode => mode.id)).size, modes.length);
+assert.deepStrictEqual(
+  catalog.filter(mode => mode.kind === 'local').map(mode => mode.id),
+  ['solo_limited', 'solo_infinite', 'solo_duel', 'solo_royale', 'training', 'collections', 'challenges'],
+);
+assert.strictEqual(new Set(catalog.map(mode => mode.id)).size, catalog.length);
 
 for (const mode of modes) {
   assert.match(mode.id, /^[a-z][a-z0-9_-]*$/);
@@ -31,6 +37,12 @@ for (const mode of modes) {
   assert.deepStrictEqual(mode.guide.compatibility, { local: true, remote: true });
 }
 
+for (const mode of catalog.filter(item => item.kind === 'local')) {
+  assert.deepStrictEqual(mode.surfaces, ['host']);
+  assert.deepStrictEqual(mode.guide.compatibility, { local: true, remote: false });
+  assert.ok(mode.guide.duration && mode.guide.winCondition && mode.guide.tvContent);
+}
+
 assert.strictEqual(registry.normalizeModeId('inconnu'), 'classic');
 assert.strictEqual(registry.hasCapability('buzzer', 'buzzer'), true);
 assert.strictEqual(registry.hasCapability('royale', 'elimination'), true);
@@ -44,13 +56,17 @@ assert.strictEqual(JSON.stringify(state).includes(created.hostToken), false);
 
 const expansions = fs.readFileSync(path.join(__dirname, '..', 'public', 'expansions.js'), 'utf8');
 const css = fs.readFileSync(path.join(__dirname, '..', 'public', 'expansions.css'), 'utf8');
-assert.match(expansions, /card\.id = 'party-mode-guide'/);
+assert.match(expansions, /card\.id = id/);
 assert.match(expansions, /Fiche du mode sélectionné/);
 assert.match(expansions, /guide\.winCondition/);
 assert.match(expansions, /guide\.playerActions\.join/);
 assert.match(expansions, /guide\.hostControls\.join/);
 assert.match(expansions, /guide\.tvContent/);
+assert.match(expansions, /renderLocalModeGuides/);
+for (const id of ['solo_limited', 'solo_infinite', 'solo_duel', 'solo_royale', 'training', 'collections', 'challenges']) {
+  assert.match(expansions, new RegExp(`['"]${id}['"]`));
+}
 assert.match(css, /\.party-mode-guide/);
 assert.match(css, /@media \(max-width: 760px\)[\s\S]*?\.party-mode-guide/);
 
-console.log(`OK  registre de ${modes.length} modes et capacités validé`);
+console.log(`OK  catalogue de ${catalog.length} formats, dont ${modes.length} modes multijoueurs, validé`);

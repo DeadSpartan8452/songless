@@ -667,6 +667,11 @@ app.get('/api/party/modes', (_req, res) => {
   res.json({ modes: modeRegistry.publicModes() });
 });
 
+app.get('/api/modes', (_req, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.json({ modes: modeRegistry.publicCatalog() });
+});
+
 // ==========================================
 // EXCLUSIONS TEMPORAIRES DE LA BIBLIOTHÈQUE
 // ==========================================

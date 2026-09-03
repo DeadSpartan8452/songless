@@ -155,6 +155,17 @@ async function main() {
     assert.doesNotMatch(modes.text, /hostToken|inviteToken|accessToken/);
     ok('le registre HTTP publie les capacités des modes sans aucun jeton');
 
+    const catalog = await request(LOCAL, '/api/modes');
+    assert.strictEqual(catalog.status, 200);
+    assert.strictEqual(catalog.body.modes.filter(mode => mode.kind === 'party').length, 10);
+    assert.deepStrictEqual(
+      catalog.body.modes.filter(mode => mode.kind === 'local').map(mode => mode.id),
+      ['solo_limited', 'solo_infinite', 'solo_duel', 'solo_royale', 'training', 'collections', 'challenges'],
+    );
+    assert.strictEqual(catalog.body.modes.every(mode => mode.guide && mode.guide.winCondition), true);
+    assert.doesNotMatch(catalog.text, /hostToken|inviteToken|accessToken/);
+    ok('le catalogue HTTP décrit aussi les formats locaux sans exposer de jeton');
+
     const create = await request(LOCAL, '/api/party/create', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

@@ -480,22 +480,17 @@
   }
 
   let partyModeDefinitions = [];
+  let modeCatalog = [];
 
-  function renderPartyModeSummary() {
-    const select = byId('party-mode');
-    const summary = byId('party-mode-summary');
-    if (!select || !summary) return;
-    const mode = partyModeDefinitions.find(item => item.id === select.value);
-    summary.textContent = mode
-      ? `${mode.emoji} ${mode.shortLabel} — ${mode.summary}`
-      : '';
-    let card = byId('party-mode-guide');
+  function renderModeGuide(mode, anchor, id) {
+    if (!anchor) return;
+    let card = byId(id);
     if (!card) {
       card = document.createElement('section');
-      card.id = 'party-mode-guide';
+      card.id = id;
       card.className = 'party-mode-guide';
       card.setAttribute('aria-label', 'Fiche du mode sélectionné');
-      summary.insertAdjacentElement('afterend', card);
+      anchor.insertAdjacentElement('afterend', card);
     }
     card.replaceChildren();
     const guide = mode && mode.guide;
@@ -543,13 +538,45 @@
     card.appendChild(details);
   }
 
+  function catalogMode(id) {
+    return modeCatalog.find(mode => mode.id === id) || null;
+  }
+
+  function renderLocalModeGuides() {
+    const formatMode = byId('format-rounds').value === '0'
+      ? 'solo_infinite' : 'solo_limited';
+    const bindings = [
+      [formatMode, byId('format-status'), 'format-mode-guide'],
+      ['solo_duel', byId('solo-duel-status'), 'solo-duel-mode-guide'],
+      ['solo_royale', byId('solo-royale-status'), 'solo-royale-mode-guide'],
+      ['training', byId('training-status'), 'training-mode-guide'],
+      ['collections', byId('collection-list'), 'collections-mode-guide'],
+      ['challenges', byId('challenge-list'), 'challenges-mode-guide'],
+    ];
+    for (const [modeId, anchor, guideId] of bindings) {
+      renderModeGuide(catalogMode(modeId), anchor, guideId);
+    }
+  }
+
+  function renderPartyModeSummary() {
+    const select = byId('party-mode');
+    const summary = byId('party-mode-summary');
+    if (!select || !summary) return;
+    const mode = partyModeDefinitions.find(item => item.id === select.value);
+    summary.textContent = mode
+      ? `${mode.emoji} ${mode.shortLabel} — ${mode.summary}`
+      : '';
+    renderModeGuide(mode, summary, 'party-mode-guide');
+  }
+
   async function loadPartyModes() {
     const select = byId('party-mode');
     if (!select) return;
     const preferred = select.value || 'classic';
     try {
-      const response = await window.songlessShared.api('/api/party/modes');
-      partyModeDefinitions = Array.isArray(response.modes) ? response.modes : [];
+      const response = await window.songlessShared.api('/api/modes');
+      modeCatalog = Array.isArray(response.modes) ? response.modes : [];
+      partyModeDefinitions = modeCatalog.filter(mode => mode.kind === 'party');
       if (!partyModeDefinitions.length) throw new Error('Aucun mode disponible.');
       select.replaceChildren(...partyModeDefinitions.map(mode => {
         const option = document.createElement('option');
@@ -561,6 +588,7 @@
         ? preferred : 'classic';
       renderPartyModeSummary();
       renderPartyOptions();
+      renderLocalModeGuides();
     } catch (error) {
       select.replaceChildren();
       const option = document.createElement('option');
@@ -2568,6 +2596,7 @@
       renderPartyModeSummary();
     });
     byId('party-options').addEventListener('change', saveCurrentPartyOptions);
+    byId('format-rounds').addEventListener('change', renderLocalModeGuides);
     renderPartyOptions();
     loadPartyModes();
     byId('format-start-btn').addEventListener('click', () => {
