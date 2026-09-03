@@ -7,7 +7,7 @@
     "start": "node server.js",
     "lan": "node server.js --lan",
     "dev": "node --watch server.js",
-    "test": "npm run test:instance-auth && npm run test:windows-kit && npm run test:android-host && npm run test:mobile-storage && npm run test:antivirus && npm run test:preflight && npm run test:modes && npm run test:confidence && npm run test:cooperation && npm run test:intruder && npm run test:auction && npm run test:joker && npm run test:missions && npm run test:handicap && npm run test:trophies && npm run test:titles && npm run test:souvenir && npm run test:blacklist && npm run test:metadata && npm run test:metadata-http && npm run test:years-preview && npm run test:quality && npm run test:audio-quality && npm run test:images && npm run test:duplicate-comparison && npm run test:access && npm run test:answers && npm run test:suggestions && npm run test:easter-eggs && npm run test:rounds && npm run test:buzzer && npm run test:duel && npm run test:royale && npm run test:teams && npm run test:party && npm run test:results && npm run test:store && npm run test:player-http && npm run test:dupes && npm run test:identity && npm run test:ui && npm run test:http",
+    "test": "npm run test:instance-auth && npm run test:windows-kit && npm run test:android-host && npm run test:mobile-storage && npm run test:antivirus && npm run test:preflight && npm run test:modes && npm run test:confidence && npm run test:cooperation && npm run test:intruder && npm run test:auction && npm run test:joker && npm run test:missions && npm run test:handicap && npm run test:trophies && npm run test:titles && npm run test:souvenir && npm run test:blacklist && npm run test:metadata && npm run test:metadata-http && npm run test:years-preview && npm run test:quality && npm run test:audio-quality && npm run test:images && npm run test:duplicate-comparison && npm run test:access && npm run test:answers && npm run test:suggestions && npm run test:easter-eggs && npm run test:rounds && npm run test:buzzer && npm run test:duel && npm run test:royale && npm run test:teams && npm run test:party && npm run test:results && npm run test:store && npm run test:player-http && npm run test:dupes && npm run test:identity && npm run test:ui && npm run test:http && npm run test:load",
     "build:windows-kit": "node scripts/build-windows-kit.js",
     "build:android-payload": "node scripts/build-android-payload.js",
     "build:android-antivirus": "node scripts/build-android-antivirus.js",
@@ -52,7 +52,8 @@
     "test:dupes": "node scripts/audit-dupes.test.js",
     "test:identity": "node scripts/audit-title-identity.test.js",
     "test:ui": "node scripts/audit-static-ui.test.js",
-    "test:http": "node scripts/audit-http.test.js"
+    "test:http": "node scripts/audit-http.test.js",
+    "test:load": "node scripts/audit-load.test.js"
   },
   "dependencies": {
     "adm-zip": "^0.6.0",
