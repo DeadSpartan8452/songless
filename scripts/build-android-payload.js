@@ -23,6 +23,39 @@ function copy(relative) {
   fs.cpSync(path.join(ROOT, relative), path.join(PAYLOAD, relative), {recursive: true});
 }
 
+function patchPathToRegexpForNodeMobile(output) {
+  const target = path.join(
+    output,
+    'node_modules',
+    'path-to-regexp',
+    'dist',
+    'index.js'
+  );
+  let source = fs.readFileSync(target, 'utf8');
+  const replacements = [
+    [
+      'const ID_START = /^[$_\\p{ID_Start}]$/u;',
+      'const ID_START = /^[$_A-Za-z]$/;',
+    ],
+    [
+      'const ID_CONTINUE = /^[$\\u200c\\u200d\\p{ID_Continue}]$/u;',
+      'const ID_CONTINUE = /^[$\\u200c\\u200dA-Za-z0-9]$/;',
+    ],
+    [
+      'const ID = /^[$_\\p{ID_Start}][$\\u200c\\u200d\\p{ID_Continue}]*$/u;',
+      'const ID = /^[$_A-Za-z][$_\\u200c\\u200dA-Za-z0-9]*$/;',
+    ],
+  ];
+
+  for (const [original, compatible] of replacements) {
+    if (!source.includes(original)) {
+      throw new Error('Version de path-to-regexp Android non reconnue.');
+    }
+    source = source.replace(original, compatible);
+  }
+  fs.writeFileSync(target, source, 'utf8');
+}
+
 function build() {
   const output = safePayload();
   if (fs.existsSync(output)) fs.rmSync(output, {recursive: true, force: true});
@@ -42,6 +75,7 @@ function build() {
   if (install.status !== 0) {
     throw new Error(`Installation des dépendances Android impossible : ${install.error || install.status}`);
   }
+  patchPathToRegexpForNodeMobile(output);
 
   const forbidden = ['musiques', 'metadata.json', 'songless-data.json', '.songless-instance-key'];
   for (const name of forbidden) {
@@ -52,4 +86,11 @@ function build() {
 
 if (require.main === module) console.log(`Payload Android prêt : ${build()}`);
 
-module.exports = {APP_DIRECTORIES, APP_FILES, PAYLOAD, build, safePayload};
+module.exports = {
+  APP_DIRECTORIES,
+  APP_FILES,
+  PAYLOAD,
+  build,
+  patchPathToRegexpForNodeMobile,
+  safePayload,
+};

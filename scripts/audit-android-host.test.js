@@ -2,6 +2,7 @@
 
 const assert = require('assert');
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 const builder = require('./build-android-payload');
 const alignmentAudit = require('./audit-android-native-alignment');
@@ -120,6 +121,14 @@ assert.match(releaseBuilder, /apksigner\.bat/);
 assert.match(releaseBuilder, /assembleRelease --no-daemon/);
 assert.match(releaseBuilder, /build-android-payload\.js/);
 assert.match(releaseBuilder, /audit-android-native-alignment\.js/);
+assert.match(releaseBuilder, /build\\nodejs-assets/);
+assert.match(releaseBuilder, /app\\build/);
+assert.match(releaseBuilder, /nodejs-mobile-react-native\\android/);
+assert.match(releaseBuilder, /StringComparison]::OrdinalIgnoreCase/);
+assert.match(
+  releaseBuilder,
+  /Remove-Item -LiteralPath \$generatedPath -Recurse -Force/
+);
 assert.match(releaseLauncher, /ExecutionPolicy Bypass/);
 assert.match(signingBackup, /-deststoretype', 'PKCS12'/);
 assert.match(signingBackup, /SONGLESS_BACKUP_PASSWORD/);
@@ -136,6 +145,29 @@ assert.doesNotMatch(titles, /\\p\{/);
 assert.strictEqual(path.basename(builder.safePayload()), 'nodejs-project');
 assert.strictEqual(alignmentAudit.inspectElf(makeElf64(0x4000)).compatible16K, true);
 assert.strictEqual(alignmentAudit.inspectElf(makeElf64(0x1000)).compatible16K, false);
+
+const patchRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'songless-path-to-regexp-'));
+const patchTarget = path.join(
+  patchRoot,
+  'node_modules',
+  'path-to-regexp',
+  'dist',
+  'index.js'
+);
+fs.mkdirSync(path.dirname(patchTarget), {recursive: true});
+fs.writeFileSync(patchTarget, [
+  'const ID_START = /^[$_\\p{ID_Start}]$/u;',
+  'const ID_CONTINUE = /^[$\\u200c\\u200d\\p{ID_Continue}]$/u;',
+  'const ID = /^[$_\\p{ID_Start}][$\\u200c\\u200d\\p{ID_Continue}]*$/u;',
+].join('\n'));
+try {
+  builder.patchPathToRegexpForNodeMobile(patchRoot);
+  const patchedPathToRegexp = fs.readFileSync(patchTarget, 'utf8');
+  assert.doesNotMatch(patchedPathToRegexp, /\\p\{/);
+  assert.match(patchedPathToRegexp, /A-Za-z0-9/);
+} finally {
+  fs.rmSync(patchRoot, {recursive: true, force: true});
+}
 
 for (const forbidden of ['musiques', 'metadata.json', 'songless-data.json', '.songless-instance-key']) {
   assert.strictEqual(builder.APP_FILES.includes(forbidden), false);

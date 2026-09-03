@@ -19,6 +19,11 @@ $alias = 'songless'
 $outputRoot = Join-Path $projectRoot 'dist\Songless-Android'
 $sourceRelative = 'app\build\outputs\apk\release\app-release.apk'
 $sourceApk = Join-Path $androidRoot $sourceRelative
+$generatedNodeAssets = Join-Path $androidRoot 'build\nodejs-assets'
+$generatedAppBuild = Join-Path $androidRoot 'app\build'
+$nodeMobileRoot = Join-Path $projectRoot `
+    'mobile\android-host\node_modules\nodejs-mobile-react-native\android'
+$generatedNodeMobileBuild = Join-Path $nodeMobileRoot 'build'
 $outputApk = Join-Path $outputRoot 'Songless-Android.apk'
 $payloadBuilder = Join-Path $projectRoot 'scripts\build-android-payload.js'
 $alignmentAudit = Join-Path $projectRoot 'scripts\audit-android-native-alignment.js'
@@ -136,6 +141,28 @@ $node = Get-Command 'node.exe' -ErrorAction Stop
 & $node.Source $payloadBuilder
 if ($LASTEXITCODE -ne 0) {
     throw 'Preparation du moteur Android impossible.'
+}
+
+$androidRootFull = [IO.Path]::GetFullPath($androidRoot).TrimEnd('\')
+$nodeMobileRootFull = [IO.Path]::GetFullPath($nodeMobileRoot).TrimEnd('\')
+$generatedBuildDirectories = @(
+    @($generatedNodeAssets, (Join-Path $androidRootFull 'build\nodejs-assets')),
+    @($generatedAppBuild, (Join-Path $androidRootFull 'app\build')),
+    @($generatedNodeMobileBuild, (Join-Path $nodeMobileRootFull 'build'))
+)
+foreach ($entry in $generatedBuildDirectories) {
+    $generatedPath = [IO.Path]::GetFullPath($entry[0])
+    $expectedPath = [IO.Path]::GetFullPath($entry[1])
+    if (-not $generatedPath.Equals(
+        $expectedPath,
+        [StringComparison]::OrdinalIgnoreCase
+    )) {
+        throw 'Un cache Android genere ne peut pas etre purge en securite.'
+    }
+    if (Test-Path -LiteralPath $generatedPath) {
+        Write-Host ('Purge du cache genere : ' + $generatedPath)
+        Remove-Item -LiteralPath $generatedPath -Recurse -Force
+    }
 }
 
 Write-Host 'Construction de l APK Release...'
