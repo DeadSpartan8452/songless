@@ -723,6 +723,13 @@ Une phase est terminée uniquement si :
 | 7 — Personnalité | Livrée | Catalogue porté de 105 à 206 succès : **100/100 nouveaux succès** déclaratifs plus le succès secret Portal, persistants, dédupliqués et contrôlés sur PC/téléphone ; succès secrets masqués avant déblocage ; **50/50 titres de podium** factuels et uniques ; Portal déclaratif et anti-spoiler contrôlé sur PC/téléphone/TV ; carte souvenir PNG privée par défaut, copie, téléchargement et animations accessibles contrôlés sur PC/téléphone | — |
 | 8 — Finition | Avancée | Carte souvenir documentée ; diagnostic avant soirée ; kit Windows x64 autonome construit et audité ; installation fraîche, lancement local, lancement Wi-Fi, réparation avec conservation exacte de la clé d’autorité et désinstallation avec conservation des données validés sur un espace isolé ; réglages durables du kit déplacés dans `Songless-Data`, migration des anciennes installations prévue et confirmation explicite du compte Tailscale ajoutée au premier lancement Internet ; parcours Internet frais validé de bout en bout avec HTTPS Funnel, salon, QR, invitation et nettoyage ; contrôle visuel Android automatisé par émulateur isolé, ayant permis de corriger le chargement ESM de `music-metadata` et les expressions Unicode incompatibles avec Node mobile ; Release corrigée réinstallée sur Android 17 et diagnostic hôte réel rejoué : 8 contrôles verts, 1 contrôle manuel et seulement 2 blocages attendus sur une installation vierge sans musique ; test de charge HTTP reproductible avec 32 joueurs, 32 réponses simultanées, 640 états et 8 flux audio concurrents, dernière passe p95 à 25 ms ; matrice finale des permissions validant invitation, joueur, TV et télécommande, puis le refus de 41 routes administratives même avec une invitation valide ; joueur téléphone, télécommande administrateur et démarrage Android réharmonisés avec le Songless original puis vérifiés à 390 × 844 sans débordement, tandis que la TV validée reste inchangée ; constructeur Android en double clic détectant JDK et SDK, régénérant le moteur embarqué, purgeant ses caches générés, signant l’APK avec la clé privée réutilisable, vérifiant la signature, l’alignement de l’archive, l’empreinte SHA-256 et l’absence de données privées ; Release React Native 0.77.3 compilée et signée en v2 ; `music-metadata` 11.15.0 intégré, tests ciblés et suite complète verts ; kit Windows reconstruit le 4 septembre (3 980 fichiers, 595 Mo), manifeste vérifié fichier par fichier ; APK reconstruit et signé en v2, SHA-256 `06C57681EF29B3CB2549D6757A37F0C04FD8E2C5D4C6C737B43668683E7E5553` ; audit Android 17 ramené de 22 à 2 bibliothèques incompatibles après recompilation du pont, le constructeur Linux de `libnode.so` restant à exécuter | Reconstruction Linux de `libnode.so`, sauvegarde de signature, validation POCO et autres plateformes du kit transférable |
 
+**Validation du dernier APK au 4 septembre 2026** : l’APK intégrant
+`music-metadata` 11.15.0 a été réinstallé avec succès sur l’émulateur Android 17
+à pages de 16 Kio. Le démarrage à froid est confirmé en 1,24 s, l’API hôte répond
+sur le port 3000, l’écran administrateur est rendu correctement, aucun journal
+d’erreur Android, React Native ou Chromium n’est présent, et le service reste au
+premier plan avec notification pendant que l’application est en arrière-plan.
+
 **Compatibilité Android 16 Kio au 4 septembre 2026** : la migration de React
 Native 0.76.9 vers 0.77.3 a réduit le bilan de 22 à 4 bibliothèques natives
 incompatibles. Le pont Node Mobile a ensuite été recompilé avec un alignement de
@@ -747,6 +754,10 @@ et de restauration sans écrasement ont été validés de bout en bout sur une c
 factice ; le certificat restauré est strictement identique et le nouveau secret
 local est reprotégé par DPAPI. La sauvegarde de la vraie clé reste à déclencher
 par Manaël afin que son mot de passe ne soit ni enregistré ni exposé à un agent.
+
+Les opérations restantes dépendant du POCO, de Linux, d'un secret humain ou d'un
+autre système sont détaillées pas à pas dans
+`VALIDATIONS-EXTERNES-SONGLESS.md`. Elles ne déclenchent aucun achat automatique.
 
 Un élément n’est considéré comme livré que s’il respecte les critères de la
 section 13. Une présence dans le présent document signifie « demandé », pas
