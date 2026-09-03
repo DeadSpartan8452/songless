@@ -15,8 +15,7 @@ const importer = require('./lib/importer');
 const health = require('./lib/health');
 const playerStore = require('./lib/player-store');
 const partyStore = require('./lib/party');
-const partyResults = require('./lib/party-results');
-const partyRounds = require('./lib/party-rounds');
+const partyEngineModule = require('./lib/party-engine');
 const partySuggestions = require('./lib/party-suggestions');
 const partyIntruder = require('./lib/party-intruder');
 const partyEasterEggs = require('./lib/party-easter-eggs');
@@ -640,10 +639,10 @@ async function partyTrackData(trackId) {
   };
 }
 
-async function startNextPartyRound(party) {
-  return partyRounds.startNextPartyRound(party, {
-    loadTrack: partyTrackData,
-    buildIntruderChallenge: async currentParty => partyIntruder.generate(
+const partyEngine = partyEngineModule.create({
+  command: partyStore.command,
+  loadTrack: partyTrackData,
+  buildIntruderChallenge: async currentParty => partyIntruder.generate(
       await tracksFromIds(currentParty.trackIds),
       {
         seed: currentParty.seed,
@@ -651,16 +650,8 @@ async function startNextPartyRound(party) {
         totalRounds: currentParty.totalRounds || 10,
       }
     ),
-    command: partyStore.command,
-  });
-}
-
-async function revealCurrentPartyRound(party, requested = {}) {
-  return partyRounds.revealCurrentPartyRound(party, requested, {
-    loadTrack: partyTrackData,
-    command: partyStore.command,
-  });
-}
+  playerStore,
+});
 
 app.get('/api/party/modes', (_req, res) => {
   res.set('Cache-Control', 'no-store');
@@ -995,8 +986,8 @@ app.post('/api/party/:code/command', async (req, res) => {
     const accessRole = partyStore.accessRole(party, req.body.accessToken);
     const remoteAdmin = accessRole === 'remote_admin';
     if (remoteAdmin) {
-      if (req.body.action === 'start-next-round') await startNextPartyRound(party);
-      else if (req.body.action === 'reveal') await revealCurrentPartyRound(party, req.body.data);
+      if (req.body.action === 'start-next-round') await partyEngine.startNextRound(party);
+      else if (req.body.action === 'reveal') await partyEngine.revealCurrentRound(party, req.body.data);
       else if (req.body.action === 'finish' || req.body.action === 'lobby') {
         partyStore.command(party, party.hostToken, req.body.action, {});
       } else {
@@ -1006,11 +997,11 @@ app.post('/api/party/:code/command', async (req, res) => {
       if (!partyStore.publicState(party, null, req.body.hostToken).isHost) {
         throw new Error('Commande réservée à l’hôte.');
       }
-      await startNextPartyRound(party);
+      await partyEngine.startNextRound(party);
     } else {
       partyStore.command(party, req.body.hostToken, req.body.action, req.body.data);
     }
-    partyResults.commitFinishedParty(party, playerStore);
+    partyEngine.commitFinished(party);
     res.json(partyStore.publicState(
       party,
       req.body.playerToken,
