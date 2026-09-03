@@ -522,6 +522,54 @@ body.lecture-seule .local-only { display: none !important; }
   line-height: 1.45;
 }
 
+.party-mode-guide {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: .55rem;
+  margin-top: .55rem;
+}
+.party-mode-guide[hidden] { display: none; }
+.party-mode-fact {
+  display: grid;
+  gap: .18rem;
+  min-width: 0;
+  padding: .62rem .72rem;
+  border: 1px solid rgba(168, 85, 247, .2);
+  border-radius: 10px;
+  background: rgba(28, 24, 39, .55);
+}
+.party-mode-fact small {
+  color: #8b8178;
+  font-size: .67rem;
+  font-weight: 900;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.party-mode-fact strong {
+  overflow-wrap: anywhere;
+  color: #f4eaff;
+  font-size: .82rem;
+}
+.party-mode-details {
+  grid-column: 1 / -1;
+  padding: .65rem .8rem;
+  border-radius: 10px;
+  background: rgba(168, 85, 247, .08);
+  color: #c4b5d4;
+  font-size: .8rem;
+}
+.party-mode-details summary {
+  cursor: pointer;
+  color: #f4eaff;
+  font-weight: 850;
+}
+.party-mode-details p { margin: .55rem 0 0; color: #c4b5d4; }
+.party-mode-details b { color: #f4eaff; }
+
+@media (max-width: 760px) {
+  .party-mode-guide { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
 .party-final-duel-banner {
   display: grid;
   gap: .25rem;

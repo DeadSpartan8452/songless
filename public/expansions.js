@@ -489,6 +489,58 @@
     summary.textContent = mode
       ? `${mode.emoji} ${mode.shortLabel} — ${mode.summary}`
       : '';
+    let card = byId('party-mode-guide');
+    if (!card) {
+      card = document.createElement('section');
+      card.id = 'party-mode-guide';
+      card.className = 'party-mode-guide';
+      card.setAttribute('aria-label', 'Fiche du mode sélectionné');
+      summary.insertAdjacentElement('afterend', card);
+    }
+    card.replaceChildren();
+    const guide = mode && mode.guide;
+    card.hidden = !guide;
+    if (!guide) return;
+
+    const maxPlayers = Number(mode.maxPlayers) || null;
+    const players = maxPlayers && maxPlayers === mode.minPlayers
+      ? `${mode.minPlayers}` : `${mode.minPlayers}${maxPlayers ? `–${maxPlayers}` : '+'}`;
+    const facts = [
+      ['Joueurs', players],
+      ['Durée', guide.duration],
+      ['Équipes', mode.capabilities.teams ? 'compatibles' : 'individuel'],
+      ['Appareils', guide.compatibility.remote ? 'local + distant' : 'local'],
+    ];
+    for (const [label, value] of facts) {
+      const fact = document.createElement('span');
+      fact.className = 'party-mode-fact';
+      const title = document.createElement('small');
+      title.textContent = label;
+      const content = document.createElement('strong');
+      content.textContent = value;
+      fact.append(title, content);
+      card.appendChild(fact);
+    }
+
+    const details = document.createElement('details');
+    details.className = 'party-mode-details';
+    const detailsTitle = document.createElement('summary');
+    detailsTitle.textContent = 'Règles et commandes de ce mode';
+    details.appendChild(detailsTitle);
+    const rows = [
+      ['Victoire', guide.winCondition],
+      ['Joueurs', guide.playerActions.join(' · ')],
+      ['Hôte', guide.hostControls.join(' · ')],
+      ['Écran TV', guide.tvContent],
+    ];
+    for (const [label, value] of rows) {
+      const row = document.createElement('p');
+      const title = document.createElement('b');
+      title.textContent = `${label} : `;
+      row.append(title, document.createTextNode(value));
+      details.appendChild(row);
+    }
+    card.appendChild(details);
   }
 
   async function loadPartyModes() {

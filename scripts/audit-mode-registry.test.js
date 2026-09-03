@@ -1,6 +1,8 @@
 'use strict';
 
 const assert = require('assert');
+const fs = require('fs');
+const path = require('path');
 const registry = require('../lib/mode-registry');
 const partyStore = require('../lib/party');
 
@@ -22,6 +24,11 @@ for (const mode of modes) {
   assert.ok(mode.surfaces.includes('remote_admin'));
   assert.strictEqual(typeof mode.capabilities.elimination, 'boolean');
   assert.strictEqual(typeof mode.capabilities.teams, 'boolean');
+  assert.ok(mode.guide && mode.guide.duration && mode.guide.winCondition);
+  assert.ok(Array.isArray(mode.guide.playerActions) && mode.guide.playerActions.length >= 2);
+  assert.ok(Array.isArray(mode.guide.hostControls) && mode.guide.hostControls.length >= 2);
+  assert.ok(mode.guide.tvContent);
+  assert.deepStrictEqual(mode.guide.compatibility, { local: true, remote: true });
 }
 
 assert.strictEqual(registry.normalizeModeId('inconnu'), 'classic');
@@ -34,5 +41,16 @@ const state = partyStore.publicState(created.party, null, created.hostToken);
 assert.strictEqual(state.modeDefinition.id, 'royale');
 assert.strictEqual(state.modeDefinition.capabilities.elimination, true);
 assert.strictEqual(JSON.stringify(state).includes(created.hostToken), false);
+
+const expansions = fs.readFileSync(path.join(__dirname, '..', 'public', 'expansions.js'), 'utf8');
+const css = fs.readFileSync(path.join(__dirname, '..', 'public', 'expansions.css'), 'utf8');
+assert.match(expansions, /card\.id = 'party-mode-guide'/);
+assert.match(expansions, /Fiche du mode sélectionné/);
+assert.match(expansions, /guide\.winCondition/);
+assert.match(expansions, /guide\.playerActions\.join/);
+assert.match(expansions, /guide\.hostControls\.join/);
+assert.match(expansions, /guide\.tvContent/);
+assert.match(css, /\.party-mode-guide/);
+assert.match(css, /@media \(max-width: 760px\)[\s\S]*?\.party-mode-guide/);
 
 console.log(`OK  registre de ${modes.length} modes et capacités validé`);
