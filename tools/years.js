@@ -279,7 +279,14 @@ async function main() {
   }
 }
 
-if (require.main === module) {
+if (args.includes('--help') || args.includes('-h')) {
+  console.log(`Usage :
+  node tools/years.js                  prépare un aperçu MusicBrainz
+  node tools/years.js --limit 100      limite les recherches réseau
+  node tools/years.js --cache-only     utilise seulement le cache local
+  node tools/years.js --force          reprend aussi les années existantes
+  node tools/years.js --apply <fichier> applique un aperçu contrôlé`);
+} else if (require.main === module) {
   main().catch((e) => {
     console.error('\nÉchec :', e);
     process.exit(1);

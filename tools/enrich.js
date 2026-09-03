@@ -32,8 +32,12 @@ const T = require('../lib/titles');
 const store = require('../lib/store');
 
 const ROOT = path.join(__dirname, '..');
-const MUSIC_DIR = path.join(ROOT, 'musiques');
-const CACHE_DIR = path.join(ROOT, '.cache');
+const MUSIC_DIR = process.env.SONGLESS_MUSIC_DIR
+  ? path.resolve(process.env.SONGLESS_MUSIC_DIR)
+  : path.join(ROOT, 'musiques');
+const CACHE_DIR = process.env.SONGLESS_CACHE_DIR
+  ? path.resolve(process.env.SONGLESS_CACHE_DIR)
+  : path.join(ROOT, '.cache');
 const MB_CACHE = path.join(CACHE_DIR, 'musicbrainz-artists.json');
 
 const AUDIO_EXT = ['.mp3', '.wav', '.ogg', '.m4a', '.mp4', '.aac', '.flac', '.opus'];
@@ -218,6 +222,8 @@ async function baseEntry(fileName, overrides, swapSet) {
   }
   let originalTitle = '';
   let genre = null;
+  let genreSource = 'unknown';
+  let genreConfidence = 'unknown';
   let source = useTagTitle ? 'tags' : 'nom de fichier';
   let needsReview = false;
 
@@ -226,16 +232,30 @@ async function baseEntry(fileName, overrides, swapSet) {
   const ov = T.matchOverride(overrides, title, fromName.cleaned, fileName);
   if (ov) {
     if (ov.artist) artist = ov.artist;
-    if (ov.genre) genre = ov.genre;
+    if (ov.genre) {
+      genre = ov.genre;
+      genreSource = 'manual';
+      genreConfidence = 'high';
+    }
     source = 'source + correspondance en alias';
   }
   if (T.detectScript(title) !== 'latin') needsReview = true;
 
   // 3. Genre : tag ID3, puis indices du nom de fichier.
-  if (!genre && tagGenre) genre = T.resolveGenre(tagGenre);
+  if (!genre && tagGenre) {
+    genre = T.resolveGenre(tagGenre);
+    if (genre) {
+      genreSource = 'tag';
+      genreConfidence = 'medium';
+    }
+  }
   if (!genre) {
     const guess = T.guessGenre([fileName, title, originalTitle, artist]);
-    if (guess !== 'Autre') genre = guess;
+    if (guess !== 'Autre') {
+      genre = guess;
+      genreSource = 'filename';
+      genreConfidence = 'low';
+    }
   }
 
   return {
@@ -244,6 +264,8 @@ async function baseEntry(fileName, overrides, swapSet) {
     originalTitle: originalTitle.trim(),
     artist: artist.trim(),
     genre,
+    genreSource,
+    genreConfidence,
     duration: Math.round(duration),
     hasCover,
     aliases: [],
@@ -321,7 +343,11 @@ async function main() {
 
       if (info && info.genre) {
         for (const e of Object.values(entries)) {
-          if (!e.genre && T.norm(e.artist) === T.norm(artist)) e.genre = info.genre;
+          if (!e.genre && T.norm(e.artist) === T.norm(artist)) {
+            e.genre = info.genre;
+            e.genreSource = 'musicbrainz';
+            e.genreConfidence = 'medium';
+          }
         }
       }
       if (i % 10 === 0 || i === artists.length) {
@@ -356,6 +382,8 @@ async function main() {
         const info = await fetchArtistGenre(rec.artist, cache);
         if (info && info.genre) {
           e.genre = info.genre;
+          e.genreSource = 'musicbrainz';
+          e.genreConfidence = 'medium';
           found++;
         }
       }
@@ -396,6 +424,8 @@ async function main() {
           e.artist = info.name;
           if (info.genre) {
             e.genre = info.genre;
+            e.genreSource = 'musicbrainz';
+            e.genreConfidence = 'medium';
             found++;
           }
           break;
@@ -412,7 +442,11 @@ async function main() {
 
   // ---- Finalisation : genre par défaut + alias
   for (const e of Object.values(entries)) {
-    if (!e.genre) e.genre = 'Autre';
+    if (!e.genre) {
+      e.genre = 'Autre';
+      e.genreSource = 'unknown';
+      e.genreConfidence = 'unknown';
+    }
     const ov = T.matchOverride(overrides, e.title, e.originalTitle, e.fileName);
     e.aliases = T.buildAliases(
       e.title,
@@ -447,7 +481,16 @@ async function main() {
   }
 }
 
-main().catch((e) => {
-  console.error('\nÉchec :', e);
-  process.exit(1);
-});
+if (args.includes('--help') || args.includes('-h')) {
+  console.log(`Usage :
+  node tools/enrich.js                 enrichissement complet
+  node tools/enrich.js --no-network    heuristiques hors ligne
+  node tools/enrich.js --deep          recherche MusicBrainz approfondie
+  node tools/enrich.js --force         réécrit les fiches déjà validées
+  node tools/enrich.js --limit 50      limite le nombre de fichiers`);
+} else {
+  main().catch((e) => {
+    console.error('\nÉchec :', e);
+    process.exit(1);
+  });
+}

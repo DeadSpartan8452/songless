@@ -67,6 +67,34 @@ test('une année valide conserve provenance et confiance', () => {
   });
 });
 
+test('les anciennes provenances retrouvent une confiance prudente', () => {
+  const catalogue = metadata.readClassification({
+    genreSource: 'musicbrainz',
+    year: 2007,
+    yearSource: 'musicbrainz',
+  });
+  assert.strictEqual(catalogue.genreConfidence, 'medium');
+  assert.strictEqual(catalogue.yearConfidence, 'medium');
+
+  const manual = metadata.readClassification({
+    genreSource: 'manual',
+    year: 2007,
+    yearSource: 'manual',
+  });
+  assert.strictEqual(manual.genreConfidence, 'high');
+  assert.strictEqual(manual.yearConfidence, 'high');
+
+  const explicitReview = metadata.readClassification({
+    genreSource: 'musicbrainz',
+    genreConfidence: 'unknown',
+    year: 2007,
+    yearSource: 'musicbrainz',
+    yearConfidence: 'low',
+  });
+  assert.strictEqual(explicitReview.genreConfidence, 'unknown');
+  assert.strictEqual(explicitReview.yearConfidence, 'low');
+});
+
 test('le sous-genre est borné sans toucher au titre', () => {
   const patch = metadata.classificationPatch({
     genreDetail: 'Synthwave'.repeat(20), title: 'Ne doit pas passer',

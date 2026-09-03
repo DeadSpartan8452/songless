@@ -11,11 +11,11 @@ function test(name, fn) {
 }
 
 const tracks = [
-  { id: 'a', title: 'Alpha', artist: 'Même artiste', year: 1991, genre: 'Pop', theme: 'Été' },
-  { id: 'b', title: 'Bravo', artist: 'Même artiste', year: 1994, genre: 'Pop', theme: 'Été' },
-  { id: 'c', title: 'Charlie', artist: 'Même artiste', year: 1998, genre: 'Pop', theme: 'Été' },
-  { id: 'd', title: 'Delta', artist: 'Autre artiste', year: 2001, genre: 'Rock', theme: 'Hiver' },
-  { id: 'e', title: 'Echo', artist: 'Encore ailleurs', year: 2003, genre: 'Jazz', theme: 'Nuit' },
+  { id: 'a', title: 'Alpha', artist: 'Même artiste', year: 1991, yearConfidence: 'high', genre: 'Pop', genreConfidence: 'high', theme: 'Été' },
+  { id: 'b', title: 'Bravo', artist: 'Même artiste', year: 1994, yearConfidence: 'high', genre: 'Pop', genreConfidence: 'high', theme: 'Été' },
+  { id: 'c', title: 'Charlie', artist: 'Même artiste', year: 1998, yearConfidence: 'high', genre: 'Pop', genreConfidence: 'high', theme: 'Été' },
+  { id: 'd', title: 'Delta', artist: 'Autre artiste', year: 2001, yearConfidence: 'high', genre: 'Rock', genreConfidence: 'high', theme: 'Hiver' },
+  { id: 'e', title: 'Echo', artist: 'Encore ailleurs', year: 2003, yearConfidence: 'high', genre: 'Jazz', genreConfidence: 'high', theme: 'Nuit' },
 ];
 
 function activeParty() {
@@ -64,6 +64,38 @@ test('une bibliothèque insuffisante interdit toute génération incertaine', ()
     { id: '1', title: 'Un' }, { id: '2', title: 'Deux' },
     { id: '3', title: 'Trois' }, { id: '4', title: 'Quatre' },
   ]), null);
+});
+
+test('un genre incertain ne peut jamais construire une question Intrus', () => {
+  const uncertain = [
+    { id: '1', title: 'Un', artist: 'Artiste un', genre: 'Pop', genreConfidence: 'unknown' },
+    { id: '2', title: 'Deux', artist: 'Artiste deux', genre: 'Pop', genreConfidence: 'low' },
+    { id: '3', title: 'Trois', artist: 'Artiste trois', genre: 'Pop', genreConfidence: 'unknown' },
+    { id: '4', title: 'Quatre', artist: 'Artiste quatre', genre: 'Rock', genreConfidence: 'low' },
+  ];
+  assert.strictEqual(intruder.generate(uncertain, { seed: 'genre-incertain' }), null);
+  const trusted = uncertain.map(track => ({ ...track, genreConfidence: 'medium' }));
+  const challenge = intruder.generate(trusted, { seed: 'genre-valide' });
+  assert.ok(challenge);
+  assert.strictEqual(challenge.dimension, 'genre');
+});
+
+test('une année incertaine ne peut jamais construire une question Intrus', () => {
+  const uncertain = [
+    { id: '1', title: 'Un', artist: 'Artiste un', year: 1991, yearConfidence: 'unknown' },
+    { id: '2', title: 'Deux', artist: 'Artiste deux', year: 1994, yearConfidence: 'low' },
+    { id: '3', title: 'Trois', artist: 'Artiste trois', year: 1998, yearConfidence: 'unknown' },
+    { id: '4', title: 'Quatre', artist: 'Artiste quatre', year: 2001, yearConfidence: 'low' },
+  ];
+  assert.strictEqual(intruder.generate(uncertain, {
+    seed: 'annee-incertaine', round: 9, totalRounds: 9,
+  }), null);
+  const trusted = uncertain.map(track => ({ ...track, yearConfidence: 'medium' }));
+  const challenge = intruder.generate(trusted, {
+    seed: 'annee-valide', round: 9, totalRounds: 9,
+  });
+  assert.ok(challenge);
+  assert.strictEqual(challenge.dimension, 'year');
 });
 
 test('la réponse et la justification restent secrètes avant révélation', () => {
