@@ -45,10 +45,23 @@ async function waitForServer(child) {
 async function main() {
   fs.mkdirSync(musicDir, { recursive: true });
   const metadataTracks = {
-    'alpha-one.mp3': { title: 'Alpha One', artist: 'Alpha', genre: 'Rock', year: 1997, duration: 180 },
-    'alpha-copy.mp3': { title: 'Alpha One', artist: 'Alpha', genre: 'Rock', year: 1997, duration: 180 },
-    'beta-two.mp3': { title: 'Beta Two', artist: 'Beta', genre: 'Pop', year: 2004, duration: 190 },
-    'gamma-three.mp3': { title: 'Gamma Three', artist: 'Gamma', genre: 'Jazz', year: 2012, duration: 200 },
+    'alpha-one.mp3': {
+      title: 'Alpha One', artist: 'Alpha', genre: 'Rock', year: 1997, duration: 180,
+      genreSource: 'musicbrainz', yearSource: 'musicbrainz',
+    },
+    'alpha-copy.mp3': {
+      title: 'Alpha One', artist: 'Alpha', genre: 'Rock', year: 1997, duration: 180,
+      genreSource: 'musicbrainz', yearSource: 'musicbrainz',
+    },
+    'beta-two.mp3': {
+      title: 'Beta Two', artist: 'Beta', genre: 'Rock', year: 2004, duration: 190,
+      genreSource: 'musicbrainz', genreConfidence: 'low',
+      yearSource: 'musicbrainz', yearConfidence: 'low',
+    },
+    'gamma-three.mp3': {
+      title: 'Gamma Three', artist: 'Gamma', genre: 'Jazz', year: 2012, duration: 200,
+      genreSource: 'tag', yearSource: 'tag',
+    },
   };
   for (const fileName of Object.keys(metadataTracks)) {
     fs.writeFileSync(path.join(musicDir, fileName), Buffer.from([0]));
@@ -129,6 +142,58 @@ async function main() {
     assert.deepStrictEqual(lists.body.collections[0].trackIds, ['a', 'b']);
     assert.strictEqual(lists.body.challenges[0].seed, 'HTTP-SEED');
     ok('les routes de collections et défis persistent leurs paramètres');
+
+    const trustedId = Buffer.from('alpha-one.mp3').toString('base64url');
+    const untrustedId = Buffer.from('beta-two.mp3').toString('base64url');
+    const otherThemeId = Buffer.from('gamma-three.mp3').toString('base64url');
+    const trustedYearParty = await request('/api/party/create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        mode: 'classic', profileId: 'initial', totalRounds: 2,
+        seed: 'TRUSTED-YEAR-HTTP', trackIds: [trustedId, untrustedId],
+        settings: { answer: 'annee' },
+      }),
+    });
+    assert.strictEqual(trustedYearParty.status, 201);
+    assert.strictEqual(trustedYearParty.body.state.playlist.count, 1);
+
+    const trustedGenreParty = await request('/api/party/create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        mode: 'classic', profileId: 'initial', totalRounds: 2,
+        seed: 'TRUSTED-GENRE-HTTP', trackIds: [trustedId, untrustedId, otherThemeId],
+        settings: { theme: 'genre:Rock' },
+      }),
+    });
+    assert.strictEqual(trustedGenreParty.status, 201);
+    assert.strictEqual(trustedGenreParty.body.state.playlist.count, 1);
+
+    const trustedDecadeParty = await request('/api/party/create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        mode: 'classic', profileId: 'initial', totalRounds: 2,
+        seed: 'TRUSTED-DECADE-HTTP', trackIds: [trustedId, untrustedId, otherThemeId],
+        settings: { theme: 'decade:1990' },
+      }),
+    });
+    assert.strictEqual(trustedDecadeParty.status, 201);
+    assert.strictEqual(trustedDecadeParty.body.state.playlist.count, 1);
+
+    const untrustedOnly = await request('/api/party/create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        mode: 'classic', profileId: 'initial', totalRounds: 2,
+        seed: 'UNTRUSTED-ONLY-HTTP', trackIds: [untrustedId],
+        settings: { answer: 'annee' },
+      }),
+    });
+    assert.strictEqual(untrustedOnly.status, 400);
+    assert.match(untrustedOnly.body.error, /Aucune chanson exploitable/);
+    ok('les parties filtrent les métadonnées faibles et gardent les provenances historiques fiables');
 
     const blacklistCreated = await request('/api/blacklist', {
       method: 'POST',

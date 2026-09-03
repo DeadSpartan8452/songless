@@ -95,6 +95,21 @@ test('les anciennes provenances retrouvent une confiance prudente', () => {
   assert.strictEqual(explicitReview.yearConfidence, 'low');
 });
 
+test('seules les valeurs fiables peuvent alimenter les modes thématiques', () => {
+  assert.strictEqual(metadata.isTrusted({
+    genre: 'Rock', genreSource: 'musicbrainz',
+  }, 'genre'), true);
+  assert.strictEqual(metadata.isTrusted({
+    genre: 'Rock', genreConfidence: 'low',
+  }, 'genre'), false);
+  assert.strictEqual(metadata.isTrusted({
+    year: 2007, yearSource: 'musicbrainz',
+  }, 'year'), true);
+  assert.strictEqual(metadata.isTrusted({
+    year: 2007, yearConfidence: 'unknown',
+  }, 'year'), false);
+});
+
 test('le sous-genre est borné sans toucher au titre', () => {
   const patch = metadata.classificationPatch({
     genreDetail: 'Synthwave'.repeat(20), title: 'Ne doit pas passer',

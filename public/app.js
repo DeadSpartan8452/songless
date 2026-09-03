@@ -3363,6 +3363,20 @@ function reglagesParDefaut() {
 // L'année exacte se devine rarement : on accepte l'à-peu-près.
 const TOLERANCE_ANNEE = 2;
 
+function metadonneeFiable(track, field) {
+  if (!track || !['high', 'medium'].includes(track[`${field}Confidence`])) return false;
+  if (field === 'year') return Number(track.year) >= 1900;
+  return field === 'genre' && Boolean(track.genre && track.genre !== 'Autre');
+}
+
+function anneeFiable(track) {
+  return metadonneeFiable(track, 'year');
+}
+
+function genreFiable(track) {
+  return metadonneeFiable(track, 'genre');
+}
+
 function chargerReglages() {
   const def = reglagesParDefaut();
   try {
@@ -3470,7 +3484,7 @@ function majBoutonsOptions() {
   const note = document.getElementById('answer-note');
   if (note) {
     if (reglages.reponse === 'annee') {
-      const n = tracks.filter(t => t.year).length;
+      const n = tracks.filter(anneeFiable).length;
       note.innerText = `${n} morceau${n > 1 ? 'x' : ''} daté${n > 1 ? 's' : ''} sur ${tracks.length}`
         + ` · réponse acceptée à ${TOLERANCE_ANNEE} ans près`;
     } else if (reglages.reponse === 'artiste') {
@@ -3511,8 +3525,8 @@ function initOptionsEvents() {
       const mode = btn.getAttribute('data-answer');
       if (mode === reglages.reponse) return;
 
-      if (mode === 'annee' && tracks.filter(t => t.year).length < 5) {
-        showToast('Trop peu de morceaux datés : lance « node tools/years.js » d\'abord.', 'warn');
+      if (mode === 'annee' && tracks.filter(anneeFiable).length < 5) {
+        showToast('Trop peu d’années fiables : vérifie les métadonnées d’abord.', 'warn');
         return;
       }
       reglages.reponse = mode;
@@ -4220,15 +4234,17 @@ async function applySeed(seed, { silent = false } = {}) {
 function rebuildPlaylist({ keepCurrent = true } = {}) {
   const base = [...tracks].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
   const shuffled = seededShuffle(base, rngFrom(currentSeed));
+  const genreFilterActive = activeGenres.size > 0 && activeGenres.size < allGenres.length;
 
   playlist = shuffled.filter(t => {
     if (isTrackBlacklisted(t)) return false;
-    if (activeGenres.size > 0 && !activeGenres.has(t.genre || 'Autre')) return false;
+    if (genreFilterActive
+      && (!genreFiable(t) || !activeGenres.has(t.genre || 'Autre'))) return false;
     if (activeDecades.size > 0 && !activeDecades.has(decennieDe(t))) return false;
     // Un morceau sans artiste n'est pas jouable en mode « Deviner l'artiste »,
     // et un morceau sans année n'a pas de réponse en mode « Deviner l'année ».
     if (reglages.reponse === 'artiste' && !aUnArtiste(t)) return false;
-    if (reglages.reponse === 'annee' && !t.year) return false;
+    if (reglages.reponse === 'annee' && !anneeFiable(t)) return false;
     return true;
   });
 
@@ -4622,7 +4638,7 @@ function updateGenreSummary() {
 
 /** Clé de décennie d'un morceau : « 1990 », « 2020 »… ou « ? » sans année. */
 function decennieDe(track) {
-  if (!track || !track.year) return '?';
+  if (!anneeFiable(track)) return '?';
   return String(Math.floor(track.year / 10) * 10);
 }
 
@@ -4660,7 +4676,7 @@ function renderDecadeChips() {
 
   const note = document.getElementById('decade-note');
   if (note) {
-    const dates = tracks.filter(t => t.year).length;
+    const dates = tracks.filter(anneeFiable).length;
     note.innerText = dates === 0
       ? 'aucune année connue — lance node tools/years.js'
       : `${dates} morceaux datés sur ${tracks.length}`;

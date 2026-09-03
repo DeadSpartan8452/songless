@@ -794,13 +794,15 @@
     } else if (theme.startsWith('decade:')) {
       const startDecade = parseInt(theme.split(':')[1], 10);
       if (startDecade === 1970) {
-        trackList = trackList.filter(t => t.year && t.year <= 1979);
+        trackList = trackList.filter(t => anneeFiable(t) && t.year <= 1979);
       } else {
-        trackList = trackList.filter(t => t.year && t.year >= startDecade && t.year <= startDecade + 9);
+        trackList = trackList.filter(t => anneeFiable(t)
+          && t.year >= startDecade && t.year <= startDecade + 9);
       }
     } else if (theme.startsWith('genre:')) {
       const targetGenre = theme.slice(6).toLowerCase();
-      trackList = trackList.filter(t => String(t.genre || '').toLowerCase() === targetGenre);
+      trackList = trackList.filter(t => genreFiable(t)
+        && String(t.genre || '').toLowerCase() === targetGenre);
     }
     if (!trackList.length) {
       return showToast('Aucun morceau ne correspond à cette thématique dans ta sélection.', 'warn');

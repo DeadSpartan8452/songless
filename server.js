@@ -609,11 +609,27 @@ async function sha256File(filePath) {
   }
 }
 
-async function partyTrackIdsAfterBlacklist(values, mode) {
+async function partyTrackIdsAfterBlacklist(values, mode, settings = {}) {
   const validIds = validPartyTrackIds(values);
   const built = await tracksFromIds(validIds);
+  const answer = String(settings.answer || 'titre');
+  const theme = String(settings.theme || 'all');
   const allowed = new Set(blacklist.evaluate(
-    built,
+    built.filter(track => {
+      if (answer === 'annee' && !trackMetadata.isTrusted(track, 'year')) return false;
+      if (theme.startsWith('decade:')) {
+        if (!trackMetadata.isTrusted(track, 'year')) return false;
+        const decade = Number.parseInt(theme.slice(7), 10);
+        if (!Number.isFinite(decade)) return false;
+        if (decade === 1970) return track.year <= 1979;
+        return track.year >= decade && track.year <= decade + 9;
+      }
+      if (theme.startsWith('genre:')) {
+        if (!trackMetadata.isTrusted(track, 'genre')) return false;
+        return String(track.genre || '').toLowerCase() === theme.slice(6).toLowerCase();
+      }
+      return true;
+    }),
     playerStore.blacklistRules(),
     mode
   ).allowed.map(track => track.id));
@@ -751,9 +767,13 @@ app.post('/api/party/create', async (req, res) => {
         || 'none',
     };
     const partyMode = modeRegistry.normalizeModeId(req.body.mode);
-    const filteredTrackIds = await partyTrackIdsAfterBlacklist(req.body.trackIds, partyMode);
+    const filteredTrackIds = await partyTrackIdsAfterBlacklist(
+      req.body.trackIds,
+      partyMode,
+      mergedSettings
+    );
     if (Array.isArray(req.body.trackIds) && req.body.trackIds.length && filteredTrackIds.length === 0) {
-      throw new Error('Toutes les chansons de cette sélection sont temporairement exclues.');
+      throw new Error('Aucune chanson exploitable dans cette sélection et ces réglages.');
     }
     const created = partyStore.create({
       mode: req.body.mode,
