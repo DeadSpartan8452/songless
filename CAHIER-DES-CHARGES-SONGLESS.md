@@ -22,9 +22,13 @@ que pendant une soirée :
   sur le PC, soirée avec écran TV et partie en ligne ;
 - aucune donnée musicale ou donnée de profil ne dépend d’un service distant.
 
-Direction visuelle : une régie musicale rétro-futuriste sombre, très lisible à
-distance, expressive sans devenir chargée. Le PC privilégie la maîtrise, la TV le
-spectacle et les contrôleurs la rapidité.
+Direction visuelle : toutes les interfaces hors TV reprennent strictement l’identité
+du Songless original : fond noir pointillé, palette violette, DM Sans, cartes sobres,
+rayons, boutons et densité comparables à l’écran PC. Elles ne doivent pas développer
+une esthétique de « régie » séparée. La TV conserve volontairement son habillage
+spectaculaire actuel, validé comme une exception, et ne doit pas être harmonisée avec
+les autres écrans. Les contrôleurs restent compacts et rapides sans changer de famille
+visuelle.
 
 ## 2. Principes non négociables
 
@@ -708,7 +712,7 @@ Une phase est terminée uniquement si :
 | 5 — Bibliothèque | Très avancée | Audit des 1 687 fichiers, favoris unifiés, sous-genres et années avec provenance/confiance, filtres précis, aperçus obligatoires avant application des années ou genres en lot, blacklist temporaire, mesure d’encodage et dimensions de pochettes, comparateur réversible de doublons et indice de qualité explicable | Compléter et valider manuellement les années et genres encore incertains |
 | 6 — Nouveaux modes | Livrée | Confiance, Coopération, Intrus, Enchères, Joker, Missions secrètes et Handicap intelligent livrés côté serveur, PC, contrôleur et TV, avec tests de règles, permissions et contrôle visuel Playwright/Axe | — |
 | 7 — Personnalité | Livrée | Catalogue porté de 105 à 206 succès : **100/100 nouveaux succès** déclaratifs plus le succès secret Portal, persistants, dédupliqués et contrôlés sur PC/téléphone ; succès secrets masqués avant déblocage ; **50/50 titres de podium** factuels et uniques ; Portal déclaratif et anti-spoiler contrôlé sur PC/téléphone/TV ; carte souvenir PNG privée par défaut, copie, téléchargement et animations accessibles contrôlés sur PC/téléphone | — |
-| 8 — Finition | Avancée | Carte souvenir documentée ; diagnostic avant soirée ; kit Windows x64 autonome construit et audité ; contrôle visuel Android automatisé par émulateur isolé, ayant permis de corriger le chargement ESM de `music-metadata` et les expressions Unicode incompatibles avec Node mobile ; test de charge HTTP reproductible validé trois fois avec 32 joueurs, 32 réponses simultanées, 640 états et 8 flux audio concurrents (p95 de 27 à 33 ms) ; matrice finale des permissions validant invitation, joueur, TV et télécommande, puis le refus de 41 routes administratives même avec une invitation valide | Parcours complets, finitions visuelles, signature et kit Android transférable |
+| 8 — Finition | Avancée | Carte souvenir documentée ; diagnostic avant soirée ; kit Windows x64 autonome construit et audité ; contrôle visuel Android automatisé par émulateur isolé, ayant permis de corriger le chargement ESM de `music-metadata` et les expressions Unicode incompatibles avec Node mobile ; test de charge HTTP reproductible validé quatre fois avec 32 joueurs, 32 réponses simultanées, 640 états et 8 flux audio concurrents (p95 de 27 à 33 ms) ; matrice finale des permissions validant invitation, joueur, TV et télécommande, puis le refus de 41 routes administratives même avec une invitation valide ; joueur téléphone, télécommande administrateur et démarrage Android réharmonisés avec le Songless original puis vérifiés à 390 × 844 sans débordement, tandis que la TV validée reste inchangée | Parcours complets, signature et kit Android transférable |
 
 Un élément n’est considéré comme livré que s’il respecte les critères de la
 section 13. Une présence dans le présent document signifie « demandé », pas

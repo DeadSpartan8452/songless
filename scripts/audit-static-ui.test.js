@@ -316,4 +316,26 @@ test('les champs autonomes du PC possèdent un nom accessible explicite', () => 
   }
 });
 
+test('les interfaces hors TV reprennent la charte visuelle du Songless original', () => {
+  const controllerHtml = read('controller.html');
+  const controllerCss = read('controller.css');
+  const remoteHtml = read('remote.html');
+  const remoteCss = read('remote.css');
+  const android = fs.readFileSync(
+    path.join(__dirname, '..', 'mobile', 'android-host', 'App.tsx'),
+    'utf8'
+  );
+  for (const css of [controllerCss, remoteCss]) {
+    assert.match(css, /--bg:\s*#09090b/);
+    assert.match(css, /--cta:\s*#7c3aed|--accent-2:\s*#7c3aed/);
+    assert.match(css, /radial-gradient\(var\(--(?:panel-2|bg2)\) 1\.5px, transparent 1\.5px\)/);
+    assert.match(css, /font-family:\s*["']?DM Sans/);
+  }
+  assert.match(controllerHtml, /Songless <small>Joueur<\/small>/);
+  assert.match(remoteHtml, /Songless <span class="subtitle">Administration<\/span>/);
+  assert.doesNotMatch(`${controllerHtml}\n${remoteHtml}\n${android}`, /RÉGIE DE POCHE|RÉGIE MOBILE/);
+  assert.match(android, /backgroundColor: '#09090b'/);
+  assert.match(android, /title: \{color: '#7c3aed'/);
+});
+
 console.log(`\n${passed} tests statiques d’interface réussis.`);

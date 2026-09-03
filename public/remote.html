@@ -3,34 +3,46 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Songless — Télécommande</title>
+  <meta name="theme-color" content="#09090b">
+  <title>Songless — Administration</title>
   <link rel="icon" href="favicon.svg">
+  <link rel="stylesheet" href="vendor/fonts.css">
   <link rel="stylesheet" href="remote.css">
 </head>
 <body>
-  <main>
-    <header>
-      <p class="kicker">RÉGIE DE POCHE</p>
-      <div class="code">SONGLESS <strong id="party-code">—</strong></div>
-      <p id="connection">Connexion…</p>
+  <div class="app-container">
+    <header class="app-header">
+      <div class="logo">
+        <span class="logo-icon" aria-hidden="true">🎵</span>
+        <h1>Songless <span class="subtitle">Administration</span></h1>
+      </div>
+      <div class="connection-card">
+        <span>Partie <strong id="party-code">—</strong></span>
+        <p id="connection">Connexion…</p>
+      </div>
     </header>
-    <section class="now">
-      <span id="round-label">SALON</span>
-      <h1 id="state-title">En attente</h1>
-      <p id="state-detail">La télécommande se synchronise avec le PC.</p>
-    </section>
-    <section class="controls" aria-label="Commandes de partie">
-      <button class="primary" id="next-btn">Lancer la manche</button>
-      <button id="reveal-btn">Révéler la réponse</button>
-      <button id="lobby-btn">Retour au salon</button>
-      <button class="danger" id="finish-btn">Terminer la partie</button>
-    </section>
-    <section class="ranking">
-      <h2>En tête</h2>
-      <ol id="players"></ol>
-    </section>
-    <p class="notice">Accès temporaire et limité. La bibliothèque reste uniquement sur le PC hôte.</p>
-  </main>
+    <main class="app-content">
+      <section class="card status-card">
+        <span class="status-pill" id="round-label">SALON</span>
+        <h2 id="state-title">En attente</h2>
+        <p id="state-detail">La télécommande se synchronise avec le PC.</p>
+      </section>
+      <section class="card controls" aria-label="Commandes de partie">
+        <h2>Commandes de la partie</h2>
+        <button class="primary" id="next-btn">Lancer la manche</button>
+        <div class="secondary-controls">
+          <button id="reveal-btn">Révéler la réponse</button>
+          <button id="lobby-btn">Retour au salon</button>
+        </div>
+        <button class="danger" id="finish-btn">Terminer la partie</button>
+      </section>
+      <section class="card ranking">
+        <h2>Classement</h2>
+        <ol id="players"></ol>
+      </section>
+      <p class="notice">🔒 Accès temporaire et limité. La bibliothèque reste uniquement sur l’appareil hôte.</p>
+    </main>
+  </div>
   <script src="remote.js"></script>
 </body>
 </html>
