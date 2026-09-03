@@ -28,6 +28,11 @@ peut être retirée juste après l’installation.
 Android 7 ou plus récent est requis. Le paquet contient les architectures ARM64
 pour les téléphones et x86-64 pour l’émulateur de contrôle.
 
+État de compatibilité : l’APK fonctionne sur l’émulateur Android 17 à pages de
+16 Kio grâce au mode de compatibilité Android, mais plusieurs bibliothèques natives
+restent alignées à 4 Kio. La compatibilité native 16 Kio sans avertissement reste
+donc un chantier ouvert ; elle ne doit pas être annoncée comme livrée.
+
 ## Développement
 
 # Getting Started
