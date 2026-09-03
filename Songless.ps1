@@ -24,7 +24,15 @@ $url     = "http://localhost:$port"
 # installation fraîche. Sans lui, ProtectedData est inconnu et la boîte
 # d'erreur du lanceur peut rester cachée derrière la fenêtre réduite.
 Add-Type -AssemblyName System.Security
-$keyPath = Join-Path $dossier '.songless-instance-key'
+$keyPath = if ($env:SONGLESS_INSTANCE_KEY_FILE) {
+    [IO.Path]::GetFullPath($env:SONGLESS_INSTANCE_KEY_FILE)
+} else {
+    Join-Path $dossier '.songless-instance-key'
+}
+$keyDirectory = Split-Path -Parent $keyPath
+if (-not (Test-Path -LiteralPath $keyDirectory)) {
+    New-Item -ItemType Directory -Force -Path $keyDirectory | Out-Null
+}
 try {
     if (Test-Path -LiteralPath $keyPath) {
         $protected = [Convert]::FromBase64String(

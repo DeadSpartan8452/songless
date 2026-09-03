@@ -140,7 +140,15 @@ if (-not $OwnsInstanceLock) {
 }
 
 $ProjectRoot = Split-Path -Parent $PSScriptRoot
-$InstanceKeyPath = Join-Path $ProjectRoot '.songless-instance-key'
+$InstanceKeyPath = if ($env:SONGLESS_INSTANCE_KEY_FILE) {
+  [IO.Path]::GetFullPath($env:SONGLESS_INSTANCE_KEY_FILE)
+} else {
+  Join-Path $ProjectRoot '.songless-instance-key'
+}
+$InstanceKeyDirectory = Split-Path -Parent $InstanceKeyPath
+if (-not (Test-Path -LiteralPath $InstanceKeyDirectory)) {
+  New-Item -ItemType Directory -Force -Path $InstanceKeyDirectory | Out-Null
+}
 if (Test-Path -LiteralPath $InstanceKeyPath) {
   $ProtectedKey = [Convert]::FromBase64String(
     (Get-Content -Raw -LiteralPath $InstanceKeyPath).Trim()
@@ -172,7 +180,11 @@ $RuntimeKey = $Hmac.ComputeHash($Nonce)
 $Hmac.Dispose()
 $InstanceToken = [Convert]::ToBase64String($RuntimeKey).TrimEnd('=')
 $InstanceToken = $InstanceToken.Replace('+', '-').Replace('/', '_')
-$AccountConfigPath = Join-Path $ProjectRoot '.songless-tailscale-account'
+$AccountConfigPath = if ($env:SONGLESS_TAILSCALE_ACCOUNT_FILE) {
+  [IO.Path]::GetFullPath($env:SONGLESS_TAILSCALE_ACCOUNT_FILE)
+} else {
+  Join-Path $ProjectRoot '.songless-tailscale-account'
+}
 $TailscaleCommand = Get-Command tailscale.exe -ErrorAction SilentlyContinue
 $TailscalePath = if ($TailscaleCommand) { $TailscaleCommand.Source } else { $null }
 if (-not $TailscalePath) {
@@ -189,16 +201,6 @@ if (-not $TailscalePath) {
   throw 'Tailscale est absent. Demande a Codex de terminer l''installation.'
 }
 
-if (-not (Test-Path -LiteralPath $AccountConfigPath)) {
-  throw 'Le compte Tailscale dedie a Songless n''est pas configure.'
-}
-$ExpectedAccount = (
-  Get-Content -Raw -LiteralPath $AccountConfigPath
-).Trim()
-if (-not $ExpectedAccount) {
-  throw 'Le compte Tailscale dedie a Songless est vide.'
-}
-
 $Status = & $TailscalePath status --json | ConvertFrom-Json
 if (-not $Status.Self -or -not $Status.Self.DNSName) {
   throw 'Connecte d''abord Tailscale avec son icone pres de l''horloge.'
@@ -207,6 +209,35 @@ $CurrentUser = $Status.User.PSObject.Properties.Value |
   Where-Object { [string]$_.ID -eq [string]$Status.Self.UserID } |
   Select-Object -First 1
 $CurrentAccount = [string]$CurrentUser.LoginName
+if (-not (Test-Path -LiteralPath $AccountConfigPath)) {
+  if ($SmokeTest) {
+    throw 'Le compte Tailscale dedie a Songless n''est pas configure.'
+  }
+  Write-Host ''
+  Write-Host 'Premier lancement Internet de cette installation.' `
+    -ForegroundColor Yellow
+  Write-Host "Compte Tailscale actuellement connecte : $CurrentAccount"
+  Write-Host 'Verifie qu il s agit bien du compte reserve a Songless.'
+  $Confirmation = Read-Host 'Retape exactement ce compte pour le memoriser'
+  if ($Confirmation -cne $CurrentAccount) {
+    throw 'Compte non confirme. Aucun reglage Songless n''a ete cree.'
+  }
+  $AccountDirectory = Split-Path -Parent $AccountConfigPath
+  if (-not (Test-Path -LiteralPath $AccountDirectory)) {
+    New-Item -ItemType Directory -Force -Path $AccountDirectory | Out-Null
+  }
+  [IO.File]::WriteAllText(
+    $AccountConfigPath,
+    $CurrentAccount,
+    (New-Object Text.UTF8Encoding($false))
+  )
+}
+$ExpectedAccount = (
+  Get-Content -Raw -LiteralPath $AccountConfigPath
+).Trim()
+if (-not $ExpectedAccount) {
+  throw 'Le compte Tailscale dedie a Songless est vide.'
+}
 if ($CurrentAccount -ne $ExpectedAccount) {
   throw 'Tailscale n''utilise pas le compte Songless. Le tunnel Manapattes n''a pas ete touche. Bascule manuellement vers le compte Songless, puis relance.'
 }

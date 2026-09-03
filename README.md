@@ -27,8 +27,11 @@ Le lanceur crée au premier démarrage une clé propre à cette installation,
 chiffrée par Windows pour ton compte. À chaque lancement, elle produit un accès
 administrateur temporaire remis au navigateur dans un cookie HttpOnly. Ouvrir
 manuellement `localhost:3000` dans un autre navigateur ne donne donc aucun accès
-aux musiques, profils ou réglages. La clé locale, les données et les morceaux ne
-font jamais partie d’un kit transférable.
+aux musiques, profils ou réglages. Dans le kit Windows installé, cette clé reste
+dans `Songless-Data`, séparée de l’application : une réparation ou une
+désinstallation simple la conserve avec les profils et les morceaux. La clé
+locale, les données et les morceaux ne font jamais partie du kit transférable
+lui-même.
 
 ---
 
@@ -130,9 +133,12 @@ Le lancement se fait par **`Songless.bat`** après connexion gratuite
 sans installer Tailscale.
 
 Songless utilise un compte Tailscale distinct de tout tailnet professionnel.
-Le compte attendu est conservé uniquement dans le fichier local ignoré par Git
-`.songless-tailscale-account`. Le lanceur vérifie l'identité active avant de
-démarrer le serveur ou Funnel : si le compte Manapattes est actif, il s'arrête
+Dans le projet, le compte attendu est conservé dans le fichier local ignoré par
+Git `.songless-tailscale-account`. Dans une installation du kit Windows, le
+premier lancement Internet affiche le compte actif et demande de le retaper
+exactement avant de le mémoriser dans `Songless-Data`. Le lanceur vérifie ensuite
+l'identité active avant de démarrer le serveur ou Funnel : si le compte
+Manapattes est actif, il s'arrête
 sans modifier le tunnel. La bascule de compte reste toujours manuelle depuis
 Tailscale, afin qu'un lancement de Songless ne puisse jamais déconnecter un
 accès professionnel en cours.

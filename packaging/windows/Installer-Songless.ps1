@@ -82,6 +82,18 @@ function Install-Songless {
   New-Item -ItemType Directory -Force -Path $DataRoot | Out-Null
   New-Item -ItemType Directory -Force -Path (Join-Path $DataRoot 'musiques') | Out-Null
   New-Item -ItemType Directory -Force -Path (Join-Path $DataRoot 'metadata-backups') | Out-Null
+  $LegacyKey = Join-Path $InstallRoot 'app\.songless-instance-key'
+  $DurableKey = Join-Path $DataRoot 'instance-key.dpapi'
+  if ((Test-Path -LiteralPath $LegacyKey) -and
+      -not (Test-Path -LiteralPath $DurableKey)) {
+    Copy-Item -LiteralPath $LegacyKey -Destination $DurableKey
+  }
+  $LegacyAccount = Join-Path $InstallRoot 'app\.songless-tailscale-account'
+  $DurableAccount = Join-Path $DataRoot 'tailscale-account.txt'
+  if ((Test-Path -LiteralPath $LegacyAccount) -and
+      -not (Test-Path -LiteralPath $DurableAccount)) {
+    Copy-Item -LiteralPath $LegacyAccount -Destination $DurableAccount
+  }
   Mirror-Directory (Join-Path $PayloadRoot 'app') (Join-Path $InstallRoot 'app')
   Mirror-Directory (Join-Path $PayloadRoot 'runtime') (Join-Path $InstallRoot 'runtime')
   foreach ($Name in @('Lancer-Songless.ps1', 'Songless.bat', 'Songless-local.bat', 'Songless-WiFi.bat', 'Songless-Internet.bat')) {
