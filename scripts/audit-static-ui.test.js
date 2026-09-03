@@ -302,4 +302,18 @@ test('les Missions secrètes restent privées puis sont révélées au podium', 
   assert.match(tv, /MISSIONS RÉVÉLÉES/);
 });
 
+test('les champs autonomes du PC possèdent un nom accessible explicite', () => {
+  const index = read('index.html');
+  const ids = [
+    'guess-input', 'party-chat-input', 'collection-name', 'challenge-name',
+    'party-code-input', 'download-query', 'download-title', 'playlist-url',
+    'file-input', 'library-search',
+  ];
+  for (const id of ids) {
+    const field = index.match(new RegExp(`<(?:input|select|textarea)\\b[^>]*id=["']${id}["'][^>]*>`, 'i'));
+    assert.ok(field, `Champ absent : ${id}`);
+    assert.match(field[0], /aria-label=["'][^"']+["']/i, `Nom accessible absent : ${id}`);
+  }
+});
+
 console.log(`\n${passed} tests statiques d’interface réussis.`);

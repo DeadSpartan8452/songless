@@ -301,7 +301,8 @@
             <div class="input-container" id="guess-input-container">
               <div class="search-box">
                 <i data-lucide="search" class="search-icon"></i>
-                <input type="text" id="guess-input" placeholder="Rechercher une chanson ou un artiste..."
+                <input type="text" id="guess-input" aria-label="Réponse proposée"
+                       placeholder="Rechercher une chanson ou un artiste..."
                        autocomplete="off" role="combobox" aria-autocomplete="list"
                        aria-controls="autocomplete-list" aria-expanded="false">
                 <button class="clear-input-btn hidden" id="clear-input-btn"><i data-lucide="x"></i></button>
@@ -457,6 +458,7 @@
               <div class="party-typing-indicator hidden" id="party-typing-indicator"></div>
               <div class="party-chat-form">
                 <input id="party-chat-input" maxlength="240" autocomplete="off"
+                       aria-label="Message à envoyer au chat de la partie"
                        placeholder="Écrire à tout le monde…">
                 <button id="party-chat-send" type="button">Envoyer</button>
               </div>
@@ -535,7 +537,8 @@
               <h3><i data-lucide="library"></i> Collections personnalisées</h3>
               <p>Crée une collection avec les morceaux correspondant aux filtres actuellement choisis dans « Jouer ».</p>
               <div class="mode-row">
-                <input id="collection-name" maxlength="60" placeholder="Ex. Soirée famille">
+                <input id="collection-name" maxlength="60" aria-label="Nom de la collection"
+                       placeholder="Ex. Soirée famille">
                 <button class="cta-btn" id="collection-create-btn">Créer avec la sélection actuelle</button>
               </div>
               <div class="saved-list" id="collection-list"></div>
@@ -545,7 +548,8 @@
               <h3><i data-lucide="trophy"></i> Défis enregistrés</h3>
               <p>Conserve la seed, les filtres, les options et le nombre de manches pour rejouer exactement le même défi.</p>
               <div class="mode-row">
-                <input id="challenge-name" maxlength="60" placeholder="Nom du défi">
+                <input id="challenge-name" maxlength="60" aria-label="Nom du défi"
+                       placeholder="Nom du défi">
                 <button class="cta-btn" id="challenge-save-btn">Enregistrer le défi actuel</button>
               </div>
               <div class="saved-list" id="challenge-list"></div>
@@ -696,7 +700,8 @@
                 <p class="mode-status">Chaque mode mémorise ses propres options.</p>
                 <div class="party-divider hidden"><span>ou rejoindre</span></div>
                 <div class="mode-row hidden">
-                  <input id="party-code-input" maxlength="5" placeholder="CODE" autocomplete="off">
+                  <input id="party-code-input" maxlength="5" placeholder="CODE"
+                         aria-label="Code de la partie" autocomplete="off">
                   <button class="ghost-btn accent" id="party-join-btn">Rejoindre</button>
                 </div>
               </div>
@@ -768,7 +773,7 @@
             </p>
 
             <div class="download-form">
-              <input type="text" id="download-query"
+              <input type="text" id="download-query" aria-label="Titre ou adresse du morceau"
                      placeholder="Ex. : Darude Sandstorm — ou une URL" autocomplete="off">
               <select id="download-genre" aria-label="Genre">
                 <option value="">Genre : auto</option>
@@ -780,7 +785,7 @@
 
             <details class="download-advanced">
               <summary>Titre affiché personnalisé</summary>
-              <input type="text" id="download-title"
+              <input type="text" id="download-title" aria-label="Titre affiché personnalisé"
                      placeholder="Nom sous lequel le morceau est vraiment connu (ex. : Polish Cow)">
               <p class="download-hint small">
                 Utile pour les titres en alphabet non latin : c'est ce nom qu'il faudra deviner.
@@ -802,7 +807,7 @@
             </p>
 
             <div class="download-form">
-              <input type="text" id="playlist-url"
+              <input type="text" id="playlist-url" aria-label="Adresse de la playlist"
                      placeholder="https://www.youtube.com/playlist?list=..." autocomplete="off">
               <select id="playlist-genre" aria-label="Genre imposé">
                 <option value="">Genre : auto</option>
@@ -997,7 +1002,8 @@
                   MP3, WAV, M4A, OGG, FLAC — ou un <strong>.zip</strong> entier :
                   il est décompressé, trié et débarrassé de ses doublons.
                 </span>
-                <input type="file" id="file-input" accept="audio/*,.zip,application/zip" class="hidden">
+                <input type="file" id="file-input" aria-label="Fichiers audio à importer"
+                       accept="audio/*,.zip,application/zip" class="hidden">
               </div>
               <div class="import-report hidden" id="import-report"></div>
               <!-- Barre de progression de l'upload -->
@@ -1017,7 +1023,8 @@
               </div>
               <div class="tracks-search-wrapper">
                 <i data-lucide="search"></i>
-                <input type="text" id="library-search" placeholder="Rechercher dans la bibliothèque...">
+                <input type="text" id="library-search" aria-label="Rechercher dans la bibliothèque"
+                       placeholder="Rechercher dans la bibliothèque...">
                 <select id="library-genre-filter" aria-label="Filtrer par genre">
                   <option value="">Tous les genres</option>
                 </select>
