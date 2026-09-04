@@ -2152,8 +2152,13 @@ function renderLibraryList() {
     item.setAttribute('data-favorite', track.favorite ? '1' : '0');
     item.setAttribute('data-review', track.needsReview ? '1' : '0');
     const classificationReview = track.classificationReview || {};
+    item.setAttribute('data-metadata-review', classificationReview.any ? '1' : '0');
+    item.setAttribute('data-unofficial-variant', track.unofficialVariant ? '1' : '0');
+    item.setAttribute('data-genre-missing', classificationReview.genreMissing ? '1' : '0');
     item.setAttribute('data-genre-uncertain', classificationReview.genreUncertain ? '1' : '0');
+    item.setAttribute('data-year-missing', classificationReview.yearMissing ? '1' : '0');
     item.setAttribute('data-year-uncertain', classificationReview.yearUncertain ? '1' : '0');
+    item.setAttribute('data-artist-missing', classificationReview.artistMissing ? '1' : '0');
     item.setAttribute('data-metadata-missing', classificationReview.missing ? '1' : '0');
     item.innerHTML = `
       <div class="preview-progress" aria-hidden="true"><span></span></div>
@@ -2819,10 +2824,24 @@ function filterLibraryDisplay() {
       || (favoriteFilter === 'regular' && !itemFavorite);
     const matchesReview = !filtreARenommer || item.getAttribute('data-review') === '1';
     const matchesValidation = !validationFilter
+      || (validationFilter === 'review-any'
+        && item.getAttribute('data-metadata-review') === '1')
+      || (validationFilter === 'official-review'
+        && item.getAttribute('data-metadata-review') === '1'
+        && item.getAttribute('data-unofficial-variant') !== '1')
+      || (validationFilter === 'unofficial-review'
+        && item.getAttribute('data-metadata-review') === '1'
+        && item.getAttribute('data-unofficial-variant') === '1')
+      || (validationFilter === 'genre-missing'
+        && item.getAttribute('data-genre-missing') === '1')
       || (validationFilter === 'genre-uncertain'
         && item.getAttribute('data-genre-uncertain') === '1')
+      || (validationFilter === 'year-missing'
+        && item.getAttribute('data-year-missing') === '1')
       || (validationFilter === 'year-uncertain'
         && item.getAttribute('data-year-uncertain') === '1')
+      || (validationFilter === 'artist-missing'
+        && item.getAttribute('data-artist-missing') === '1')
       || (validationFilter === 'missing'
         && item.getAttribute('data-metadata-missing') === '1');
 
@@ -2843,14 +2862,33 @@ function majCompteursValidation() {
   if (!libraryValidationFilter) return;
   const counts = tracks.reduce((total, track) => {
     const review = track.classificationReview || {};
+    if (review.any) {
+      total.any++;
+      if (track.unofficialVariant) total.unofficial++;
+      else total.official++;
+    }
+    if (review.genreMissing) total.genreMissing++;
     if (review.genreUncertain) total.genreUncertain++;
+    if (review.yearMissing) total.yearMissing++;
     if (review.yearUncertain) total.yearUncertain++;
+    if (review.artistMissing) total.artistMissing++;
     if (review.missing) total.missing++;
     return total;
-  }, {genreUncertain: 0, yearUncertain: 0, missing: 0});
+  }, {
+    any: 0, official: 0, unofficial: 0,
+    genreMissing: 0, genreUncertain: 0,
+    yearMissing: 0, yearUncertain: 0,
+    artistMissing: 0, missing: 0,
+  });
   const labels = {
+    'review-any': `Toutes les fiches à revoir (${counts.any})`,
+    'official-review': `Titres officiels à revoir (${counts.official})`,
+    'unofficial-review': `Variantes à revoir (${counts.unofficial})`,
+    'genre-missing': `Genres absents (${counts.genreMissing})`,
     'genre-uncertain': `Genres présents à confirmer (${counts.genreUncertain})`,
+    'year-missing': `Années obligatoires absentes (${counts.yearMissing})`,
     'year-uncertain': `Années présentes à confirmer (${counts.yearUncertain})`,
+    'artist-missing': `Artistes obligatoires absents (${counts.artistMissing})`,
     missing: `Champs manquants (${counts.missing})`,
   };
   Object.entries(labels).forEach(([value, label]) => {

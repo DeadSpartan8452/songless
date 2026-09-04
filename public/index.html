@@ -1033,9 +1033,19 @@
                 </select>
                 <select id="library-validation-filter" aria-label="File de validation manuelle">
                   <option value="">Toute la bibliothèque</option>
-                  <option value="genre-uncertain">Genres présents à confirmer</option>
-                  <option value="year-uncertain">Années présentes à confirmer</option>
-                  <option value="missing">Champs manquants</option>
+                  <optgroup label="Priorité de revue">
+                    <option value="review-any">Toutes les fiches à revoir</option>
+                    <option value="official-review">Titres officiels à revoir</option>
+                    <option value="unofficial-review">Variantes à revoir</option>
+                  </optgroup>
+                  <optgroup label="Champ à corriger">
+                    <option value="genre-missing">Genres absents</option>
+                    <option value="genre-uncertain">Genres présents à confirmer</option>
+                    <option value="year-missing">Années obligatoires absentes</option>
+                    <option value="year-uncertain">Années présentes à confirmer</option>
+                    <option value="artist-missing">Artistes obligatoires absents</option>
+                    <option value="missing">Tous les champs manquants</option>
+                  </optgroup>
                 </select>
                 <!-- Le drapeau needsReview existait sans moyen de lister ce qu'il
                      marque : il fallait parcourir 1500 lignes à l'œil. -->

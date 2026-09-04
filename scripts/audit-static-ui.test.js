@@ -167,6 +167,26 @@ test('les filtres de bibliothèque couvrent genre précis, année et favoris san
   assert.doesNotMatch(app, /filterLibraryDisplay[\s\S]*?patch\.title/);
 });
 
+test('la file de métadonnées sépare les priorités et chaque champ à corriger', () => {
+  const index = read('index.html');
+  const app = read('app.js');
+  for (const value of [
+    'review-any', 'official-review', 'unofficial-review',
+    'genre-missing', 'genre-uncertain',
+    'year-missing', 'year-uncertain', 'artist-missing',
+  ]) {
+    assert.match(index, new RegExp(`value=["']${value}["']`));
+    assert.match(app, new RegExp(`['"]${value}['"]`));
+  }
+  for (const attribute of [
+    'data-metadata-review', 'data-unofficial-variant',
+    'data-genre-missing', 'data-genre-uncertain',
+    'data-year-missing', 'data-year-uncertain', 'data-artist-missing',
+  ]) assert.match(app, new RegExp(attribute));
+  assert.match(app, /Titres officiels à revoir \(\$\{counts\.official\}\)/);
+  assert.match(app, /Variantes à revoir \(\$\{counts\.unofficial\}\)/);
+});
+
 test('toutes les interfaces utilisent le favicon local sans le confondre avec une pochette', () => {
   for (const page of PAGES) {
     assert.match(read(page), /<link\s+rel=["']icon["']\s+href=["']favicon\.svg["']/i);
