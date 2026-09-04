@@ -12,6 +12,9 @@ process.env.SONGLESS_CACHE_DIR = cacheDir;
 const automatic = require('../lib/automatic-metadata');
 const downloader = require('../lib/downloader');
 const musicbrainz = require('../lib/musicbrainz');
+const metadataAutoSource = fs.readFileSync(
+  path.join(__dirname, '..', 'tools', 'metadata-auto.js'), 'utf8'
+);
 
 (async () => {
   const uploadOnly = downloader.buildEntry({
@@ -70,6 +73,12 @@ const musicbrainz = require('../lib/musicbrainz');
   assert.strictEqual(manual.artist, undefined);
   assert.strictEqual(manual.year, undefined);
   assert.strictEqual(manual.genre, undefined);
+
+  assert.doesNotMatch(
+    metadataAutoSource,
+    /enregistrement\(titreRecherche,\s*['"]['"]/,
+    'un artiste renseigné ne doit jamais être ignoré pour accepter un homonyme'
+  );
 
   assert.strictEqual(automatic.estVersionNonOfficielle({
     title: 'Morceau connu (Nightcore)',

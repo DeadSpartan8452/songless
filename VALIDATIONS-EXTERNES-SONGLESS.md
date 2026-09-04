@@ -98,7 +98,9 @@ isolée et sauvegarde automatique. Dans **Bibliothèque**, il reste à traiter :
 1. `Genres présents à confirmer` — 669 fiches au dernier comptage.
 2. `Genres absents` — 297 fiches au dernier comptage.
 3. `Années obligatoires absentes` — 21 fiches au dernier comptage.
-4. `Fiches à revoir` — 971 fiches ayant encore au moins un point à traiter.
+4. `Artistes présents à confirmer` — 40 fiches issues d'un ancien repli
+   MusicBrainz par titre seul, désormais interdit.
+5. `Fiches à revoir` — 982 fiches ayant encore au moins un point à traiter.
 
 Pour chaque fiche : écouter le morceau, vérifier l'artiste, distinguer la première
 sortie d'une réédition, choisir le genre canonique, puis enregistrer. Les modes

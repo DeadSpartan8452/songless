@@ -173,7 +173,7 @@ test('la file de métadonnées sépare les priorités et chaque champ à corrige
   for (const value of [
     'review-any', 'official-review', 'unofficial-review',
     'genre-missing', 'genre-uncertain',
-    'year-missing', 'year-uncertain', 'artist-missing',
+    'year-missing', 'year-uncertain', 'artist-missing', 'artist-uncertain',
   ]) {
     assert.match(index, new RegExp(`value=["']${value}["']`));
     assert.match(app, new RegExp(`['"]${value}['"]`));
@@ -181,7 +181,8 @@ test('la file de métadonnées sépare les priorités et chaque champ à corrige
   for (const attribute of [
     'data-metadata-review', 'data-unofficial-variant',
     'data-genre-missing', 'data-genre-uncertain',
-    'data-year-missing', 'data-year-uncertain', 'data-artist-missing',
+    'data-year-missing', 'data-year-uncertain',
+    'data-artist-missing', 'data-artist-uncertain',
   ]) assert.match(app, new RegExp(attribute));
   assert.match(app, /Titres officiels à revoir \(\$\{counts\.official\}\)/);
   assert.match(app, /Variantes à revoir \(\$\{counts\.unofficial\}\)/);

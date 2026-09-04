@@ -158,7 +158,9 @@ async function main() {
     assert.strictEqual(afterApply[0].genreSource, 'manual');
     assert.strictEqual(afterApply[0].genreConfidence, 'high');
     assert.strictEqual(afterApply[0].title, 'Titre de test');
-    assert.strictEqual(afterApply[0].classificationReview.any, false);
+    assert.strictEqual(afterApply[0].classificationReview.genre, false);
+    assert.strictEqual(afterApply[0].classificationReview.artistUncertain, true);
+    assert.strictEqual(afterApply[0].classificationReview.any, true);
     const replayResponse = await fetch(`${base}/api/tracks/meta-apply`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

@@ -258,6 +258,11 @@ aucune erreur console, aucun débordement ou texte coupé, et aucune violation A
   le titre, le fichier ou l’identifiant audio ;
 - les filtres de bibliothèque couvrent genre, sous-genre, décennie, année
   manquante et favoris ;
+- une recherche MusicBrainz avec artiste ne peut plus être relancée sans artiste
+  pour accepter un homonyme de même titre ;
+- les 40 artistes déjà issus de cet ancien repli ont été identifiés par le cache,
+  simulés sur une copie, sauvegardés puis marqués à confirmer sans changer leur
+  nom ; un filtre et un compteur dédiés les exposent dans la bibliothèque ;
 - le diagnostic calcule désormais un statut prêt / à vérifier / problématique,
   une note expliquée par ses raisons et la couverture réelle des contrôles ;
 - la qualité d’encodage demeure explicitement « inconnue » fichier par fichier

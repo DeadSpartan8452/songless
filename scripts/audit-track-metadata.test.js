@@ -25,10 +25,12 @@ test('la file de validation distingue les champs absents et incertains', () => {
   });
   assert.strictEqual(uncertain.genreUncertain, true);
   assert.strictEqual(uncertain.yearUncertain, true);
+  assert.strictEqual(uncertain.artistUncertain, true);
   assert.strictEqual(uncertain.missing, false);
 
   const confirmed = metadata.reviewStatus({
     artist: 'Artiste test',
+    artistConfidence: 'medium',
     genre: 'Rock',
     genreConfidence: 'medium',
     year: 2000,
@@ -127,6 +129,7 @@ test('une variante non officielle exige son genre mais pas artiste ni année', (
     genreConfidence: 'medium',
   });
   assert.strictEqual(value.artistMissing, false);
+  assert.strictEqual(value.artistUncertain, false);
   assert.strictEqual(value.yearMissing, false);
   assert.strictEqual(value.genre, false);
   assert.strictEqual(value.any, false);

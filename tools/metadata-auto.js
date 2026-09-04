@@ -142,16 +142,8 @@ async function construire() {
     let result = unofficial
       ? await chercherVarianteYoutube(track, youtubeCache)
       : await musicbrainz.enregistrement(titreRecherche, artiste, { silencieux: false });
-    if (!unofficial && !result && artiste
-      && !['high', 'medium'].includes(track.artistConfidence)
-      && musicbrainz.enregistrementDansCache(titreRecherche, artiste)) {
-      result = await musicbrainz.enregistrement(titreRecherche, '', { silencieux: false });
-    }
     const rechercheMusicBrainzTerminee = !unofficial
-      && musicbrainz.enregistrementDansCache(titreRecherche, artiste)
-      && (!artiste
-        || ['high', 'medium'].includes(track.artistConfidence)
-        || musicbrainz.enregistrementDansCache(titreRecherche, ''));
+      && musicbrainz.enregistrementDansCache(titreRecherche, artiste);
     if (!unofficial && !result && rechercheMusicBrainzTerminee) {
       result = await chercherVarianteYoutube(track, youtubeCache);
       unofficial = true;

@@ -2159,6 +2159,7 @@ function renderLibraryList() {
     item.setAttribute('data-year-missing', classificationReview.yearMissing ? '1' : '0');
     item.setAttribute('data-year-uncertain', classificationReview.yearUncertain ? '1' : '0');
     item.setAttribute('data-artist-missing', classificationReview.artistMissing ? '1' : '0');
+    item.setAttribute('data-artist-uncertain', classificationReview.artistUncertain ? '1' : '0');
     item.setAttribute('data-metadata-missing', classificationReview.missing ? '1' : '0');
     item.innerHTML = `
       <div class="preview-progress" aria-hidden="true"><span></span></div>
@@ -2842,6 +2843,8 @@ function filterLibraryDisplay() {
         && item.getAttribute('data-year-uncertain') === '1')
       || (validationFilter === 'artist-missing'
         && item.getAttribute('data-artist-missing') === '1')
+      || (validationFilter === 'artist-uncertain'
+        && item.getAttribute('data-artist-uncertain') === '1')
       || (validationFilter === 'missing'
         && item.getAttribute('data-metadata-missing') === '1');
 
@@ -2872,13 +2875,14 @@ function majCompteursValidation() {
     if (review.yearMissing) total.yearMissing++;
     if (review.yearUncertain) total.yearUncertain++;
     if (review.artistMissing) total.artistMissing++;
+    if (review.artistUncertain) total.artistUncertain++;
     if (review.missing) total.missing++;
     return total;
   }, {
     any: 0, official: 0, unofficial: 0,
     genreMissing: 0, genreUncertain: 0,
     yearMissing: 0, yearUncertain: 0,
-    artistMissing: 0, missing: 0,
+    artistMissing: 0, artistUncertain: 0, missing: 0,
   });
   const labels = {
     'review-any': `Toutes les fiches à revoir (${counts.any})`,
@@ -2889,6 +2893,7 @@ function majCompteursValidation() {
     'year-missing': `Années obligatoires absentes (${counts.yearMissing})`,
     'year-uncertain': `Années présentes à confirmer (${counts.yearUncertain})`,
     'artist-missing': `Artistes obligatoires absents (${counts.artistMissing})`,
+    'artist-uncertain': `Artistes présents à confirmer (${counts.artistUncertain})`,
     missing: `Champs manquants (${counts.missing})`,
   };
   Object.entries(labels).forEach(([value, label]) => {
