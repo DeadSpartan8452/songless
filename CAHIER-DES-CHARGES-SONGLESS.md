@@ -534,7 +534,15 @@ un fichier audio, couverture des métadonnées, Defender, ffmpeg, yt-dlp et éta
 Tailscale/Funnel selon le mode lancé. Un salon temporaire éprouve la génération
 du QR et la séparation hôte/TV/télécommande avant d’être supprimé. L’API refuse
 les appareils distants. Le test sonore interactif joue deux notes et demande une
-confirmation explicite. Reste la validation visuelle finale de ce nouvel écran.
+confirmation explicite.
+
+**Validation visuelle finale le 4 septembre 2026** : le parcours complet a été
+rejoué sur un serveur et une bibliothèque fictifs isolés à 1440 x 1000,
+820 x 1180 et 390 x 844. Les états initial, rapport et confirmation des deux
+notes sont lisibles ; les onze contrôles et le résumé concordent. Le contrôle ne
+relève aucune erreur console ou HTTP, aucun débordement horizontal et aucune
+violation Axe sérieuse ou critique. Les données personnelles et la bibliothèque
+réelle n'ont pas été utilisées.
 
 ## 11. Phase zéro — audit complet obligatoire
 

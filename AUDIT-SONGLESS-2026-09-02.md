@@ -184,6 +184,15 @@ Il ne correspond ni à un fichier absent ni à une erreur de l’application.
 - captures et rapport reproductible dans le laboratoire visuel isolé, sans
   écriture dans les profils ou métadonnées personnels.
 
+### Validation finale du diagnostic avant soirée
+
+- parcours complet contrôlé avec une bibliothèque fictive isolée sur ordinateur
+  1440 x 1000, tablette 820 x 1180 et téléphone 390 x 844 ;
+- onze contrôles rendus avec résumé concordant et confirmation audio reportée ;
+- captures initiales et finales inspectées : textes et actions lisibles ;
+- zéro erreur console ou HTTP, zéro débordement horizontal et zéro violation Axe
+  sérieuse ou critique dans le composant.
+
 ### Garde-fou easter eggs
 
 - la définition reste exclusivement côté serveur avant le verdict autorisé ;
