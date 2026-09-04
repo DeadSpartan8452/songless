@@ -314,7 +314,7 @@ test('les champs autonomes du PC possèdent un nom accessible explicite', () => 
   const index = read('index.html');
   const ids = [
     'guess-input', 'party-chat-input', 'collection-name', 'challenge-name',
-    'party-code-input', 'download-query', 'download-title', 'playlist-url',
+    'party-code-input', 'download-query', 'playlist-url',
     'file-input', 'library-search',
   ];
   for (const id of ids) {

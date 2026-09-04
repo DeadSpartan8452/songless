@@ -85,28 +85,33 @@ mot de passe ne doit être communiqué ni au chat, ni à un agent, ni au dépôt
 La restauration a déjà été testée avec une clé factice. Ne pas restaurer la vraie
 clé sur ce PC : le script refuserait de toute façon d'écraser la clé locale.
 
-## 4. Validation manuelle des métadonnées
+## 4. Validation des métadonnées
 
-Ce travail demande une décision musicale humaine ; aucun agent ne doit certifier
-une année ou un genre au hasard. Dans **Bibliothèque**, utiliser successivement :
+Manaël a autorisé le 4 septembre 2026 l'envoi des titres et artistes à
+MusicBrainz, ainsi que la recherche des variantes non officielles sur YouTube.
+Le traitement automatique vérifie toute la bibliothèque, conserve les
+corrections manuelles et ne valide que les correspondances fortes. Les versions
+Nightcore, sped up, slowed et assimilées exigent un genre, mais pas d'artiste ni
+d'année. L'aperçu complet a été appliqué le 4 septembre 2026 après simulation
+isolée et sauvegarde automatique. Dans **Bibliothèque**, il reste à traiter :
 
-1. `Genres présents à confirmer` — 499 fiches au dernier comptage.
-2. `Années présentes à confirmer` — 125 fiches au dernier comptage.
-3. `Fiches incomplètes` — 1 419 fiches auxquelles manque au moins un champ.
+1. `Genres présents à confirmer` — 669 fiches au dernier comptage.
+2. `Genres absents` — 297 fiches au dernier comptage.
+3. `Années obligatoires absentes` — 21 fiches au dernier comptage.
+4. `Fiches à revoir` — 971 fiches ayant encore au moins un point à traiter.
 
 Pour chaque fiche : écouter le morceau, vérifier l'artiste, distinguer la première
 sortie d'une réédition, choisir le genre canonique, puis enregistrer. Les modes
 sensibles restent volontairement verrouillés tant que la confiance est faible.
 
-Ne pas envoyer les titres de la bibliothèque à MusicBrainz ou à un autre service
-sans l'accord explicite de Manaël au moment du traitement.
+Ne jamais certifier automatiquement une correspondance ambiguë ni confondre la
+date de mise en ligne d'une vidéo avec la première sortie du morceau.
 
-## 5. Linux, macOS et iOS
+## 5. Autres systèmes
 
-Le code et les intentions de paquetage ne constituent pas une validation. Il faut
-pour chaque système un hôte réel, une construction autonome, une installation
-fraîche, un lancement sans terminal, un test réseau et un contrôle visuel. Tant
-que ces preuves n'existent pas, la matrice du README doit rester « non validé ».
+macOS, Linux, iPhone et iPad ne sont pas des plateformes hôtes prévues. Ils
+restent utilisables par navigateur comme joueur, TV ou télécommande. Aucun
+installateur hôte ni contrôle de distribution n'est attendu sur ces systèmes.
 
 ## Critère de clôture
 

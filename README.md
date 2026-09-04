@@ -119,13 +119,10 @@ sur Linux avant d’annoncer une compatibilité native 16 Kio complète.
 | Windows 11 x64 | Validé : installation, réparation, conservation des données, désinstallation, modes local/Wi-Fi/Internet et manifeste complet | `dist/Songless-Windows-x64` |
 | Android x86-64 | Validé sur émulateur Android 17 à pages de 16 Kio, en mode de compatibilité | `dist/Songless-Android/Songless-Android.apk` |
 | Android ARM64 / POCO X5 Pro | APK construit et signé, mais test sur le téléphone réel encore requis | même APK |
-| Linux x64 | Non validé : aucun paquet hôte autonome n’est encore livré | aucun |
-| macOS | Non validé : application signée et notarisation encore requises | aucun |
-| iPhone / iPad | Non validé : compilation et distribution Apple encore requises | aucun |
-
-Un navigateur reste utilisable comme joueur, TV ou télécommande sur les systèmes
-modernes. Cela ne transforme pas le navigateur en hôte autonome : le serveur
-Songless doit toujours tourner sur un hôte validé.
+Windows et Android sont les deux seules plateformes hôtes prévues. Un navigateur
+reste utilisable comme joueur, TV ou télécommande sur Linux, macOS, iPhone,
+iPad et les autres systèmes modernes. Cela ne transforme pas le navigateur en
+hôte autonome : le serveur Songless doit toujours tourner sur Windows ou Android.
 
 ### Invitations et accès Internet
 
@@ -153,11 +150,12 @@ Dans le projet, le compte attendu est conservé dans le fichier local ignoré pa
 Git `.songless-tailscale-account`. Dans une installation du kit Windows, le
 premier lancement Internet affiche le compte actif et demande de le retaper
 exactement avant de le mémoriser dans `Songless-Data`. Le lanceur vérifie ensuite
-l'identité active avant de démarrer le serveur ou Funnel : si le compte
-Manapattes est actif, il s'arrête
-sans modifier le tunnel. La bascule de compte reste toujours manuelle depuis
-Tailscale, afin qu'un lancement de Songless ne puisse jamais déconnecter un
-accès professionnel en cours.
+l'identité active avant de démarrer le serveur ou Funnel. Une fois le compte
+Songless mémorisé, le choix **Internet** conserve le compte actif, bascule
+temporairement vers Songless, puis restaure automatiquement le compte précédent
+à la fermeture ou si le lancement échoue. Les modes Local et Réseau maison ne
+touchent jamais à Tailscale. Le profil Songless ne doit donc pas rester actif
+en dehors d'une session Internet Songless.
 
 Le lanceur est protégé par une instance unique : un second double-clic, même
 sur les anciens lanceurs téléphone ou Internet, n'ouvre ni onglet, ni console,
@@ -170,8 +168,11 @@ ni tunnel supplémentaire.
 ### Depuis le site
 Onglet **Bibliothèque** → « Télécharger une musique ». Tu tapes un titre
 (ou colles un lien), le MP3 est téléchargé, converti et ajouté avec son genre,
-sans traduction automatique de son titre. Tu peux le renommer ensuite avec le
-crayon. La progression s'affiche en direct.
+sans traduction ni réécriture automatique de son titre. Le fichier reprend le
+titre source de YouTube ; seuls les caractères interdits par Windows sont
+neutralisés et un identifiant n'est ajouté qu'en cas de collision. Tu peux
+renommer le titre affiché ensuite avec le crayon, dans la bibliothèque ou après
+la révélation en jeu. La progression s'affiche en direct.
 
 ### Par fichier ou par archive
 Onglet **Bibliothèque** → zone de dépôt. Tu peux y glisser :
@@ -463,6 +464,20 @@ morceaux. Le script est **reprenable** — coupez-le, relancez-le, le cache disq
 (`.cache/musicbrainz-years.json`) le fait repartir où il en était. Le taux de
 trouvaille tourne autour de 30 % sur une bibliothèque très « internet »
 (nightcore, memes, OST de jeux) : ces morceaux-là ne sont pas catalogués.
+
+Pour vérifier en une seule passe le titre, l'artiste, la première année, l'album
+et le genre de toute la bibliothèque, avec repli YouTube quand MusicBrainz ne
+confirme pas une version officielle :
+
+```bash
+node tools/metadata-auto.js
+```
+
+La commande ne modifie rien : elle crée un aperçu reprenable dans `.cache`.
+L'application est refusée tant que l'aperçu n'est pas complet ou qu'une recherche
+temporaire reste en attente. Après contrôle, simulez sur une copie puis appliquez
+explicitement l'aperçu indiqué par la commande. Les corrections manuelles ne sont
+jamais écrasées.
 
 ---
 

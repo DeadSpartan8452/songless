@@ -145,7 +145,6 @@ const genreSummary = document.getElementById('genre-summary');
 // Éléments Téléchargement
 const downloadQuery = document.getElementById('download-query');
 const downloadGenre = document.getElementById('download-genre');
-const downloadTitle = document.getElementById('download-title');
 const downloadBtn = document.getElementById('download-btn');
 const downloadLog = document.getElementById('download-log');
 const toolsState = document.getElementById('tools-state');
@@ -4883,7 +4882,6 @@ async function startDownload() {
       body: JSON.stringify({
         query,
         genre: downloadGenre.value || null,
-        title: downloadTitle.value.trim() || null,
       }),
     });
 
@@ -4954,7 +4952,6 @@ function handleDownloadEvent(block) {
       logDownload(`Terminé : ${added} ajouté${added > 1 ? 's' : ''}, ${duplicates} déjà présent${duplicates > 1 ? 's' : ''}, ${errors} en échec.`, added ? 'ok' : '');
       showToast(added ? `${added} morceau${added > 1 ? 'x' : ''} ajouté${added > 1 ? 's' : ''}.` : 'Aucun nouveau morceau ajouté.', added ? 'ok' : 'info');
       downloadQuery.value = '';
-      downloadTitle.value = '';
       loadLibrary();
       return;
     }
@@ -4968,7 +4965,6 @@ function handleDownloadEvent(block) {
       }
       showToast(`« ${t.title} » ajouté.`, 'ok');
       downloadQuery.value = '';
-      downloadTitle.value = '';
     }
     loadLibrary();
   }

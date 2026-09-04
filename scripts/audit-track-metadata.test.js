@@ -118,6 +118,20 @@ test('le sous-genre est borné sans toucher au titre', () => {
   assert.strictEqual(Object.hasOwn(patch, 'title'), false);
 });
 
+test('une variante non officielle exige son genre mais pas artiste ni année', () => {
+  const value = metadata.reviewStatus({
+    title: 'Version accélérée',
+    unofficialVariant: true,
+    genre: 'Électro / EDM',
+    genreSource: 'youtube',
+    genreConfidence: 'medium',
+  });
+  assert.strictEqual(value.artistMissing, false);
+  assert.strictEqual(value.yearMissing, false);
+  assert.strictEqual(value.genre, false);
+  assert.strictEqual(value.any, false);
+});
+
 test('vider une année efface aussi ses qualificatifs', () => {
   const patch = metadata.classificationPatch({
     year: '', yearSource: 'manual', yearConfidence: 'high',

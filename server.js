@@ -1755,7 +1755,7 @@ app.post('/api/download/approvals/:id', (req, res) => {
  * Réponse en flux (Server-Sent Events) pour suivre la progression en direct.
  */
 app.post('/api/download', async (req, res) => {
-  const { query, genre, title, artist, force } = req.body || {};
+  const { query, genre, artist, force } = req.body || {};
 
   if (!query || !String(query).trim()) {
     return res.status(400).json({ error: 'Indiquez un titre de musique ou une URL.' });
@@ -1872,7 +1872,6 @@ app.post('/api/download', async (req, res) => {
 
     const entry = await downloader.downloadTrack(String(query).trim(), {
       genre: genre || null,
-      title: title || null,
       artist: artist || null,
       force: !!force,
       prefetchedInfo: media ? media.info : null,
@@ -1891,7 +1890,7 @@ app.post('/api/download', async (req, res) => {
  * Route: importer une playlist entière.
  *
  * yt-dlp énumère la playlist, puis chaque titre passe par exactement le même
- * chemin qu'un ajout à l'unité : titre lisible, genre, alias, écartement des
+ * chemin qu'un ajout à l'unité : titre source conservé, genre, alias, écartement des
  * doublons. Un titre en échec n'interrompt pas les suivants — sur cinquante
  * morceaux, il y en a toujours un de bloqué ou supprimé.
  */

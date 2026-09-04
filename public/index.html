@@ -766,8 +766,8 @@
               <span class="tools-state" id="tools-state"></span>
             </div>
             <p class="download-hint">
-              Donne un titre (ou colle un lien) : le morceau est téléchargé, renommé
-              proprement et ajouté au jeu avec son genre. Une compilation YouTube
+              Donne un titre (ou colle un lien) : le morceau est téléchargé sous son
+              titre source et ajouté au jeu avec son genre. Une compilation YouTube
               avec chapitres est transformée en vrais morceaux séparés. Depuis un
               appareil distant, l’hôte autorise les imports de plus de 30 morceaux.
             </p>
@@ -783,15 +783,6 @@
               </button>
             </div>
 
-            <details class="download-advanced">
-              <summary>Titre affiché personnalisé</summary>
-              <input type="text" id="download-title" aria-label="Titre affiché personnalisé"
-                     placeholder="Nom sous lequel le morceau est vraiment connu (ex. : Polish Cow)">
-              <p class="download-hint small">
-                Utile pour les titres en alphabet non latin : c'est ce nom qu'il faudra deviner.
-              </p>
-            </details>
-
             <div class="download-log hidden" id="download-log"></div>
           </div>
 
@@ -802,7 +793,8 @@
             </div>
             <p class="download-hint">
               Colle l'adresse d'une playlist YouTube : chaque titre est téléchargé,
-              renommé et trié comme un ajout à l'unité, doublons écartés.
+              conservé sous son titre source et trié comme un ajout à l'unité,
+              doublons écartés.
               Spotify et Deezer ne sont pas pris en charge.
             </p>
 

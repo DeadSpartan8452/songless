@@ -112,28 +112,20 @@ Contraintes de réalisation mobile :
 - contrôle réel sur le POCO X5 Pro 5G : lancement, arrière-plan, reprise, QR,
   connexion d’un joueur et d’une TV, console sans erreur et test de permissions.
 
-### 3.1 ter Distribution transférable et auto-installation
+### 3.1 ter Distribution transférable Windows et Android
 
 Songless doit pouvoir être remis à une autre personne sous la forme d’un kit complet,
 copiable par clé USB, partage de fichiers ou téléchargement privé. Deux parcours sont
 acceptés : application portable contenant déjà ses dépendances, ou installateur qui
 déploie automatiquement Songless et son runtime sur l’appareil cible.
 
-Il n’existe pas de format d’exécutable unique accepté à la fois par Windows, Android,
-macOS, Linux et iOS. Le livrable prend donc la forme d’un **kit multi-plateforme** avec
-un point d’entrée clair qui détecte le système lorsqu’il le peut et sélectionne le bon
-paquet :
+Les seuls systèmes destinés à héberger une instance Songless sont Windows et
+Android. Le livrable prend donc la forme d’un **kit à deux paquets** :
 
 - Windows : installateur ou application portable signée, lancement en un clic ;
 - Android : APK ou paquet équivalent signé, sans terminal ni commande à saisir ;
-- macOS : application signée et notarisation prévue avant toute affirmation de
-  compatibilité publique ;
-- Linux : AppImage ou paquet autonome avec dépendances contrôlées ;
-- iPhone/iPad : application signée distribuée par un canal autorisé par Apple ; un
-  `.exe`, un `.bat` ou un APK ne peut pas y être installé directement ;
-- navigateur seul : reste utilisable comme joueur, TV ou télécommande, mais n’est
-  déclaré hôte autonome que si les capacités serveur, fichiers et arrière-plan sont
-  réellement disponibles.
+- navigateur sur macOS, Linux, iPhone, iPad ou un autre système : utilisable
+  comme joueur, TV ou télécommande, mais jamais déclaré hôte autonome.
 
 Le lanceur ou l’installateur doit :
 
@@ -158,7 +150,8 @@ profils et secrets d’un hôte ne sont jamais transférés implicitement.
 
 Critères de livraison du kit : installation neuve, second lancement sans doublon,
 réparation, conservation des données, désinstallation, fonctionnement hors ligne,
-permissions négatives et test réel sur chaque couple système/architecture annoncé.
+permissions négatives et test réel sur Windows x64 et les architectures Android
+annoncées.
 
 ### 3.2 Téléphone administrateur
 
@@ -303,6 +296,23 @@ fiabilisé.
 - signaler les valeurs impossibles ou ambiguës ;
 - correction en lot et aperçu avant application ;
 - décennies calculées depuis l’année canonique validée.
+- chaque morceau déjà présent et chaque futur téléchargement est recherché sur
+  MusicBrainz à partir de son titre et de son artiste ; le cache permet de
+  reprendre après une coupure sans recommencer les requêtes ;
+- la première date de sortie MusicBrainz est préférée à la date de mise en ligne
+  YouTube, qui reste une information de faible confiance ;
+- une correction manuelle n'est jamais écrasée et une correspondance ambiguë
+  reste dans la file de validation.
+- les variantes manifestement non officielles — notamment Nightcore, sped up,
+  slowed, parodies, reprises marquées cover, karaokés, bootlegs, mashups, bass
+  boosted, 8D et montages de fans — ne sont pas obligées d'avoir
+  un artiste ou une année ; seul leur titre et leur genre restent requis ;
+- ces variantes sont recherchées sur YouTube pour leur genre, tandis que les
+  morceaux officiels sont vérifiés sur MusicBrainz ; le téléchargeur applique
+  automatiquement la même règle aux futurs ajouts.
+- pour cette automatisation, un morceau n'est considéré comme officiel que si
+  MusicBrainz fournit une correspondance forte ; après un échec définitif de
+  cette recherche, il bascule sur YouTube et n'exige plus artiste ni année.
 
 **Livré le 3 septembre 2026** : la provenance historique restaure une confiance
 prudente sans réécrire `metadata.json` (`manual` élevée, `musicbrainz` et `tag`
@@ -328,6 +338,9 @@ refusée au lieu de produire une manche sans réponse certaine.
   ces transformations créent des identités concurrentes et de faux doublons ;
 - le nom source reste la référence tant que l’utilisateur ne choisit pas de le
   modifier explicitement ;
+- le téléchargeur conserve aussi ce nom pour le fichier créé ; il se contente
+  de neutraliser les caractères interdits par le système et ne fabrique plus un
+  nom « Artiste - Titre » à partir des métadonnées ;
 - une option crayon discrète permet de renommer le titre affiché depuis chaque
   mode, uniquement sur le PC local ou hôte et après la révélation ;
 - ce renommage manuel réutilise l’éditeur de la bibliothèque et ne modifie ni le
@@ -679,7 +692,7 @@ et permissions. Aucun mode ne sera laissé « PC uniquement » en attente.
 - parcours complet local, LAN et Internet ;
 - contrôle visuel de tous les écrans ;
 - documentation simple pour l’utilisateur non technique.
-- fabrication du kit multi-plateforme transférable et des installateurs autonomes ;
+- fabrication du kit transférable Windows/Android et des installateurs autonomes ;
 - installation, réparation, mise à jour et désinstallation testées sans terminal ;
 - matrice de compatibilité publiée uniquement pour les plateformes réellement
   exécutées et validées.
@@ -708,6 +721,8 @@ Une phase est terminée uniquement si :
 - donner aux téléphones joueurs, TV ou télécommandes non administratrices les
   droits de suppression ou d’import ;
 - ajouter une dépendance cloud obligatoire au fonctionnement du jeu.
+- héberger Songless sur macOS, Linux, iPhone ou iPad ; ces appareils restent
+  utilisables comme joueur, TV ou télécommande par navigateur.
 
 ## 15. Avancement réel au 4 septembre 2026
 
@@ -718,10 +733,10 @@ Une phase est terminée uniquement si :
 | 2 — Rôles | Très avancée | Jetons distincts hôte, joueur, TV et télécommande ; expiration et révocation ; tests négatifs ; clé d’installation Windows protégée par DPAPI, secret de démarrage dérivé et session admin HttpOnly refusant un autre onglet local | Reconnexion et validation visuelle réelle sur les appareils cibles |
 | 3 — TV/admin | Version Android signée | `tv.html`, `remote.html`, boutons d’appairage et commandes limitées ; écran hôte centralisant les QR joueur, TV et télécommande avec jetons temporaires séparés et tests de rôle, révocation et refus distant ; APK Release autonome React Native + Node embarqué ouvert sur un émulateur Android 17 neuf ; interface WebView et bibliothèque administrateur visibles ; textes Windows masqués sur l’hôte Android ; architectures ARM64 et x86-64 ; second lancement à chaud sans serveur en double ; service d’arrière-plan et notification persistante contrôlés, serveur encore joignable après retour à l’accueil Android ; ClamAV 1.5.4 ARM64/x86-64 et bases officielles embarqués ; sélecteur SAF natif avec permission persistante, import récursif plafonné à 5 000 fichiers / 32 Go et copie privée avant analyse ; collection saine installée, EICAR refusé atomiquement et lot temporaire nettoyé ; mise à jour différée sans désactiver la protection hors ligne ; provenance et licences documentées ; longue ligne de bibliothèque et actions en lot corrigées puis contrôlées visuellement sur l’émulateur ; clé Release RSA 4096 bits privée générée hors dépôt, mot de passe protégé par DPAPI et APK v2 signé ; moteur YouTube JavaScript embarqué avec recherche, métadonnées, playlists et flux M4A sans Python, yt-dlp ni ffmpeg, validé par une recherche et un téléchargement public réel ; Express 5.2.1 et Multer 2.3.0 embarqués avec adaptation Android testée de `path-to-regexp` au moteur Node Mobile ; Release installée sur l’émulateur 16 Kio, interface et serveur validés en mode de compatibilité ; service relancé automatiquement après un redémarrage Android complet et API hôte disponible sans ouverture manuelle ; React Native 0.77.3, pont Node Mobile 16 Kio recompilé et audit ELF reproductible des 56 bibliothèques ramenant les incompatibilités de 22 à 2, limitées aux variantes ARM64 et x86-64 de `libnode.so` | Reconstruire `libnode.so` sur Linux pour la compatibilité native 16 Kio complète, sauvegarder la clé, puis valider sur le POCO |
 | 4 — Modes existants | Livrée | Duel final Battle Royale à deux survivants, persistance du vrai vainqueur et interfaces PC/TV/télécommande/téléphone validées ; catalogue commun de 17 formats couvrant les 10 modes multijoueurs et les formats solo limités/sans fin, Duel PC, Survie PC, entraînement, collections et défis ; chaque fiche indique joueurs, durée, victoire, actions, commandes, TV, équipes et compatibilité, avec rendu repliable contrôlé sur PC/téléphone ; sessions locales harmonisées avec suivi sans fin, collections réellement bornées, défis sans fin conservés, bouton d’arrêt/bilan et retour automatique au bilan ; contraintes mystère filtrées selon les modes, effets de score et tentative unique vérifiés côté serveur ; option Mystère masquée pour Intrus et rétablie pour Enchères/Classique lors du contrôle Chrome réel | — |
-| 5 — Bibliothèque | Très avancée | Audit des 1 687 fichiers, favoris unifiés, sous-genres et années avec provenance/confiance, filtres précis, aperçus obligatoires avant application des années ou genres en lot, blacklist temporaire, mesure d’encodage et dimensions de pochettes, comparateur réversible de doublons et indice de qualité explicable ; file de validation manuelle séparant les valeurs présentes mais incertaines des champs absents, avec compteurs serveur ; l’édition d’un titre ne certifie plus silencieusement son genre ; migration rétrocompatible de la confiance depuis les provenances historiques ; 116 genres récupérés depuis les tags audio puis 515 depuis le cache MusicBrainz ont été appliqués uniquement après aperçu, simulation isolée et sauvegarde, portant la couverture fiable à 678 genres et 328 années ; Intrus, le mode année et les thèmes genre/décennie refusent strictement toute métadonnée de confiance faible ou inconnue, avec verrou identique côté client et serveur | Valider manuellement 499 genres présents et 125 années présentes encore incertains, puis compléter les 1 419 fiches auxquelles il manque au moins artiste, genre ou année |
+| 5 — Bibliothèque | Très avancée | Audit des 1 687 fichiers, favoris unifiés, sous-genres et années avec provenance/confiance, filtres précis, aperçus obligatoires avant application des années ou genres en lot, blacklist temporaire, mesure d’encodage et dimensions de pochettes, comparateur réversible de doublons et indice de qualité explicable ; file de validation manuelle séparant les valeurs présentes mais incertaines des champs absents, avec compteurs serveur ; l’édition d’un titre ne certifie plus silencieusement son genre ; migration rétrocompatible de la confiance depuis les provenances historiques ; enrichissement initial par tags et cache MusicBrainz, puis vérification Internet complète des 1 687 fiches avec 312 correspondances MusicBrainz, 1 352 replis YouTube et 23 absences définitives, appliquée après aperçu complet, simulation isolée et sauvegarde ; couverture portée à 721 genres fiables et 409 années fiables ; Intrus, le mode année et les thèmes genre/décennie refusent strictement toute métadonnée de confiance faible ou inconnue, avec verrou identique côté client et serveur | Valider manuellement 669 genres présents mais incertains, compléter 297 genres absents et 21 années encore obligatoires ; 971 fiches nécessitent au moins une revue selon le moteur |
 | 6 — Nouveaux modes | Livrée | Confiance, Coopération, Intrus, Enchères, Joker, Missions secrètes et Handicap intelligent livrés côté serveur, PC, contrôleur et TV, avec tests de règles, permissions et contrôle visuel Playwright/Axe | — |
 | 7 — Personnalité | Livrée | Catalogue porté de 105 à 206 succès : **100/100 nouveaux succès** déclaratifs plus le succès secret Portal, persistants, dédupliqués et contrôlés sur PC/téléphone ; succès secrets masqués avant déblocage ; **50/50 titres de podium** factuels et uniques ; Portal déclaratif et anti-spoiler contrôlé sur PC/téléphone/TV ; carte souvenir PNG privée par défaut, copie, téléchargement et animations accessibles contrôlés sur PC/téléphone | — |
-| 8 — Finition | Avancée | Carte souvenir documentée ; diagnostic avant soirée ; kit Windows x64 autonome construit et audité ; installation fraîche, lancement local, lancement Wi-Fi, réparation avec conservation exacte de la clé d’autorité et désinstallation avec conservation des données validés sur un espace isolé ; réglages durables du kit déplacés dans `Songless-Data`, migration des anciennes installations prévue et confirmation explicite du compte Tailscale ajoutée au premier lancement Internet ; parcours Internet frais validé de bout en bout avec HTTPS Funnel, salon, QR, invitation et nettoyage ; contrôle visuel Android automatisé par émulateur isolé, ayant permis de corriger le chargement ESM de `music-metadata` et les expressions Unicode incompatibles avec Node mobile ; Release corrigée réinstallée sur Android 17 et diagnostic hôte réel rejoué : 8 contrôles verts, 1 contrôle manuel et seulement 2 blocages attendus sur une installation vierge sans musique ; test de charge HTTP reproductible avec 32 joueurs, 32 réponses simultanées, 640 états et 8 flux audio concurrents, dernière passe p95 à 25 ms ; matrice finale des permissions validant invitation, joueur, TV et télécommande, puis le refus de 41 routes administratives même avec une invitation valide ; joueur téléphone, télécommande administrateur et démarrage Android réharmonisés avec le Songless original puis vérifiés à 390 × 844 sans débordement, tandis que la TV validée reste inchangée ; constructeur Android en double clic détectant JDK et SDK, régénérant le moteur embarqué, purgeant ses caches générés, signant l’APK avec la clé privée réutilisable, vérifiant la signature, l’alignement de l’archive, l’empreinte SHA-256 et l’absence de données privées ; Release React Native 0.77.3 compilée et signée en v2 ; `music-metadata` 11.15.0 intégré, tests ciblés et suite complète verts ; kit Windows reconstruit le 4 septembre (3 980 fichiers, 595 Mo), manifeste vérifié fichier par fichier ; APK reconstruit et signé en v2, SHA-256 `06C57681EF29B3CB2549D6757A37F0C04FD8E2C5D4C6C737B43668683E7E5553` ; audit Android 17 ramené de 22 à 2 bibliothèques incompatibles après recompilation du pont, le constructeur Linux de `libnode.so` restant à exécuter | Reconstruction Linux de `libnode.so`, sauvegarde de signature, validation POCO et autres plateformes du kit transférable |
+| 8 — Finition | Avancée | Carte souvenir documentée ; diagnostic avant soirée ; kit Windows x64 autonome construit et audité ; installation fraîche, lancement local, lancement Wi-Fi, réparation avec conservation exacte de la clé d’autorité et désinstallation avec conservation des données validés sur un espace isolé ; réglages durables du kit déplacés dans `Songless-Data`, migration des anciennes installations prévue et confirmation explicite du compte Tailscale ajoutée au premier lancement Internet ; parcours Internet frais validé de bout en bout avec HTTPS Funnel, salon, QR, invitation et nettoyage ; contrôle visuel Android automatisé par émulateur isolé, ayant permis de corriger le chargement ESM de `music-metadata` et les expressions Unicode incompatibles avec Node mobile ; Release corrigée réinstallée sur Android 17 et diagnostic hôte réel rejoué : 8 contrôles verts, 1 contrôle manuel et seulement 2 blocages attendus sur une installation vierge sans musique ; test de charge HTTP reproductible avec 32 joueurs, 32 réponses simultanées, 640 états et 8 flux audio concurrents, dernière passe p95 à 25 ms ; matrice finale des permissions validant invitation, joueur, TV et télécommande, puis le refus de 41 routes administratives même avec une invitation valide ; joueur téléphone, télécommande administrateur et démarrage Android réharmonisés avec le Songless original puis vérifiés à 390 × 844 sans débordement, tandis que la TV validée reste inchangée ; constructeur Android en double clic détectant JDK et SDK, régénérant le moteur embarqué, purgeant ses caches générés, signant l’APK avec la clé privée réutilisable, vérifiant la signature, l’alignement de l’archive, l’empreinte SHA-256 et l’absence de données privées ; Release React Native 0.77.3 compilée et signée en v2 ; `music-metadata` 11.15.0 intégré, tests ciblés et suite complète verts ; kit Windows reconstruit le 4 septembre (3 980 fichiers, 595 Mo), manifeste vérifié fichier par fichier ; APK reconstruit et signé en v2, SHA-256 `06C57681EF29B3CB2549D6757A37F0C04FD8E2C5D4C6C737B43668683E7E5553` ; audit Android 17 ramené de 22 à 2 bibliothèques incompatibles après recompilation du pont, le constructeur Linux de `libnode.so` restant à exécuter | Reconstruction Linux de `libnode.so`, sauvegarde de signature et validation sur le POCO |
 
 **Validation du dernier APK au 4 septembre 2026** : l’APK intégrant
 `music-metadata` 11.15.0 a été réinstallé avec succès sur l’émulateur Android 17
