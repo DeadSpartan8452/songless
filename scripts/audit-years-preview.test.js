@@ -16,7 +16,7 @@ const presents = new Set(['alpha.mp3', 'beta.mp3']);
 const result = validerPlan({
   changes: {
     'alpha.mp3': { year: 1987, title: 'Ne doit jamais passer' },
-    'beta.mp3': { year: 9999 },
+    'beta.mp3': { year: 1999 },
     'absent.mp3': { year: 1999 },
   },
 }, tracks, presents);

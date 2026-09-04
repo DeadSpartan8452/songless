@@ -152,6 +152,10 @@ function validerPlan(plan, tracks, presents) {
   const valid = {};
   for (const [fileName, entry] of Object.entries(changes).slice(0, 5000)) {
     if (!Object.hasOwn(tracks, fileName) || !presents.has(fileName)) continue;
+    // Un aperçu ancien ne doit jamais écraser une année ajoutée entre-temps,
+    // quelle que soit sa provenance. La correction se fait d'abord en vidant
+    // explicitement la valeur depuis l'éditeur si l'utilisateur le souhaite.
+    if (trackMetadata.readClassification(tracks[fileName]).year) continue;
     const year = trackMetadata.validYear(entry && entry.year);
     if (!year) continue;
     valid[fileName] = {

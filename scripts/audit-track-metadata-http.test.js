@@ -92,6 +92,7 @@ async function main() {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
+        artist: 'Artiste de test',
         genreDetail: 'Synthwave',
         year: 1987,
         yearSource: 'manual',
@@ -102,6 +103,8 @@ async function main() {
 
     const [updated] = await (await fetch(`${base}/api/tracks`)).json();
     assert.strictEqual(updated.favorite, true);
+    assert.strictEqual(updated.artistSource, 'manual');
+    assert.strictEqual(updated.artistConfidence, 'high');
     assert.strictEqual(updated.genreDetail, 'Synthwave');
     assert.strictEqual(updated.year, 1987);
     assert.strictEqual(updated.yearSource, 'manual');
@@ -158,9 +161,7 @@ async function main() {
     assert.strictEqual(afterApply[0].genreSource, 'manual');
     assert.strictEqual(afterApply[0].genreConfidence, 'high');
     assert.strictEqual(afterApply[0].title, 'Titre de test');
-    assert.strictEqual(afterApply[0].classificationReview.genre, false);
-    assert.strictEqual(afterApply[0].classificationReview.artistUncertain, true);
-    assert.strictEqual(afterApply[0].classificationReview.any, true);
+    assert.strictEqual(afterApply[0].classificationReview.any, false);
     const replayResponse = await fetch(`${base}/api/tracks/meta-apply`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

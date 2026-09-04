@@ -1153,6 +1153,9 @@ async function buildTrack(fileName, meta) {
       title: meta.title,
       originalTitle: meta.originalTitle || '',
       artist: meta.artist || '',
+      artistSource: meta.artistSource || 'unknown',
+      artistConfidence: meta.artistConfidence || 'unknown',
+      artistReviewReason: meta.artistReviewReason || null,
       genre: meta.genre || 'Autre',
       duration: meta.duration || 0,
       ...classification,
@@ -1177,6 +1180,9 @@ async function buildTrack(fileName, meta) {
     title,
     originalTitle: '',
     artist,
+    artistSource: 'unknown',
+    artistConfidence: 'unknown',
+    artistReviewReason: null,
     genre: 'Autre',
     duration: tags.duration,
     ...classification,
@@ -1582,7 +1588,12 @@ app.patch('/api/tracks/:id/meta', (req, res) => {
       }
       patch.title = clean;
     }
-    if (typeof artist === 'string') patch.artist = artist.trim();
+    if (typeof artist === 'string') {
+      patch.artist = artist.trim();
+      patch.artistSource = patch.artist ? 'manual' : 'unknown';
+      patch.artistConfidence = patch.artist ? 'high' : 'unknown';
+      patch.artistReviewReason = null;
+    }
     if (typeof genre === 'string' && genre.trim()) {
       const resolved = T.resolveGenre(genre) || genre.trim();
       patch.genre = resolved;

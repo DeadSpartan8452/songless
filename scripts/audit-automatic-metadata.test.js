@@ -74,6 +74,12 @@ const metadataAutoSource = fs.readFileSync(
   assert.strictEqual(manual.year, undefined);
   assert.strictEqual(manual.genre, undefined);
 
+  const serverSource = fs.readFileSync(
+    path.join(__dirname, '..', 'server.js'), 'utf8'
+  );
+  assert.match(serverSource, /artistSource = patch\.artist \? 'manual' : 'unknown'/);
+  assert.match(serverSource, /artistConfidence = patch\.artist \? 'high' : 'unknown'/);
+
   assert.doesNotMatch(
     metadataAutoSource,
     /enregistrement\(titreRecherche,\s*['"]['"]/,
