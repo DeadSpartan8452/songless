@@ -263,6 +263,12 @@ aucune erreur console, aucun débordement ou texte coupé, et aucune violation A
 - les 40 artistes déjà issus de cet ancien repli ont été identifiés par le cache,
   simulés sur une copie, sauvegardés puis marqués à confirmer sans changer leur
   nom ; un filtre et un compteur dédiés les exposent dans la bibliothèque ;
+- cinq de ces identités ou autres rapprochements ambigus ont ensuite été
+  confirmés par preuves concordantes et protégés comme corrections manuelles ;
+- 14 années Solatorobo et 5 années de morceaux corrigés ont été ajoutées après
+  aperçu et simulation ; il reste 2 années obligatoires sans preuve suffisante ;
+- l'éditeur protège maintenant un artiste saisi en `manual/high`, et
+  `tools/years.js` refuse qu'un aperçu ancien écrase une année déjà renseignée ;
 - le diagnostic calcule désormais un statut prêt / à vérifier / problématique,
   une note expliquée par ses raisons et la couverture réelle des contrôles ;
 - la qualité d’encodage demeure explicitement « inconnue » fichier par fichier
@@ -276,8 +282,9 @@ aucune erreur console, aucun débordement ou texte coupé, et aucune violation A
 - la sélection multiple permet maintenant de préparer un classement genre et
   sous-genre ; le serveur renvoie un aperçu lisible et un jeton temporaire à
   usage unique avant d’autoriser l’application, sans accepter de champ titre ;
-- la grande majorité des années doit être complétée ;
-- genres et artistes demandent une normalisation avec niveau de confiance ;
+- le dernier comptage réel donne 980 fiches à revoir : 669 genres présents mais
+  incertains, 297 genres absents, 36 artistes incertains et 2 années obligatoires
+  absentes ; les catégories peuvent se recouper ;
 - le diagnostic lit désormais débit, échantillonnage, profondeur, codec et mode
   avec/sans perte, sans juger un FLAC avec les seuils d’un codec destructif ;
 - les dimensions PNG, JPEG, GIF et WebP sont lues depuis les octets intégrés,
@@ -304,10 +311,9 @@ automatique.
 ### Dépendances
 
 - aucune vulnérabilité connue ;
-- Express 5 et Multer 2 sont des mises à jour majeures non appliquées afin de ne
-  pas introduire de régression pendant l’audit ;
-- `music-metadata` possède une mise à jour corrective mineure, à appliquer dans
-  une phase dédiée avec tests avant/après.
+- Express 5.2.1 et Multer 2.3.0 sont intégrés et couverts par la suite HTTP ;
+- `music-metadata` 11.15.0 est intégré côté Windows et Android, avec validation
+  complète après mise à jour.
 
 ## Clôture administrative de la phase zéro — 3 septembre 2026
 

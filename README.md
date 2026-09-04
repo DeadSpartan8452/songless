@@ -269,7 +269,8 @@ node tools/retitle.js "fichier.mp3" --alias "autre réponse acceptée"
 ```
 
 Une fiche corrigée à la main est marquée comme validée : `tools/enrich.js` ne
-l'écrasera plus.
+l'écrasera plus. En particulier, enregistrer un artiste depuis l'éditeur le
+protège avec une provenance manuelle et une confiance élevée.
 
 ### Marquer un morceau Portal
 
@@ -452,6 +453,7 @@ node tools/years.js                  # tous les morceaux sans année
 node tools/years.js --limit 100      # s'arrêter après 100 recherches réseau
 node tools/years.js --cache-only     # hors ligne, n'utilise que le cache
 node tools/years.js --force          # réinterroger ceux qui ont déjà une année
+node tools/years.js --apply .cache/musicbrainz-years-preview.json
 ```
 
 L'année vient de la **première parution** de l'enregistrement selon MusicBrainz
@@ -464,6 +466,9 @@ morceaux. Le script est **reprenable** — coupez-le, relancez-le, le cache disq
 (`.cache/musicbrainz-years.json`) le fait repartir où il en était. Le taux de
 trouvaille tourne autour de 30 % sur une bibliothèque très « internet »
 (nightcore, memes, OST de jeux) : ces morceaux-là ne sont pas catalogués.
+La première commande ne modifie rien : elle prépare un aperçu. Son application
+relit l'état courant, crée une sauvegarde et refuse d'écraser une année qui a été
+renseignée depuis la création de l'aperçu.
 
 Pour vérifier en une seule passe le titre, l'artiste, la première année, l'album
 et le genre de toute la bibliothèque, avec repli YouTube quand MusicBrainz ne

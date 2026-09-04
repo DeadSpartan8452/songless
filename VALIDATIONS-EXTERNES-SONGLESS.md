@@ -97,10 +97,18 @@ isolée et sauvegarde automatique. Dans **Bibliothèque**, il reste à traiter :
 
 1. `Genres présents à confirmer` — 669 fiches au dernier comptage.
 2. `Genres absents` — 297 fiches au dernier comptage.
-3. `Années obligatoires absentes` — 21 fiches au dernier comptage.
-4. `Artistes présents à confirmer` — 40 fiches issues d'un ancien repli
-   MusicBrainz par titre seul, désormais interdit.
-5. `Fiches à revoir` — 982 fiches ayant encore au moins un point à traiter.
+3. `Années obligatoires absentes` — 2 fiches au dernier comptage ; leurs dates
+   YouTube 2025 ne suffisent pas à prouver une première parution.
+4. `Artistes présents à confirmer` — 36 fiches au dernier comptage, après
+   correction vérifiée de plusieurs rapprochements de l'ancien repli par titre
+   seul, désormais interdit.
+5. `Fiches à revoir` — 980 fiches ayant encore au moins un point à traiter.
+
+Les années 2012 des 14 pistes Solatorobo et les cinq identités/années corrigées
+ont été appliquées le 4 septembre après simulation et sauvegarde. `Good to Be
+Alive` est confirmé comme un titre de CG5 paru le 3 février 2021 par MusicBrainz
+(enregistrement `43715e11-3689-445e-8011-c9581f5d62ec`) et par la publication
+officielle CG5 du lendemain sur YouTube (`GYtBoxGB6Wo`).
 
 Pour chaque fiche : écouter le morceau, vérifier l'artiste, distinguer la première
 sortie d'une réédition, choisir le genre canonique, puis enregistrer. Les modes
