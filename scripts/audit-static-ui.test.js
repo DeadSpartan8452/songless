@@ -71,6 +71,17 @@ test('les confirmations d’équipe ne s’affichent qu’après une action réu
   assert.match(controller, /playerAction\('create-team',[\s\S]*?\.then\(success\s*=>\s*{\s*if \(success\) toast\(`Équipe/);
 });
 
+test('un profil existant propose une vraie grille pour changer son avatar', () => {
+  const app = read('app.js');
+  const css = read('features.css');
+  assert.match(app, /Modifier le nom et l’avatar/);
+  assert.match(app, /profile-edit-picker/);
+  assert.match(app, /data-edit-emoji/);
+  assert.match(app, /ancienEmoji !== cible\.emoji/);
+  assert.match(css, /\.profile-editor\s*\{/);
+  assert.match(css, /\.profile-edit-picker\s*\{/);
+});
+
 test('les playlists synchronisent les anciens défis sans écraser leurs contributions', () => {
   const playlists = read('playlists-ui.js');
   const expansions = read('expansions.js');

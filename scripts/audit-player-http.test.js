@@ -115,10 +115,13 @@ async function main() {
     const updated = await request('/api/player/profiles/alpha', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ stats: { played: 4, wins: 2 } }),
+      body: JSON.stringify({ emoji: '🦄', stats: { played: 4, wins: 2 } }),
     });
     assert.strictEqual(updated.status, 200);
     assert.strictEqual(updated.body.stats.played, 4);
+    assert.strictEqual(updated.body.emoji, '🦄');
+    const stateAfterAvatar = await request('/api/player/state');
+    assert.strictEqual(stateAfterAvatar.body.profiles.find(profile => profile.id === 'alpha').emoji, '🦄');
 
     const missing = await request('/api/player/profiles/absent', {
       method: 'PUT',

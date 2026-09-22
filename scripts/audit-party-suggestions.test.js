@@ -24,6 +24,35 @@ const metadata = {
   'gamma.mp3': { title: 'Voyage lointain', artist: 'Orbite' },
 };
 
+test('les marqueurs de variante sont stabilisés sans réordonner le vrai titre', () => {
+  const titles = require('../lib/titles');
+  assert.strictEqual(
+    titles.suggestionVariantKey('Promet pas la lune Nightcore'),
+    titles.suggestionVariantKey('Nightcore Promet pas la lune')
+  );
+  assert.notStrictEqual(
+    titles.suggestionVariantKey('Amour toujours'),
+    titles.suggestionVariantKey('Toujours amour')
+  );
+});
+
+test('une même version Nightcore ne produit qu\u2019une proposition', () => {
+  const variants = ['nightcore-fin.mp3', 'nightcore-debut.mp3'];
+  const variantMetadata = {
+    'nightcore-fin.mp3': {
+      title: 'Promet pas la lune Nightcore', artist: 'Artiste test',
+    },
+    'nightcore-debut.mp3': {
+      title: 'Nightcore Promet pas la lune', artist: 'Artiste test',
+    },
+  };
+  const result = engine.suggestions({
+    query: 'promet', answerMode: 'titre',
+    fileNames: variants, metadata: variantMetadata,
+  });
+  assert.strictEqual(result.length, 1);
+});
+
 test('un préfixe de titre est proposé avec son artiste', () => {
   const result = engine.suggestions({
     query: 'lumi', answerMode: 'titre', fileNames, metadata,

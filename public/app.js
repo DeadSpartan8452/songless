@@ -1579,6 +1579,32 @@ function setAutocompleteActive(items, activeIndex) {
   }
 }
 
+// Stabilise uniquement la position des marqueurs de variante connus. Les mots
+// d'un titre normal gardent leur ordre afin de ne pas fusionner deux chansons.
+function suggestionVariantKey(value) {
+  let normalized = ` ${String(value || '').normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '').toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ').trim()} `;
+  const phrases = [
+    ['bass boosted', 'bassboosted'], ['sped up', 'spedup'],
+    ['speed up', 'spedup'], ['slowed reverb', 'slowedreverb'],
+    ['slowed and reverb', 'slowedreverb'], ['slowed', 'slowed'],
+    ['reverb', 'reverb'], ['nightcore', 'nightcore'], ['remix', 'remix'],
+    ['cover', 'cover'], ['karaoke', 'karaoke'],
+    ['instrumental', 'instrumental'], ['8d', '8d'],
+  ];
+  const variants = [];
+  phrases.forEach(([phrase, key]) => {
+    const pattern = new RegExp(` ${phrase.replace(/ /g, ' +')} `, 'g');
+    if (!pattern.test(normalized)) return;
+    variants.push(key);
+    normalized = normalized.replace(pattern, ' ');
+  });
+  const main = normalized.trim().replace(/ +/g, '');
+  if (!variants.length) return stripAll(value);
+  return `${main}::${[...new Set(variants)].sort().join('+')}`;
+}
+
 function handleAutocomplete() {
   const query = guessInput.value.trim();
 
@@ -1605,6 +1631,7 @@ function handleAutocomplete() {
 
   // On cherche dans le titre, l'artiste, le titre d'origine et tous les alias
   // (« polish cow » doit trouver le morceau nommé en polonais).
+  const seenSuggestionKeys = new Set();
   const matches = tracks.filter(t => {
     if (stripAll(t.title).includes(queryStrip)) return true;
     if (stripAll(t.artist).includes(queryStrip)) return true;
@@ -1618,6 +1645,11 @@ function handleAutocomplete() {
     const bStarts = bTitle.startsWith(queryStrip) ? 0 : 1;
     return aStarts - bStarts || aTitle.length - bTitle.length
       || aTitle.localeCompare(bTitle, 'fr');
+  }).filter(track => {
+    const key = `${stripAll(track.artist)}::${suggestionVariantKey(track.title)}`;
+    if (seenSuggestionKeys.has(key)) return false;
+    seenSuggestionKeys.add(key);
+    return true;
   }).slice(0, 16);
 
   if (matches.length > 0) {
@@ -3203,7 +3235,8 @@ function renderProfileList() {
           <span class="profile-row-name">${escapeHtml(p.nom)}</span>
           <span class="profile-row-stats">Solo : ${stats.played} manche${stats.played > 1 ? 's' : ''} · Multi : ${sessionsMulti} soirée${sessionsMulti > 1 ? 's' : ''}, ${winsMulti} victoire${winsMulti > 1 ? 's' : ''}</span>
         </button>
-        <button class="profile-edit" data-id="${escapeHtml(p.id)}" title="Renommer ce profil">
+        <button class="profile-edit" data-id="${escapeHtml(p.id)}"
+                title="Modifier le nom et l’avatar" aria-label="Modifier le nom et l’avatar de ${escapeHtml(p.nom)}">
           <i data-lucide="pencil"></i>
         </button>
         <button class="profile-del" data-id="${escapeHtml(p.id)}" title="Supprimer ce profil">
@@ -3240,14 +3273,24 @@ function renderProfileList() {
 let profilEnRenommage = null;
 
 function ligneRenommage(p) {
+  const avatars = [...document.querySelectorAll('#pc-emoji-picker [data-emoji]')]
+    .map(button => button.getAttribute('data-emoji')).filter(Boolean);
   return `
-    <div class="profile-rename">
-      <input type="text" class="rename-emoji" maxlength="2" value="${escapeHtml(p.emoji)}"
-             aria-label="Emoji du profil">
-      <input type="text" class="rename-name" maxlength="20" value="${escapeHtml(p.nom)}"
-             aria-label="Nom du profil">
-      <button class="cta-btn rename-ok" title="Enregistrer"><i data-lucide="check"></i></button>
-      <button class="ghost-btn rename-cancel" title="Annuler"><i data-lucide="x"></i></button>
+    <div class="profile-editor">
+      <span class="profile-editor-label">Changer l’avatar</span>
+      <div class="emoji-picker-grid profile-edit-picker" role="group" aria-label="Choisir le nouvel avatar">
+        ${avatars.map(emoji => `<button type="button" class="emoji-pick-btn${emoji === p.emoji ? ' active' : ''}"
+          data-edit-emoji="${escapeHtml(emoji)}" aria-label="Choisir ${escapeHtml(emoji)}"
+          aria-pressed="${emoji === p.emoji ? 'true' : 'false'}">${escapeHtml(emoji)}</button>`).join('')}
+      </div>
+      <div class="profile-rename">
+        <input type="text" class="rename-emoji" maxlength="4" value="${escapeHtml(p.emoji)}"
+               aria-label="Emoji personnalisé du profil">
+        <input type="text" class="rename-name" maxlength="20" value="${escapeHtml(p.nom)}"
+               aria-label="Nom du profil">
+        <button class="cta-btn rename-ok" title="Enregistrer" aria-label="Enregistrer le profil"><i data-lucide="check"></i></button>
+        <button class="ghost-btn rename-cancel" title="Annuler" aria-label="Annuler la modification"><i data-lucide="x"></i></button>
+      </div>
     </div>
   `;
 }
@@ -3262,8 +3305,25 @@ function brancherRenommage(zone) {
   if (!champNom) return;
 
   const champEmoji = zone.querySelector('.rename-emoji');
+  const avatarButtons = [...zone.querySelectorAll('[data-edit-emoji]')];
   const ligne = champNom.closest('.profile-row');
   const id = ligne.getAttribute('data-id');
+
+  const afficherAvatarActif = value => {
+    avatarButtons.forEach(button => {
+      const active = button.getAttribute('data-edit-emoji') === value;
+      button.classList.toggle('active', active);
+      button.setAttribute('aria-pressed', active ? 'true' : 'false');
+    });
+  };
+
+  avatarButtons.forEach(button => {
+    button.addEventListener('click', () => {
+      champEmoji.value = button.getAttribute('data-edit-emoji') || '🎧';
+      afficherAvatarActif(champEmoji.value);
+    });
+  });
+  champEmoji.addEventListener('input', () => afficherAvatarActif(champEmoji.value.trim()));
 
   const annuler = () => {
     profilEnRenommage = null;
@@ -3303,6 +3363,7 @@ function renommerProfil(id, nom, emoji) {
   if (!cible) return;
 
   const avant = cible.nom;
+  const ancienEmoji = cible.emoji || '🎧';
   cible.nom = nom;
   cible.emoji = emoji || cible.emoji || '🎧';
 
@@ -3312,6 +3373,8 @@ function renommerProfil(id, nom, emoji) {
   renderProfileList();
 
   if (avant !== nom) showToast(`« ${avant} » s'appelle maintenant « ${nom} ».`, 'ok');
+  else if (ancienEmoji !== cible.emoji) showToast(`Avatar de ${nom} mis à jour ${cible.emoji}`, 'ok');
+  else showToast('Profil enregistré.', 'ok');
 }
 
 function supprimerProfil(id) {
