@@ -117,6 +117,50 @@ function Test-SonglessInternetInstance {
   }
 }
 
+function Get-TailscaleSession {
+  param([string]$Executable)
+
+  $SessionStatus = & $Executable status --json | ConvertFrom-Json
+  if (-not $SessionStatus.Self -or -not $SessionStatus.Self.DNSName) {
+    throw 'Connecte d''abord Tailscale avec son icone pres de l''horloge.'
+  }
+  $SessionUser = $SessionStatus.User.PSObject.Properties.Value |
+    Where-Object {
+      [string]$_.ID -eq [string]$SessionStatus.Self.UserID
+    } |
+    Select-Object -First 1
+  $SessionAccount = [string]$SessionUser.LoginName
+  if (-not $SessionAccount) {
+    throw 'Le compte Tailscale actif n''a pas pu etre identifie.'
+  }
+  return [pscustomobject]@{
+    Status = $SessionStatus
+    Account = $SessionAccount
+  }
+}
+
+function Switch-TailscaleSession {
+  param(
+    [string]$Executable,
+    [string]$Account
+  )
+
+  & $Executable switch $Account | Out-Host
+  if ($LASTEXITCODE -ne 0) {
+    throw "La bascule Tailscale vers $Account a echoue."
+  }
+  for ($Attempt = 0; $Attempt -lt 20; $Attempt++) {
+    Start-Sleep -Milliseconds 500
+    try {
+      $Session = Get-TailscaleSession -Executable $Executable
+      if ($Session.Account -eq $Account) {
+        return $Session
+      }
+    } catch {}
+  }
+  throw "Tailscale n'a pas confirme la bascule vers $Account."
+}
+
 $CurrentIdentity = [Security.Principal.WindowsIdentity]::GetCurrent()
 $CurrentPrincipal = New-Object Security.Principal.WindowsPrincipal(
   $CurrentIdentity
@@ -206,14 +250,9 @@ if (-not $TailscalePath) {
   throw 'Tailscale est absent. Demande a Codex de terminer l''installation.'
 }
 
-$Status = & $TailscalePath status --json | ConvertFrom-Json
-if (-not $Status.Self -or -not $Status.Self.DNSName) {
-  throw 'Connecte d''abord Tailscale avec son icone pres de l''horloge.'
-}
-$CurrentUser = $Status.User.PSObject.Properties.Value |
-  Where-Object { [string]$_.ID -eq [string]$Status.Self.UserID } |
-  Select-Object -First 1
-$CurrentAccount = [string]$CurrentUser.LoginName
+$Session = Get-TailscaleSession -Executable $TailscalePath
+$Status = $Session.Status
+$CurrentAccount = $Session.Account
 if (-not (Test-Path -LiteralPath $AccountConfigPath)) {
   if ($SmokeTest) {
     throw 'Le compte Tailscale dedie a Songless n''est pas configure.'
@@ -243,9 +282,19 @@ $ExpectedAccount = (
 if (-not $ExpectedAccount) {
   throw 'Le compte Tailscale dedie a Songless est vide.'
 }
+$RestoreAccount = $null
 if ($CurrentAccount -ne $ExpectedAccount) {
-  throw 'Tailscale n''utilise pas le compte Songless. Le tunnel Manapattes n''a pas ete touche. Bascule manuellement vers le compte Songless, puis relance.'
+  $RestoreAccount = $CurrentAccount
 }
+
+try {
+  if ($RestoreAccount) {
+    Write-Host 'Activation temporaire du compte Tailscale Songless...' `
+      -ForegroundColor Yellow
+    $Session = Switch-TailscaleSession `
+      -Executable $TailscalePath -Account $ExpectedAccount
+    $Status = $Session.Status
+  }
 
 $DnsName = ([string]$Status.Self.DNSName).TrimEnd('.')
 $PublicUrl = "https://$DnsName"
@@ -434,5 +483,22 @@ try {
   if ($OwnsInstanceLock) {
     $InstanceLock.ReleaseMutex()
     $InstanceLock.Dispose()
+  }
+}
+} finally {
+  if ($RestoreAccount) {
+    try {
+      Write-Host 'Restauration du compte Tailscale precedent...' `
+        -ForegroundColor Yellow
+      Switch-TailscaleSession `
+        -Executable $TailscalePath -Account $RestoreAccount | Out-Null
+      Write-Host 'Compte Tailscale precedent restaure.' `
+        -ForegroundColor Green
+    } catch {
+      Write-Warning (
+        'Restauration Tailscale impossible. Ouvre Tailscale et remets ' `
+        + "manuellement le compte $RestoreAccount. Erreur : $($_.Exception.Message)"
+      )
+    }
   }
 }

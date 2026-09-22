@@ -45,6 +45,9 @@ const internetLauncher = fs.readFileSync(
 assert.match(internetLauncher, /SONGLESS_TAILSCALE_ACCOUNT_FILE/);
 assert.match(internetLauncher, /Retape exactement ce compte/);
 assert.match(internetLauncher, /Compte non confirme/);
+assert.match(internetLauncher, /tailscalePath switch|Executable switch/i);
+assert.match(internetLauncher, /Restauration du compte Tailscale precedent/);
+assert.doesNotMatch(internetLauncher, /Bascule manuellement vers le compte Songless/);
 
 const menuLauncher = fs.readFileSync(path.join(__dirname, '..', 'packaging', 'windows', 'Songless.bat'), 'utf8');
 assert.doesNotMatch(menuLauncher, /WindowStyle Hidden/i);
