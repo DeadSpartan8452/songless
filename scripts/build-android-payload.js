@@ -20,7 +20,10 @@ function safePayload() {
 }
 
 function copy(relative) {
-  fs.cpSync(path.join(ROOT, relative), path.join(PAYLOAD, relative), {recursive: true});
+  fs.cpSync(path.join(ROOT, relative), path.join(PAYLOAD, relative), {
+    recursive: true,
+    filter: file => relative !== 'tools' || !/\.(exe|cmd|bat|ps1)$/i.test(file),
+  });
 }
 
 function patchPathToRegexpForNodeMobile(output) {

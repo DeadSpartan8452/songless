@@ -452,49 +452,61 @@
   .genre-badge.small { display: none; }
   .track-item { gap: 8px; padding: 10px 8px; }
 
-  /* L'hôte Android garde les quatre actions accessibles sans sacrifier le
-     titre : chaque contrôle a sa colonne, seul le texte peut se réduire. */
-  .mobile-host .track-item {
+  /* Sur un écran étroit, titre et commandes ont chacun leur ligne. */
+  .track-item {
     display: grid;
-    grid-template-columns: 16px 40px minmax(0, 1fr) repeat(4, 30px);
+    grid-template-columns: 16px 40px repeat(4, minmax(0, 1fr));
     gap: 4px;
   }
 
-  .mobile-host .track-item-details {
+  .track-item-details {
     min-width: 0;
+    grid-column: 3 / -1;
   }
 
-  .mobile-host .genre-badge.small,
-  .mobile-host .preview-time {
+  .track-item-title,
+  .track-item-artist {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .genre-badge.small,
+  .preview-time {
     display: none;
   }
 
-  .mobile-host .favorite-track-btn,
-  .mobile-host .preview-track-btn,
-  .mobile-host .edit-track-btn,
-  .mobile-host .delete-track-btn {
-    width: 30px;
-    height: 30px;
+  .favorite-track-btn { grid-column: 3; }
+  .preview-track-btn { grid-column: 4; }
+  .edit-track-btn { grid-column: 5; }
+  .delete-track-btn { grid-column: 6; }
+
+  .favorite-track-btn,
+  .preview-track-btn,
+  .edit-track-btn,
+  .delete-track-btn {
+    grid-row: 2;
+    width: 100%;
+    min-height: 40px;
     padding: 0;
     align-items: center;
     justify-content: center;
   }
 
-  .mobile-host .tracks-bulk-actions {
+  .tracks-bulk-actions {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
     gap: 8px;
   }
 
-  .mobile-host .tracks-bulk-actions.hidden {
+  .tracks-bulk-actions.hidden {
     display: none;
   }
 
-  .mobile-host .select-all-label {
+  .select-all-label {
     grid-column: 1 / -1;
   }
 
-  .mobile-host .tracks-bulk-actions button {
+  .tracks-bulk-actions button {
     min-width: 0;
     width: 100%;
     justify-content: center;

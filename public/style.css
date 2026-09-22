@@ -172,6 +172,7 @@ code {
 
   .tab-btn {
     min-width: 0;
+    flex-direction: column;
     justify-content: center;
     gap: 4px;
     padding: 11px 3px;

@@ -87,4 +87,19 @@ const disabled = blacklist.normalizeRule({ ...until, active: false }, until, now
 assert.strictEqual(blacklist.matches(disabled, tracks[1], 'classic', now), false);
 ok('une exclusion peut être levée immédiatement sans être supprimée');
 
+
+const librarySnapshot = blacklist.normalizeRule({
+  targetType: 'library', targetValue: 'Bibliothèque actuelle',
+  trackIds: ['one', 'two'], durationType: 'hours', durationAmount: 1,
+}, null, now);
+assert.strictEqual(blacklist.matches(librarySnapshot, tracks[0], 'classic', now), true);
+assert.strictEqual(blacklist.matches(librarySnapshot, tracks[2], 'classic', now), false);
+assert.strictEqual(blacklist.matches(librarySnapshot, {id: 'ONE'}, 'classic', now), false);
+assert.strictEqual(blacklist.matches(librarySnapshot, tracks[0], 'classic', '2026-09-02T13:00:00Z'), false);
+assert.strictEqual(blacklist.matches({...librarySnapshot, active: false}, tracks[0], 'classic', now), false);
+assert.deepStrictEqual(blacklist.normalizeRule({active: false, trackIds: ['three']}, librarySnapshot, now).trackIds, ['one', 'two']);
+assert.deepStrictEqual(blacklist.normalizeRule(JSON.parse(JSON.stringify(librarySnapshot)), null, now).trackIds, ['one', 'two']);
+assert.throws(() => blacklist.normalizeRule({targetType: 'library', targetValue: 'Vide', trackIds: []}, null, now), /bibliothèque/);
+ok('bibliothèque figée : nouveaux ajouts disponibles, identifiants exacts, levée, expiration et sauvegarde');
+
 console.log(`\n${passed} tests de blacklist réussis.`);

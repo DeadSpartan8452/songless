@@ -1631,7 +1631,7 @@
           'X-Songless-Invite': invite,
           'X-Songless-Party': invitedCode,
         },
-        body: JSON.stringify({ query }),
+        body: JSON.stringify({ query, sourceLabel: profile ? profile.nom : '' }),
       });
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
@@ -1701,6 +1701,7 @@
     try {
       const body = new FormData();
       body.append('audio', file);
+      body.append('sourceLabel', profile ? profile.nom : '');
       const result = await api('/api/upload', { method: 'POST', body });
       const count = Array.isArray(result.ajoutes) ? result.ajoutes.length : 0;
       const duplicates = Array.isArray(result.doublons) ? result.doublons.length : 0;

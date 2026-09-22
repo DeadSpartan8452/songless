@@ -1,0 +1,53 @@
+'use strict';
+const assert=require('assert/strict');
+const B=require('../public/source-balance');
+const I=require('../lib/source-import');
+const track=(id,label)=>({id,videoId:id,title:id,importSource:B.source(label)});
+let checks=0;const ok=name=>{checks++;console.log('OK '+name);};
+(async()=>{
+ const tracks=[...Array.from({length:1000},(_,i)=>track('large'+i,'Grande source')),...Array.from({length:3},(_,i)=>track('small'+i,'Petite source'))];
+ for(let seed=0;seed<100;seed++){
+  const result=B.select(tracks,6,{seed:String(seed)});
+  assert.deepEqual(result.sources.map(s=>s.count),[3,3]);
+  const order=result.selected.map(t=>t.importSource.id);
+  for(let i=2;i<=6;i+=2)assert.equal(order.slice(0,i).filter(x=>x===order[0]).length,i/2);
+ }
+ ok('100 tirages : une playlist de 1 000 titres ne domine pas une source de trois titres');
+ assert.deepEqual(B.select(tracks,9,{seed:'fixed'}).sources.map(s=>s.count),[6,3]);
+ assert.deepEqual(B.select(tracks,9,{seed:'fixed'}),B.select(tracks.slice().reverse(),9,{seed:'fixed'}));
+ assert.notDeepEqual(B.select(tracks,9,{seed:'other'}).selected,B.select(tracks,9,{seed:'fixed'}).selected);
+ ok('répartition après épuisement, graine reproductible et hasard renouvelé');
+ assert.equal(B.select(tracks,6,{excludedIds:[B.source('Grande source').id]}).selected.length,3);
+ assert.equal(B.select(tracks,6,{excludedIds:tracks.map(t=>t.importSource.id)}).selected.length,0);
+ assert.equal(B.select([{id:'old1'},{id:'old2'}],4).sources[0].id,'legacy');
+ assert.equal(B.select([track('same','A'),track('same','B')],2).selected.length,1);
+ ok('sources décochées, ancienne origine inconnue et doublons entre sources');
+ const lines='Personne A | https://www.youtube.com/playlist?list=PL_SOURCE_A1\nPersonne A | https://music.youtube.com/playlist?list=PL_SOURCE_A2\nPersonne B | https://www.youtube.com/playlist?list=PL_SOURCE_B1';
+ assert.equal(I.parseSources(lines).length,3);
+ assert.throws(()=>I.parseSources(lines+'\nAutre | https://www.youtube.com/playlist?list=PL_SOURCE_A1'),/deux sources/);
+ assert.throws(()=>I.parseSources('https://open.spotify.com/playlist/x\nhttps://www.youtube.com/playlist?list=PL_SOURCE_A1'),/YouTube/);
+ assert.throws(()=>I.parseSources('https://www.youtube.com.evil.test/playlist?list=PL_SOURCE_A1\nhttps://www.youtube.com/playlist?list=PL_SOURCE_A2'),/YouTube/);
+ ok('liens bornés et validés ; une même playlist ne peut gonfler plusieurs sources');
+ const listPlaylist=async(url,opts)=>{
+  assert.equal(opts.maxItems,5000);
+  const prefix=url.includes('A1')?'a':url.includes('A2')?'c':'b';
+  return {titre:'Playlist '+prefix,entrees:Array.from({length:prefix==='b'?5:20},(_,i)=>({id:prefix+String(i).padStart(10,'0'),title:prefix+i})),tronquee:prefix==='c'};
+ };
+ const plan=await I.prepare({lines,count:8,seed:'test'},{listPlaylist,existingVideoIds:['a0000000000']});
+ assert.equal(plan.groups.length,2);assert.deepEqual(plan.distribution.map(s=>s.count),[4,4]);
+ assert(plan.warnings.length);assert(!plan.groups.some(g=>g.items.some(t=>t.id==='a0000000000')));
+ const events=[];
+ const result=await I.run(plan,{downloadTrack:async(_url,opts)=>({title:'ok',importSource:opts.importSource}),onEvent:(e,d)=>{if(e==='progress'&&d.total)events.push(d.message);}});
+ assert.equal(result.added,8);assert.deepEqual(result.sources.map(s=>s.added),[4,4]);
+ assert.deepEqual(events,plan.preview.map(t=>t.source+' · '+t.title));
+ ok('plusieurs playlists de la même personne regroupées, anciens titres évités, aperçu identique au téléchargement');
+ let calls=0;
+ const retry=await I.run(plan,{downloadTrack:async()=>{calls++;if(calls===1)throw Error('inaccessible');if(calls===2)return {alreadyPresent:true};return {title:'ok'};}});
+ assert.equal(retry.added,8);assert.equal(retry.errors,1);assert.equal(retry.duplicates,1);
+ assert.deepEqual(retry.sources.map(s=>s.added),[4,4]);
+ const stopped=await I.run(plan,{cancelled:()=>true,downloadTrack:async()=>{throw Error('ne doit pas partir');}});
+ assert.equal(stopped.attempted,0);assert(stopped.cancelled);
+ const short=await I.run({...plan,requested:500},{downloadTrack:async()=>({title:'ok'})});assert(short.missing>0);
+ ok('échecs et doublons remplacés sans casser l’équilibre, arrêt et manque explicite');
+ console.log(checks+' tests de sources réussis.');
+})().catch(e=>{console.error(e);process.exitCode=1;});

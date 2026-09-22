@@ -10,6 +10,7 @@ const QRCode = require('qrcode');
 const T = require('./lib/titles');
 const store = require('./lib/store');
 const trackMetadata = require('./lib/track-metadata');
+const automaticMetadata = require('./lib/automatic-metadata');
 const downloader = require('./lib/downloader');
 const importer = require('./lib/importer');
 const health = require('./lib/health');
@@ -23,6 +24,7 @@ const modeRegistry = require('./lib/mode-registry');
 const antivirus = require('./lib/antivirus');
 const clamavDatabase = require('./lib/clamav-database');
 const blacklist = require('./lib/blacklist');
+const sourceBalance = require('./public/source-balance');
 const duplicateComparison = require('./lib/duplicate-comparison');
 const preflight = require('./lib/preflight');
 const instanceAuthModule = require('./lib/instance-auth');
@@ -219,6 +221,7 @@ const remoteUpload = multer({
 });
 
 // Middleware
+app.use('/api/sources/assign/preview', express.json({limit:'2mb'}));
 app.use(express.json());
 app.use((err, req, res, next) => {
   if (err instanceof SyntaxError && err.status === 400 && 'body' in err) {
@@ -633,6 +636,14 @@ async function partyTrackIdsAfterBlacklist(values, mode, settings = {}) {
     playerStore.blacklistRules(),
     mode
   ).allowed.map(track => track.id));
+  const eligible = built.filter(track => allowed.has(track.id));
+  const balance = settings.sourceBalance;
+  if (balance && balance.enabled === true) {
+    return sourceBalance.select(eligible, balance.count, {
+      seed: settings.sourceSeed || 'songless',
+      excludedIds: Array.isArray(balance.excludedIds) ? balance.excludedIds.slice(0,500).map(String) : [],
+    }).selected.map(track => track.id);
+  }
   return validIds.filter(id => allowed.has(id));
 }
 
@@ -693,19 +704,43 @@ app.get('/api/blacklist', (_req, res) => {
   });
 });
 
+// Aperçus de bibliothèque bornés, temporaires et consommables une seule fois.
+const blacklistLibraryPreviews = new Map();
+function blacklistPreviewInput(body) {
+  const { previewToken, trackIds, ...input } = body || {};
+  return input;
+}
 app.post('/api/blacklist/preview', async (req, res) => {
   try {
     const existing = playerStore.blacklistRules();
     let rules = existing;
+    let libraryPreview = null;
+    const tracks = await allBuiltTracks();
     if (req.body && req.body.rule) {
       const previous = existing.find(rule => rule.id === String(req.body.rule.id || '')) || null;
-      const candidate = blacklist.normalizeRule(req.body.rule, previous);
+      const input = blacklistPreviewInput(req.body.rule);
+      const candidate = blacklist.normalizeRule(input.targetType === 'library'
+        ? { ...input, trackIds: tracks.map(track => track.id) } : input, previous);
+      if (candidate.targetType === 'library') libraryPreview = { input, candidate };
       rules = existing.filter(rule => rule.id !== candidate.id).concat(candidate);
     }
     const mode = String(req.body && req.body.mode || 'solo_title');
-    const tracks = await allBuiltTracks();
     const result = blacklist.evaluate(tracks, rules, mode);
+    let previewToken;
+    if (libraryPreview) {
+      for (const [token, item] of blacklistLibraryPreviews) {
+        if (item.expiresAt <= Date.now()) blacklistLibraryPreviews.delete(token);
+      }
+      while (blacklistLibraryPreviews.size >= 20) {
+        blacklistLibraryPreviews.delete(blacklistLibraryPreviews.keys().next().value);
+      }
+      previewToken = crypto.randomBytes(24).toString('base64url');
+      blacklistLibraryPreviews.set(previewToken, {
+        ...libraryPreview, expiresAt: Date.now() + 5 * 60_000,
+      });
+    }
     res.json({
+      ...(previewToken ? { previewToken, snapshotCount: libraryPreview.candidate.trackIds.length } : {}),
       total: tracks.length,
       remaining: result.allowed.length,
       excluded: result.excluded.length,
@@ -722,7 +757,18 @@ app.post('/api/blacklist/preview', async (req, res) => {
 
 app.post('/api/blacklist', (req, res) => {
   try {
-    res.status(201).json(playerStore.createBlacklistRule(req.body || {}));
+    let input = blacklistPreviewInput(req.body);
+    if (input.targetType === 'library') {
+      const token = String(req.body.previewToken || '');
+      const preview = blacklistLibraryPreviews.get(token);
+      if (!preview || preview.expiresAt <= Date.now()
+        || JSON.stringify(input) !== JSON.stringify(preview.input)) {
+        return res.status(400).json({ error: 'Prévisualise à nouveau la bibliothèque avant de l’écarter.' });
+      }
+      input = preview.candidate;
+      blacklistLibraryPreviews.delete(token);
+    }
+    res.status(201).json(playerStore.createBlacklistRule(input));
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
@@ -762,6 +808,7 @@ app.post('/api/party/create', async (req, res) => {
       : {};
     const mergedSettings = {
       ...rawSettings,
+      sourceSeed: String(req.body.seed || 'songless'),
       audioFx: rawSettings.audioFx || rawSettings.audiofx || rawSettings.audio_fx
         || rawSettings['audio-fx'] || (req.body && (req.body.audioFx || req.body.audiofx || req.body.audio_fx))
         || 'none',
@@ -777,7 +824,8 @@ app.post('/api/party/create', async (req, res) => {
     }
     const created = partyStore.create({
       mode: req.body.mode,
-      totalRounds: req.body.totalRounds,
+      totalRounds: mergedSettings.sourceBalance?.enabled === true && req.body.totalRounds !== 'infinite'
+        ? Math.min(Number(req.body.totalRounds) || 10, filteredTrackIds.length) : req.body.totalRounds,
       seed: req.body.seed,
       settings: mergedSettings,
       trackIds: filteredTrackIds,
@@ -810,6 +858,7 @@ app.post('/api/party/create', async (req, res) => {
 
     res.status(201).json({
       code: created.party.code,
+      trackIds: filteredTrackIds,
       hostToken: created.hostToken,
       playerToken: hostPlayer ? hostPlayer.token : null,
       demoBots,
@@ -1150,12 +1199,20 @@ async function buildTrack(fileName, meta) {
     const track = {
       id,
       fileName,
+      importSource: sourceBalance.sourceOf(meta),
+      videoId: meta.videoId || null,
       title: meta.title,
       originalTitle: meta.originalTitle || '',
       artist: meta.artist || '',
       artistSource: meta.artistSource || 'unknown',
       artistConfidence: meta.artistConfidence || 'unknown',
       artistReviewReason: meta.artistReviewReason || null,
+      unofficialVariant: automaticMetadata.estVersionNonOfficielle(meta, fileName),
+      musicbrainzRecordingId: meta.musicbrainzRecordingId || null,
+      metadataMatch: meta.metadataMatch || null,
+      album: meta.album || null,
+      albumSource: meta.albumSource || 'unknown',
+      albumConfidence: meta.albumConfidence || 'unknown',
       genre: meta.genre || 'Autre',
       duration: meta.duration || 0,
       ...classification,
@@ -1177,12 +1234,20 @@ async function buildTrack(fileName, meta) {
   const track = {
     id,
     fileName,
+    importSource: sourceBalance.sourceOf(meta),
+    videoId: meta?.videoId || null,
     title,
     originalTitle: '',
     artist,
     artistSource: 'unknown',
     artistConfidence: 'unknown',
     artistReviewReason: null,
+    unofficialVariant: automaticMetadata.estVersionNonOfficielle({ ...meta, title }, fileName),
+    musicbrainzRecordingId: meta?.musicbrainzRecordingId || null,
+    metadataMatch: meta?.metadataMatch || null,
+    album: meta?.album || null,
+    albumSource: meta?.albumSource || 'unknown',
+    albumConfidence: meta?.albumConfidence || 'unknown',
     genre: 'Autre',
     duration: tags.duration,
     ...classification,
@@ -1378,6 +1443,8 @@ app.post('/api/upload', (req, res) => {
         });
       }
 
+      tagImportedFiles(rapport, importOrigin(req, archive ? 'Archive importée' : 'Fichiers importés'));
+
       // L'archive n'a plus d'utilité une fois son contenu extrait.
       if (archive) {
         try { fs.unlinkSync(req.file.path); } catch (_) { /* déjà parti */ }
@@ -1438,6 +1505,7 @@ app.post('/api/android/import-folder', async (req, res) => {
     const rapport = await importer.trier(installation.ecrits, {
       nomsOrigine: installation.nomsOrigine,
     });
+    tagImportedFiles(rapport, importOrigin(req, 'Dossier Android'));
     res.json({
       success: true,
       antivirus: `${scanResult.engine} : dossier sain`,
@@ -1570,10 +1638,44 @@ app.patch('/api/tracks/:id/meta', (req, res) => {
     const body = req.body || {};
     const { title, artist, genre, aliases } = body;
     const patch = trackMetadata.classificationPatch(body);
+    const titleEdited = typeof title === 'string' && !!title.trim();
+    const artistEdited = typeof artist === 'string';
+    const titleChanged = titleEdited
+      && T.norm(title.trim()) !== T.norm(current.title || '');
+    const artistChanged = artistEdited
+      && T.norm(artist.trim()) !== T.norm(current.artist || '');
+    const identityChanged = titleChanged || artistChanged;
     const identityEdited = (typeof title === 'string' && !!title.trim())
       || typeof artist === 'string'
       || (typeof genre === 'string' && !!genre.trim())
       || Array.isArray(aliases);
+
+    if (Object.hasOwn(body, 'musicbrainzRecordingId')) {
+      const recordingId = String(body.musicbrainzRecordingId || '').trim().toLowerCase();
+      if (recordingId
+        && !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(recordingId)) {
+        return res.status(400).json({ error: 'Identifiant MusicBrainz invalide' });
+      }
+      patch.musicbrainzRecordingId = recordingId || null;
+      patch.metadataMatch = recordingId ? 'musicbrainz' : 'manual';
+    } else if (identityChanged) {
+      patch.musicbrainzRecordingId = null;
+      patch.metadataMatch = 'manual';
+    }
+
+    if (Object.hasOwn(body, 'album')) {
+      patch.album = String(body.album || '').trim().slice(0, 160) || null;
+      patch.albumSource = patch.album
+        ? String(body.albumSource || 'manual').trim().slice(0, 32)
+        : 'unknown';
+      patch.albumConfidence = patch.album
+        ? String(body.albumConfidence || 'high').trim().slice(0, 16)
+        : 'unknown';
+    } else if (identityChanged && current.albumSource !== 'manual') {
+      patch.album = null;
+      patch.albumSource = 'unknown';
+      patch.albumConfidence = 'unknown';
+    }
 
     if (identityEdited) {
       patch.reviewed = true;
@@ -1765,6 +1867,18 @@ app.post('/api/download/approvals/:id', (req, res) => {
  * Route: Télécharger un titre et l'ajouter à la bibliothèque.
  * Réponse en flux (Server-Sent Events) pour suivre la progression en direct.
  */
+require('./lib/source-routes')(app, {store, downloader, allBuiltTracks,
+  validPartyTrackIds, resoudreMorceau, ouvrirFlux});
+
+function importOrigin(req, defaultLabel = 'Ajouts libres') {
+  return sourceBalance.source(String(req.body && req.body.sourceLabel || '').trim()
+    || (req.songlessRemote ? 'Ajouts des joueurs' : defaultLabel));
+}
+function tagImportedFiles(rapport, origin) {
+  const patches = Object.fromEntries((rapport.ajoutes || []).map(item => [item.fichier, {importSource:origin}]));
+  if (Object.keys(patches).length) store.setMany(patches);
+}
+
 app.post('/api/download', async (req, res) => {
   const { query, genre, artist, force } = req.body || {};
 
@@ -1850,6 +1964,7 @@ app.post('/api/download', async (req, res) => {
         });
         try {
           const entry = await downloader.downloadTrack(item.query, {
+            importSource: importOrigin(req, media.title),
             genre: genre || null,
             onLog: (message) => send('progress', {
               message,
@@ -1882,6 +1997,7 @@ app.post('/api/download', async (req, res) => {
     }
 
     const entry = await downloader.downloadTrack(String(query).trim(), {
+      importSource: importOrigin(req),
       genre: genre || null,
       artist: artist || null,
       force: !!force,
@@ -1922,7 +2038,7 @@ app.post('/api/download/playlist', async (req, res) => {
   // Le navigateur peut fermer l'onglet en cours de route : inutile de
   // continuer à télécharger dans le vide.
   let abandonne = false;
-  req.on('close', () => { abandonne = true; });
+  res.on('close', () => { abandonne = true; });
 
   try {
     const { titre, entrees, tronquee } = await downloader.listPlaylist(String(url).trim(), {
@@ -1941,6 +2057,8 @@ app.post('/api/download/playlist', async (req, res) => {
 
       try {
         const entry = await downloader.downloadTrack(item.url, {
+          importSource: req.body.sourceLabel ? importOrigin(req)
+            : sourceBalance.source(titre || 'Playlist YouTube', new URL(String(url)).searchParams.get('list') || ''),
           genre: genre || null,
           onLog: (message) => send('progress', { message, index: i + 1 }),
         });

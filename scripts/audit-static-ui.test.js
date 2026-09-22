@@ -141,13 +141,13 @@ test('l’hôte Android reçoit des textes de bibliothèque adaptés à sa plate
   assert.match(app, /phone-address-list/);
 });
 
-test('la bibliothèque Android compacte les longues lignes sans couper leurs actions', () => {
+test('la bibliothèque adapte titres et actions à tous les écrans étroits', () => {
   const css = read('session.css');
   assert.match(css, /@media \(max-width: 820px\)/);
-  assert.match(css, /\.mobile-host \.track-item\s*\{[\s\S]*?grid-template-columns:\s*16px 40px minmax\(0, 1fr\) repeat\(4, 30px\)/);
-  assert.match(css, /\.mobile-host \.genre-badge\.small,[\s\S]*?\.mobile-host \.preview-time\s*\{\s*display:\s*none/);
-  assert.match(css, /\.mobile-host \.tracks-bulk-actions\s*\{[\s\S]*?grid-template-columns:\s*minmax\(0, 1fr\)/);
-  assert.match(css, /\.mobile-host \.tracks-bulk-actions\.hidden\s*\{\s*display:\s*none/);
+  assert.match(css, /\.track-item-details\s*\{[^}]*grid-column:\s*3 \/ -1/);
+  assert.match(css, /\.genre-badge\.small,[\s\S]*?\.preview-time\s*\{\s*display:\s*none/);
+  assert.match(css, /\.tracks-bulk-actions\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\)/);
+  assert.match(css, /\.tracks-bulk-actions\.hidden\s*\{\s*display:\s*none/);
 });
 
 test('les filtres de bibliothèque couvrent genre précis, année et favoris sans renommer', () => {

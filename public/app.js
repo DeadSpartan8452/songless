@@ -51,6 +51,7 @@ let filtreARenommer = false;
 let bulkMetadataPreviewToken = '';
 let blacklistRules = [];
 let blacklistPreviewFingerprint = '';
+let blacklistLibraryPreviewToken = '';
 let essaisDetail = [];              // [{ type, texte }] de la manche en cours
 let issueManche = null;             // null | 'win' | 'lose'
 let ecouteSeule = false;
@@ -2261,6 +2262,7 @@ function isTrackBlacklisted(track, mode = blacklistSoloMode()) {
     if (!modes.includes('all') && !modes.includes(mode)) return false;
     const wanted = blacklistKey(rule.targetValue);
     const year = Math.floor(Number(track.year) || 0);
+    if (rule.targetType === 'library') return Array.isArray(rule.trackIds) && rule.trackIds.includes(String(track.id));
     if (rule.targetType === 'track') return blacklistKey(track.id) === wanted;
     if (rule.targetType === 'artist') return blacklistKey(track.artist) === wanted;
     if (rule.targetType === 'genre') return blacklistKey(track.genre) === wanted;
@@ -2286,7 +2288,8 @@ function blacklistFormPayload() {
   const type = blacklistTargetType.value;
   return {
     targetType: type,
-    targetValue: type === 'track' ? blacklistTrackValue.value : blacklistTargetValue.value.trim(),
+    targetValue: type === 'library' ? 'Bibliothèque actuelle'
+      : type === 'track' ? blacklistTrackValue.value : blacklistTargetValue.value.trim(),
     durationType: blacklistDurationType.value,
     durationAmount: Number(blacklistDurationAmount.value) || 1,
     until: blacklistDurationType.value === 'until' && blacklistUntil.value
@@ -2303,6 +2306,7 @@ function blacklistFormFingerprint() {
 
 function invalidateBlacklistPreview() {
   blacklistPreviewFingerprint = '';
+  blacklistLibraryPreviewToken = '';
   const preview = document.getElementById('blacklist-preview');
   const add = document.getElementById('blacklist-add-btn');
   if (preview) preview.classList.add('hidden');
@@ -2314,7 +2318,9 @@ function renderBlacklistTargetOptions() {
   const type = blacklistTargetType.value;
   const datalist = document.getElementById('blacklist-values');
   blacklistTrackValue.classList.toggle('hidden', type !== 'track');
-  blacklistTargetValue.classList.toggle('hidden', type === 'track');
+  blacklistTargetValue.classList.toggle('hidden', type === 'track' || type === 'library');
+  document.getElementById('blacklist-library-hint').classList.toggle('hidden', type !== 'library');
+  if (type === 'library') return;
 
   if (type === 'track') {
     const keep = blacklistTrackValue.value;
@@ -2361,12 +2367,12 @@ function renderBlacklistRules() {
     return;
   }
   const targetLabels = {
-    track: 'Morceau', artist: 'Artiste', genre: 'Genre', theme: 'Thème', year: 'Année', decade: 'Décennie',
+    library: 'Bibliothèque écartée', track: 'Morceau', artist: 'Artiste', genre: 'Genre', theme: 'Thème', year: 'Année', decade: 'Décennie',
   };
   zone.innerHTML = blacklistRules.map(rule => `
     <div class="blacklist-rule${rule.active === false ? ' paused' : ''}" data-blacklist-id="${escapeHtml(rule.id)}">
       <div class="blacklist-rule-main">
-        <strong>${escapeHtml(targetLabels[rule.targetType] || 'Cible')} · ${escapeHtml(rule.targetValue)}</strong>
+        <strong>${escapeHtml(targetLabels[rule.targetType] || 'Cible')} · ${escapeHtml(rule.targetType === 'library' ? `${(rule.trackIds || []).length} morceaux` : rule.targetValue)}</strong>
         <span>${escapeHtml(rule.reason || 'Sans motif')} · ${escapeHtml(blacklistDurationLabel(rule))}</span>
       </div>
       <div class="blacklist-rule-actions">
@@ -2399,6 +2405,7 @@ async function previewBlacklistRule() {
   const add = document.getElementById('blacklist-add-btn');
   try {
     const payload = blacklistFormPayload();
+    const fingerprint = JSON.stringify(payload);
     if (!payload.targetValue) throw new Error('Choisis une cible.');
     const response = await fetch('/api/blacklist/preview', {
       method: 'POST',
@@ -2407,12 +2414,19 @@ async function previewBlacklistRule() {
     });
     const data = await response.json();
     if (!response.ok) throw new Error(data.error || 'Aperçu impossible.');
+    if (fingerprint !== blacklistFormFingerprint()) return;
     preview.classList.remove('hidden', 'danger');
     preview.classList.toggle('danger', data.remaining === 0);
     preview.innerHTML = `<strong>${data.remaining} morceau${data.remaining > 1 ? 'x' : ''} disponible${data.remaining > 1 ? 's' : ''}</strong>
       sur ${data.total} · ${data.excluded} écarté${data.excluded > 1 ? 's' : ''} dans le mode solo actuel.`;
-    blacklistPreviewFingerprint = blacklistFormFingerprint();
-    add.disabled = data.remaining === 0;
+    if (payload.targetType === 'library') {
+      const notice = document.createElement('p');
+      notice.textContent = 'Les ' + data.snapshotCount + ' morceaux de cet aperçu seront écartés. Ajoute ensuite de nouveaux morceaux pour jouer, ou clique sur « Lever » pour rétablir les anciens.';
+      preview.appendChild(notice);
+    }
+    blacklistPreviewFingerprint = fingerprint;
+    blacklistLibraryPreviewToken = data.previewToken || '';
+    add.disabled = data.remaining === 0 && payload.targetType !== 'library';
   } catch (error) {
     invalidateBlacklistPreview();
     showToast(error.message, 'error');
@@ -2428,7 +2442,9 @@ async function addBlacklistRule() {
     const response = await fetch('/api/blacklist', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(blacklistFormPayload()),
+      body: JSON.stringify({ ...blacklistFormPayload(),
+        ...(blacklistLibraryPreviewToken ? { previewToken: blacklistLibraryPreviewToken } : {}),
+      }),
     });
     const data = await response.json();
     if (!response.ok) throw new Error(data.error || 'Activation impossible.');
@@ -2944,6 +2960,7 @@ function handleFilesUpload(files) {
 
   const formData = new FormData();
   formData.append('audio', file);
+  formData.append('sourceLabel', window.songlessSources?.label() || '');
 
   // Afficher la barre de progression
   uploadProgressContainer.classList.remove('hidden');
@@ -4294,6 +4311,10 @@ function rebuildPlaylist({ keepCurrent = true } = {}) {
     playlist = window.songlessExpansions.filterPlaylist(playlist);
   }
 
+  if (window.songlessSources && (!window.songlessExpansions || window.songlessExpansions.sourceBalanceAllowed())) {
+    playlist = window.songlessSources.apply(playlist);
+  }
+
   if (keepCurrent && currentTrack) {
     const pos = playlist.findIndex(t => t.id === currentTrack.id);
     if (pos !== -1) playlistIndex = pos;
@@ -4536,7 +4557,7 @@ function initMobileFolderPicker() {
       const response = await fetch('/api/android/import-folder', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({batchId: result.batchId}),
+        body: JSON.stringify({batchId: result.batchId, sourceLabel: window.songlessSources?.label() || ''}),
       });
       const rapport = await response.json();
       if (!response.ok) throw new Error(rapport.error || 'Import du dossier impossible.');
@@ -4924,6 +4945,7 @@ async function startDownload() {
         : { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         query,
+        sourceLabel: window.songlessSources?.label() || '',
         genre: downloadGenre.value || null,
       }),
     });
@@ -5078,6 +5100,7 @@ async function lancerImportPlaylist() {
         : { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         url,
+        sourceLabel: window.songlessSources?.label() || '',
         genre: document.getElementById('playlist-genre').value || null,
         limite: Number(document.getElementById('playlist-limit').value) || 50,
       }),

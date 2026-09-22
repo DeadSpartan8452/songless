@@ -49,6 +49,10 @@ async function main() {
         artist: 'Artiste de test',
         genre: 'Pop',
         needsReview: true,
+        musicbrainzRecordingId: '11111111-1111-4111-8111-111111111111',
+        album: 'Ancien album erroné',
+        albumSource: 'musicbrainz',
+        albumConfidence: 'medium',
       },
     },
   }));
@@ -75,6 +79,9 @@ async function main() {
     assert.strictEqual(initial.needsReview, true);
     assert.strictEqual(initial.classificationReview.genre, true);
     assert.strictEqual(initial.classificationReview.yearMissing, true);
+    assert.strictEqual(initial.unofficialVariant, false);
+    assert.strictEqual(initial.musicbrainzRecordingId, '11111111-1111-4111-8111-111111111111');
+    assert.strictEqual(initial.album, 'Ancien album erroné');
 
     const favoriteResponse = await fetch(`${base}/api/tracks/${initial.id}/meta`, {
       method: 'PATCH',
@@ -87,12 +94,14 @@ async function main() {
     assert.strictEqual(favoriteBody.track.needsReview, true);
     assert.strictEqual(favoriteBody.track.reviewed, undefined);
     assert.strictEqual(favoriteBody.track.title, 'Titre de test');
+    assert.strictEqual(favoriteBody.track.musicbrainzRecordingId, initial.musicbrainzRecordingId);
+    assert.strictEqual(favoriteBody.track.album, initial.album);
 
     const detailResponse = await fetch(`${base}/api/tracks/${initial.id}/meta`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        artist: 'Artiste de test',
+        artist: 'Artiste corrigé',
         genreDetail: 'Synthwave',
         year: 1987,
         yearSource: 'manual',
@@ -105,6 +114,11 @@ async function main() {
     assert.strictEqual(updated.favorite, true);
     assert.strictEqual(updated.artistSource, 'manual');
     assert.strictEqual(updated.artistConfidence, 'high');
+    assert.strictEqual(updated.musicbrainzRecordingId, null);
+    assert.strictEqual(updated.metadataMatch, 'manual');
+    assert.strictEqual(updated.album, null);
+    assert.strictEqual(updated.albumSource, 'unknown');
+    assert.strictEqual(updated.albumConfidence, 'unknown');
     assert.strictEqual(updated.genreDetail, 'Synthwave');
     assert.strictEqual(updated.year, 1987);
     assert.strictEqual(updated.yearSource, 'manual');
@@ -112,6 +126,49 @@ async function main() {
     assert.strictEqual(updated.title, 'Titre de test');
     assert.strictEqual(updated.classificationReview.year, false);
     assert.strictEqual(updated.classificationReview.genre, true);
+
+    const invalidRecordingResponse = await fetch(`${base}/api/tracks/${initial.id}/meta`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ musicbrainzRecordingId: 'pas-un-mbid' }),
+    });
+    assert.strictEqual(invalidRecordingResponse.status, 400);
+
+    const recordingResponse = await fetch(`${base}/api/tracks/${initial.id}/meta`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        artist: 'Artiste final',
+        musicbrainzRecordingId: '22222222-2222-4222-8222-222222222222',
+        album: 'Album vérifié',
+        albumSource: 'musicbrainz',
+        albumConfidence: 'medium',
+      }),
+    });
+    assert.strictEqual(recordingResponse.status, 200);
+    const recordingBody = await recordingResponse.json();
+    assert.strictEqual(
+      recordingBody.track.musicbrainzRecordingId,
+      '22222222-2222-4222-8222-222222222222',
+    );
+    assert.strictEqual(recordingBody.track.metadataMatch, 'musicbrainz');
+    assert.strictEqual(recordingBody.track.album, 'Album vérifié');
+    assert.strictEqual(recordingBody.track.albumSource, 'musicbrainz');
+    assert.strictEqual(recordingBody.track.albumConfidence, 'medium');
+
+    const [reloaded] = await (await fetch(`${base}/api/tracks`)).json();
+    assert.strictEqual(reloaded.musicbrainzRecordingId, recordingBody.track.musicbrainzRecordingId);
+    assert.strictEqual(reloaded.album, 'Album vérifié');
+
+    // Une simple correction de casse ne change pas l'identité du morceau.
+    const caseResponse = await fetch(`${base}/api/tracks/${initial.id}/meta`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ artist: 'ARTISTE FINAL' }),
+    });
+    assert.strictEqual(caseResponse.status, 200);
+    const caseBody = await caseResponse.json();
+    assert.strictEqual(caseBody.track.musicbrainzRecordingId, reloaded.musicbrainzRecordingId);
+    assert.strictEqual(caseBody.track.album, reloaded.album);
 
     const portalResponse = await fetch(`${base}/api/tracks/${initial.id}/meta`, {
       method: 'PATCH',
@@ -180,6 +237,59 @@ async function main() {
     );
     assert.strictEqual(healthReport.qualiteMorceaux.length, 1);
     assert.ok(healthReport.qualiteMorceaux[0].unknownChecks.includes('encodingQuality'));
+
+    // Conserver une correction manuelle d'album lors d'une correction d'identité.
+    const manualAlbumResponse = await fetch(`${base}/api/tracks/${initial.id}/meta`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ album: 'Album choisi à la main' }),
+    });
+    assert.strictEqual(manualAlbumResponse.status, 200);
+    const renameResponse = await fetch(`${base}/api/tracks/${initial.id}/meta`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title: 'Titre corrigé' }),
+    });
+    assert.strictEqual(renameResponse.status, 200);
+    const renamed = (await renameResponse.json()).track;
+    assert.strictEqual(renamed.musicbrainzRecordingId, null);
+    assert.strictEqual(renamed.album, 'Album choisi à la main');
+    assert.strictEqual(renamed.albumSource, 'manual');
+    assert.strictEqual(renamed.year, 1987);
+    assert.strictEqual(renamed.yearSource, 'manual');
+    assert.strictEqual(fs.existsSync(path.join(musicDir, fileName)), true);
+
+    // Vérifier le vrai contrat HTTP, pas seulement le calcul pur de classification.
+    const fixtures = {
+      'variante-test.mp3': {
+        title: 'Version de test', unofficialVariant: true,
+        genre: 'Rock', genreSource: 'manual', genreConfidence: 'high',
+      },
+      'variante-incertaine.mp3': {
+        title: 'Autre version', unofficialVariant: true,
+        genre: 'Rock', genreSource: 'filename', genreConfidence: 'low',
+      },
+      'original-test.mp3': { title: 'Original de test', genre: 'Rock', genreSource: 'manual' },
+    };
+    const saved = JSON.parse(fs.readFileSync(metadataFile, 'utf8'));
+    Object.assign(saved.tracks, fixtures);
+    fs.writeFileSync(metadataFile, JSON.stringify(saved));
+    for (const name of Object.keys(fixtures)) fs.writeFileSync(path.join(musicDir, name), 'test');
+    fs.writeFileSync(path.join(musicDir, 'Essai Nightcore.mp3'), 'test');
+    const tracks = await (await fetch(`${base}/api/tracks`)).json();
+    const variant = tracks.find(track => track.fileName === 'variante-test.mp3');
+    assert.strictEqual(variant.unofficialVariant, true);
+    assert.strictEqual(variant.classificationReview.any, false);
+    assert.strictEqual(variant.classificationReview.artistMissing, false);
+    assert.strictEqual(variant.classificationReview.yearMissing, false);
+    const uncertain = tracks.find(track => track.fileName === 'variante-incertaine.mp3');
+    assert.strictEqual(uncertain.classificationReview.genreUncertain, true);
+    assert.strictEqual(uncertain.classificationReview.yearMissing, false);
+    const original = tracks.find(track => track.fileName === 'original-test.mp3');
+    assert.strictEqual(original.unofficialVariant, false);
+    assert.strictEqual(original.classificationReview.yearMissing, true);
+    assert.strictEqual(original.classificationReview.artistMissing, true);
+    const fallback = tracks.find(track => track.fileName === 'Essai Nightcore.mp3');
+    assert.strictEqual(fallback.unofficialVariant, true);
+    assert.strictEqual(fallback.classificationReview.yearMissing, false);
     console.log('OK  métadonnées HTTP isolées, sans écriture dans la bibliothèque personnelle');
   } finally {
     if (child && child.exitCode === null) child.kill();

@@ -335,3 +335,76 @@ cookie HttpOnly et les refus distants.
 **Livrée.** Moteur, données, sécurité HTTP, rendu réel, accessibilité et les
 trois parcours de lancement disposent de contrôles reproductibles. Le dernier
 test a confirmé qu'aucun Funnel ni port Songless ne reste actif après fermeture.
+
+## Contrôle de reprise — 5 septembre 2026
+
+Constat important reproduit : le test HTTP de la correction MusicBrainz échouait
+sur une valeur absente ; `buildTrack()` omettait également `unofficialVariant`.
+Les compteurs d'une interface utilisant cette API pouvaient donc classer une
+variante comme morceau ordinaire et lui réclamer artiste/année à tort.
+
+Correction : transmission explicite de ces champs dans les deux chemins de
+construction d'une fiche, détecteur de variante commun à l'enrichissement,
+protection des albums manuels pendant une correction d'identité et maintien du
+nettoyage du rapprochement obsolète déjà commencé localement.
+
+Tests isolés supplémentaires : conservation des liens lors d'un favori ou d'un
+changement de casse ; modification d'artiste et de titre ; absence d'ancien album
+MusicBrainz après correction ; conservation d'album/année manuels ; identifiant
+MusicBrainz invalide refusé ; variante explicite, variante déduite du nom,
+variante au genre incertain et morceau ordinaire incomplet via la véritable API.
+
+Défaut visuel découvert sur capture : les règles compactes réservées à
+`.mobile-host` laissaient les boutons en lot coupés et les titres écrasés sur
+un navigateur étroit. Correction étendue aux petits écrans, titres sur une ligne
+de grille distincte des quatre commandes, actions en lot empilées, onglets
+compacts avec icône au-dessus du texte. Captures finales relues et géométrie des
+titres/boutons contrôlée, pas seulement la largeur totale du document.
+
+Résultats : suite complète verte après correction serveur, 34 tests statiques
+d'interface verts après CSS, contrôle réel PC/téléphone vert. Dernière charge :
+32 joueurs, 32 réponses simultanées, 640 états, p95 15 ms, huit flux audio.
+Kit Windows reconstruit et ses 3 983 entrées de manifeste vérifiées par taille
+et SHA-256. Rapport détaillé :
+`C:\Users\Dead Spartan\Codex\songless-reprise-20260905\verification-livraison.json`.
+
+Bibliothèque réelle seulement lue pour comptage : 979 fiches à revoir, dont 297
+genres absents, 669 genres incertains, 22 artistes incertains et 2 années
+obligatoires absentes. Aucun fichier audio ni métadonnée personnelle modifié.
+
+Les paragraphes historiques « Modes » ci-dessus ne décrivent pas l'avancement
+actuel : les nouveaux modes de la phase 6 sont livrés et leur suite passe. Le
+cahier, sections 15 et 17, précise l'état opérationnel. Les travaux Tailscale
+préexistants sont conservés, sans publication ni commit automatique.
+
+## Reprise du 7 septembre 2026 — téléchargement et bibliothèque temporairement écartée
+
+- Le test réel Windows a reproduit une erreur YouTube HTTP 403 avec yt-dlp 2026.07.04.
+- yt-dlp officiel 2026.08.19 est conservé dans tools/bin et désormais prioritaire sur les installations globales. Le constructeur Windows conserve cette copie au lieu de l'écraser avec un outil plus ancien.
+- Recherche, téléchargement, conversion MP3, analyse Microsoft Defender, lecture des métadonnées audio et détection du doublon validés sur une bibliothèque de test séparée (130,056 s, 3 121 965 octets). Aucun ajout à la bibliothèque personnelle.
+- La blacklist propose « Toute la bibliothèque actuelle ». L'aperçu capture les identifiants exacts, puis l'activation consomme un jeton temporaire de cinq minutes. Les nouveaux ajouts restent disponibles ; lever la règle ou attendre son expiration rétablit les anciens morceaux. Une bibliothèque entièrement écartée est explicitement annoncée et autorisée dans ce seul parcours.
+- Tests purs, API isolée (aperçu obligatoire, refus distant, paramètres modifiés refusés, réutilisation du jeton refusée, ajout entre aperçu et activation, redémarrage, levée) et parcours Chromium à 1440 et 390 px validés ; captures inspectées, aucune erreur console ni débordement horizontal.
+- Preuves : Codex/songless-update-20260907/validation/report.json et Codex/songless-download-check-20260907/result.json.
+- Demande précisée ensuite : régler un nombre de chansons aléatoires en équilibrant les sources/personnes pour éviter qu'une grande playlist domine. Le tirage équilibré n'est pas encore implémenté ; la distinction import multi-playlists / sélection de la bibliothèque est en attente de précision. Le code actuel ne conserve pas l'appartenance aux playlists/personnes.
+- Spotify, Deezer et les fichiers listes de titres ne sont pas intégrés. Les entrées de téléchargement sont les recherches par titre et YouTube ; les fichiers audio et ZIP suivent le parcours d'import distinct.
+- Aucune publication ni modification de la bibliothèque personnelle ; toutes les modifications préexistantes sont conservées.
+
+## Tirage équilibré entre sources — 7 septembre 2026
+
+Les deux parcours demandés sont implémentés : téléchargement de nouveautés depuis plusieurs playlists et sélection dans la bibliothèque existante.
+
+- Import hôte : 2 à 20 playlists YouTube / YouTube Music, 1 à 500 nouveautés demandées. Une ligne accepte un nom de source facultatif suivi de « | URL ». Plusieurs playlists portant le même nom sont fusionnées en une source. Le tirage examine au maximum 5 000 titres par playlist, signale toute troncature et présente un aperçu avant téléchargement. Une playlist inaccessible ne bloque pas les autres ; le manque final est explicite.
+- L’équilibre porte sur les ajouts réussis ; doublons et erreurs sont remplacés si possible, les sources épuisées cèdent leur place. Le nombre de tentatives est borné et l’arrêt coupe la file après le titre éventuellement en cours. Les aperçus sont locaux, bornés et consommables une seule fois.
+- Bibliothèque : option persistante d’équilibrage, nombre de titres et choix des sources. La même fonction de tirage déterministe sert au solo et au serveur multijoueur. Le serveur applique blacklist et filtres avant le tirage et renvoie à l’hôte l’ordre réellement retenu ; le nombre de manches est borné aux titres disponibles. Les défis enregistrés conservent leur ordre.
+- Les métadonnées conservent importSource. Les ajouts classiques acceptent une étiquette ; les dons depuis un contrôleur prennent le nom du profil. Les anciens titres sans origine restent dans une source explicite « Origine non renseignée ». L’hôte peut attribuer une source en lot après aperçu, avec sauvegarde et sans réécriture du titre ni du fichier audio. Les imports de fichiers/ZIP/dossier Android reçoivent également leur origine.
+- Aucun rattachement automatique de la bibliothèque personnelle n’a été effectué. Spotify, Deezer et les fichiers de listes de titres ne sont pas intégrés dans ce lot.
+
+Validation : six scénarios purs dont 100 graines testées contre des sources de tailles 1 000 et 3 ; parcours HTTP isolés d’attribution, permissions et multijoueur ; parcours Chromium 1440×1000 et 390×844 avec import simulé et répartition 3/3 ; aucune erreur console ni débordement, aucun défaut Axe sérieux/critique après correction du focus du journal. La suite npm.cmd test passe, charge 32 joueurs / 640 états / huit flux audio, p95 15 ms. Les cinq nouvelles routes ont été ajoutées à la matrice d’autorisations.
+
+Essai Internet réel isolé : playlists publiques Kevin MacLeod Archive et Scott Buckley ; deux nouveautés demandées, une de chaque source, zéro erreur ni doublon. Conversion MP3 et analyse Defender réussies ; fichiers audio relus (326,616 s et 124,128 s). Les tests sont dans Codex/songless-sources-20260907, hors bibliothèque personnelle.
+
+Preuves : validation/report.json, real-download/report.json et tests-complets.log dans ce dossier de contrôle. Aucun push ni publication.
+
+### Distributions du 7 septembre 2026
+
+Kit Windows reconstruit et vérifié : 3988 fichiers. APK reconstruit, signature contrôlée par le constructeur et nouvelles sources vérifiées dans l’archive. Taille APK : 212238563 octets ; SHA-256 : EB1C410A1D57723D6C9541D56B06FD70991206C22E16005BF869A8B304F28836. Les exécutables Windows ne sont pas embarqués dans Android. Aucun déploiement ni installation sur le POCO. Les validations externes POCO et Android natif 16 Kio restent ouvertes.

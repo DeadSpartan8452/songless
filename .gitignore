@@ -15,3 +15,7 @@ mobile/android-host/android/app/debug.keystore
 .DS_Store
 Thumbs.db
 REPRISE-CODEX.md
+mobile/android-host/android/.kotlin/
+
+# Moteur Windows téléchargé depuis la distribution officielle, inclus au kit.
+tools/bin/yt-dlp.exe

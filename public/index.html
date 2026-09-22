@@ -22,6 +22,7 @@
        première ligne de l'initialisation plantait, emportant tout le jeu avec
        elle. Un blind test qui lit des MP3 du disque dur n'a rien à demander à
        Internet. Mise à jour : voir la section « Icônes » du README. -->
+  <link rel="stylesheet" href="source-controls.css">
   <script src="vendor/lucide.min.js"></script>
 </head>
 <body>
@@ -759,6 +760,10 @@
             </div>
           </div>
 
+          <label class="source-origin" for="import-source-label">Source des ajouts classiques (facultatif)
+            <input id="import-source-label" type="text" maxlength="100" placeholder="Même nom = même source dans le tirage">
+          </label>
+
           <!-- Téléchargement automatique -->
           <div class="download-card desktop-downloader-only">
             <div class="download-head">
@@ -784,6 +789,40 @@
             </div>
 
             <div class="download-log hidden" id="download-log"></div>
+          </div>
+
+
+          <div class="download-card source-card" id="source-import-card">
+            <span class="section-kicker">Nouvelles découvertes</span>
+            <h3>Importer au hasard, sans favoriser une playlist</h3>
+            <p class="download-hint">Choisis le total et colle plusieurs playlists YouTube ou YouTube Music. Chaque source reçoit autant de place que possible. Les titres déjà présents sont évités.</p>
+            <label for="source-import-lines">Playlists — une par ligne</label>
+            <textarea id="source-import-lines" spellcheck="false" placeholder="Nom de la personne | https://www.youtube.com/playlist?list=…&#10;Autre source | https://www.youtube.com/playlist?list=…"></textarea>
+            <p class="download-hint">Le nom avant « | » est facultatif. Utilise le même nom pour regrouper les playlists d’une personne. De 2 à 20 playlists ; jusqu’à 5 000 titres examinés par playlist. Spotify et Deezer ne sont pas encore pris en charge.</p>
+            <div class="source-fields"><label for="source-import-count">Nombre de nouvelles chansons<input id="source-import-count" type="number" min="1" max="500" value="30"></label></div>
+            <div class="source-actions">
+              <button class="ghost-btn" id="source-import-preview-btn" type="button">Prévisualiser le tirage</button>
+              <button class="cta-btn" id="source-import-start" type="button" disabled>Télécharger ce mélange</button>
+              <button class="ghost-btn" id="source-import-stop" type="button" disabled>Arrêter</button>
+            </div>
+            <div id="source-import-preview" class="source-summary" role="status"></div>
+            <div id="source-import-log" class="source-summary source-log" tabindex="0" role="log" aria-label="Progression de l’import équilibré"></div>
+          </div>
+          <div class="download-card source-card" id="source-library-card">
+            <span class="section-kicker">Diversité de la partie</span>
+            <h3>Tirage équilibré dans la bibliothèque</h3>
+            <p class="download-hint">Une grosse playlist ne prend plus toute la place. Le tirage alterne les sources et choisit leurs chansons au hasard, après les filtres et la blacklist. Les défis enregistrés gardent leur sélection d’origine.</p>
+            <label class="source-toggle"><input type="checkbox" id="source-balance-enabled">Équilibrer les sources en solo et en multijoueur</label>
+            <div class="source-fields"><label for="source-library-count">Nombre de chansons dans la sélection<input type="number" id="source-library-count" min="1" max="500" value="30"></label></div>
+            <fieldset><legend>Sources à inclure</legend><div id="source-library-list" class="source-checkboxes"></div></fieldset>
+            <div id="source-library-summary" class="source-summary" role="status"></div>
+            <button class="ghost-btn" id="source-library-reroll" type="button">Nouveau tirage et nouvelle partie solo</button>
+            <details><summary>Renseigner l’origine des anciens morceaux</summary>
+              <p class="download-hint">Coche les morceaux dans la liste de la bibliothèque, puis attribue-leur le nom d’une personne ou d’une source. Réutilise le même nom pour les futurs imports.</p>
+              <div class="source-fields"><label for="source-assign-label">Source de la sélection<input id="source-assign-label" type="text" maxlength="100" placeholder="Nom d’une personne ou d’une source"></label></div>
+              <div class="source-actions"><button class="ghost-btn" id="source-assign-preview" type="button">Prévisualiser l’attribution</button><button class="cta-btn" id="source-assign-apply" type="button" disabled>Attribuer cette source</button></div>
+              <p id="source-assign-summary" class="source-summary" role="status"></p>
+            </details>
           </div>
 
           <!-- Import d'une playlist entière -->
@@ -837,6 +876,7 @@
                 <span>Cible</span>
                 <select id="blacklist-target-type">
                   <option value="track">Morceau</option>
+                  <option value="library">Toute la bibliothèque actuelle</option>
                   <option value="artist">Artiste</option>
                   <option value="genre">Genre</option>
                   <option value="theme">Thème / sous-genre</option>
@@ -846,6 +886,7 @@
               </label>
               <label class="blacklist-target-field">
                 <span>Valeur</span>
+                <span id="blacklist-library-hint" class="hidden">Les morceaux présents dans l’aperçu seront écartés. Les nouveaux ajouts resteront disponibles.</span>
                 <select id="blacklist-track-value" aria-label="Morceau à exclure"></select>
                 <input class="hidden" id="blacklist-target-value" list="blacklist-values"
                        maxlength="300" placeholder="Choisir une valeur">
@@ -1502,8 +1543,10 @@
   <script src="trophies.js"></script>
   <script src="easter-eggs.js"></script>
   <script src="souvenir-card.js"></script>
+  <script src="source-balance.js"></script>
   <script src="app.js"></script>
   <script src="duplicate-comparison.js"></script>
   <script src="expansions.js"></script>
+  <script src="source-controls.js"></script>
 </body>
 </html>

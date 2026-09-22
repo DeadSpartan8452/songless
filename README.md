@@ -848,3 +848,19 @@ musique (yt-dlp), et les recherches MusicBrainz de `tools/enrich.js` et
 
 Les fichiers téléchargés le sont pour ton usage personnel hors ligne. Ne les
 rediffuse pas.
+
+### Écarter temporairement la bibliothèque actuelle
+
+Dans Bibliothèque → Blacklist temporaire, choisis « Toute la bibliothèque actuelle », puis la durée et les modes. Clique sur Prévisualiser puis Activer l'exclusion. Les morceaux de l'aperçu sont écartés sans être supprimés ; les ajouts ultérieurs restent disponibles. S'il ne reste aucun morceau, ajoute des nouveautés ou utilise « Lever » pour retrouver les anciens.
+
+Le téléchargement accepte les titres et les liens YouTube / YouTube Music. Spotify, Deezer et les fichiers CSV/M3U de listes ne sont pas encore pris en charge. L'import de fichiers audio ou ZIP est un parcours séparé.
+
+### Tirage équilibré entre personnes ou playlists
+
+Dans **Bibliothèque**, deux nouveaux panneaux permettent de choisir un nombre de chansons et de répartir leur sélection entre les sources.
+
+**Importer au hasard** : colle de 2 à 20 playlists YouTube ou YouTube Music, une par ligne. Tu peux écrire « nom de la personne | lien de playlist ». Réutilise le même nom pour ses différentes playlists : elles compteront comme une seule source. Choisis le total, prévisualise, puis lance le téléchargement. Les échecs et doublons sont remplacés quand d’autres candidats existent ; le bilan précise toute quantité manquante.
+
+**Tirage équilibré dans la bibliothèque** : active la case, choisis le nombre de chansons et les sources à inclure. Le réglage agit en solo et en multijoueur après les filtres et la blacklist. Le nombre de manches de la soirée reste réglable dans Modes, dans la limite des titres retenus. Les défis enregistrés gardent leur sélection.
+
+Les anciens morceaux dont l’origine n’était pas enregistrée sont regroupés dans **Origine non renseignée**. Coche-les dans la liste puis ouvre **Renseigner l’origine des anciens morceaux**, saisis une source et valide l’aperçu. Les titres et fichiers audio sont conservés. Les nouveaux ajouts retiennent leur source automatiquement ; les dons des joueurs utilisent leur nom de profil.

@@ -787,7 +787,8 @@
     if (!profilActif) return showToast('Choisis d’abord ton profil : le PC joue aussi.', 'warn');
     if (!playlist.length) return showToast('Aucun morceau dans la sélection.', 'warn');
     const settings = currentPartyOptions();
-    let trackList = [...playlist];
+    if (window.songlessSources) settings.sourceBalance = window.songlessSources.settings();
+    let trackList = window.songlessSources ? window.songlessSources.candidates() : [...playlist];
     const theme = settings.theme || 'all';
     if (theme === 'favorites') {
       trackList = trackList.filter(t => t.favorite === true);
@@ -828,7 +829,7 @@
         code: result.state.code,
         playerToken: result.playerToken,
         hostToken: result.hostToken,
-        trackIds,
+        trackIds: result.trackIds || trackIds,
         previousSettings: clone(reglages),
         inviteUrls: result.inviteUrls || {},
       };
@@ -933,7 +934,7 @@
         code: result.state.code,
         playerToken: result.playerToken,
         hostToken: result.hostToken,
-        trackIds,
+        trackIds: result.trackIds || trackIds,
         previousSettings: clone(reglages),
         inviteUrls: result.inviteUrls || {},
       };
@@ -3187,6 +3188,7 @@
 
   window.songlessExpansions = {
     filterPlaylist, onRoundStart, onRoundEnd, beforeAdvance,
+    sourceBalanceAllowed: () => !party && selectedKind !== 'challenge',
     shouldStayInGame, blocksManualPlayback,
   };
 

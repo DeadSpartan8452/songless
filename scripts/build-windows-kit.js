@@ -73,7 +73,8 @@ function copyOptionalTools(appRoot) {
   const direct = [findExecutable('yt-dlp.exe'), findExecutable('ffmpeg.exe'), findExecutable('ffprobe.exe')]
     .filter(Boolean);
   for (const executable of direct) {
-    fs.copyFileSync(executable, path.join(bin, path.basename(executable)));
+    const destination = path.join(bin, path.basename(executable));
+    if (!fs.existsSync(destination)) fs.copyFileSync(executable, destination);
   }
   return direct.map(file => path.basename(file));
 }
