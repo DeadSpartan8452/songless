@@ -1,6 +1,6 @@
 # Validations externes restantes — Songless
 
-Dernière mise à jour vérifiée : **7 septembre 2026** (APK actualisé).
+Dernière mise à jour vérifiée : **22 septembre 2026** (APK actualisé).
 
 Ce document ne remplace pas le cahier des charges. Il regroupe uniquement les
 contrôles qui ne peuvent pas être terminés sur le PC actuel. Aucun achat n'est
@@ -16,7 +16,7 @@ de l'installation. L'APK à tester est :
 
 Empreinte SHA-256 attendue :
 
-`EB1C410A1D57723D6C9541D56B06FD70991206C22E16005BF869A8B304F28836`
+`E7AAF42F913FD4201F10B97437F9E1F9C0499A23251FAE0E6AB66F585B776F79`
 
 Parcours utilisateur à contrôler :
 

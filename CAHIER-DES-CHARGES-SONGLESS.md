@@ -905,3 +905,21 @@ Preuves : validation/report.json, real-download/report.json et tests-complets.lo
 ### Distributions du 7 septembre 2026
 
 Kit Windows reconstruit et vérifié : 3988 fichiers. APK reconstruit, signature contrôlée par le constructeur et nouvelles sources vérifiées dans l’archive. Taille APK : 212238563 octets ; SHA-256 : EB1C410A1D57723D6C9541D56B06FD70991206C22E16005BF869A8B304F28836. Les exécutables Windows ne sont pas embarqués dans Android. Aucun déploiement ni installation sur le POCO. Les validations externes POCO et Android natif 16 Kio restent ouvertes.
+
+## Contrôle de sécurité et distributions du 22 septembre 2026
+
+L'audit npm en ligne a signalé deux avis sur `adm-zip` 0.6.0 : écriture possible
+via un lien symbolique de destination et allocation mémoire incontrôlée depuis la
+taille décompressée déclarée. La dépendance directe est passée à 0.6.1. L'audit
+npm confirme ensuite zéro vulnérabilité connue et toute la suite `npm.cmd test`
+reste verte, avec une charge finale à 32 joueurs, 640 états, huit flux audio et
+un p95 de 17 ms.
+
+Les deux livrables ont été reconstruits pour ne pas conserver l'ancienne
+dépendance. Le kit Windows contient 3 988 fichiers et `adm-zip` 0.6.1. Le nouvel
+APK contient également 0.6.1, pèse 212 242 015 octets et porte le SHA-256
+`E7AAF42F913FD4201F10B97437F9E1F9C0499A23251FAE0E6AB66F585B776F79`.
+Sa signature Release v2, son unique signataire RSA 4096 bits, son alignement ZIP
+et son empreinte livrée ont été revérifiés. Les deux `libnode.so` restent les
+seules bibliothèques non natives 16 Kio. Aucun appareil n'a été connecté et
+aucun push n'a été effectué.

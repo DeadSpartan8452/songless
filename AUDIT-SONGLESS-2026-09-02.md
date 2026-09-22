@@ -408,3 +408,19 @@ Preuves : validation/report.json, real-download/report.json et tests-complets.lo
 ### Distributions du 7 septembre 2026
 
 Kit Windows reconstruit et vérifié : 3988 fichiers. APK reconstruit, signature contrôlée par le constructeur et nouvelles sources vérifiées dans l’archive. Taille APK : 212238563 octets ; SHA-256 : EB1C410A1D57723D6C9541D56B06FD70991206C22E16005BF869A8B304F28836. Les exécutables Windows ne sont pas embarqués dans Android. Aucun déploiement ni installation sur le POCO. Les validations externes POCO et Android natif 16 Kio restent ouvertes.
+
+## Audit de dépendances et reconstruction du 22 septembre 2026
+
+L'audit npm en ligne a trouvé deux avis actifs sur la dépendance directe
+`adm-zip` 0.6.0, dont un avis de sévérité élevée sur l'allocation mémoire lors
+de la lecture d'une archive. Le passage à 0.6.1 ramène l'audit à zéro
+vulnérabilité connue. La suite complète reste verte ; dernière charge :
+32 joueurs, 640 états, huit flux audio et p95 à 17 ms.
+
+Le kit Windows a été reconstruit avec 3 988 fichiers et la version 0.6.1
+embarquée. L'APK Release a été reconstruit en 9 min 5 s : 212 242 015 octets,
+SHA-256 `E7AAF42F913FD4201F10B97437F9E1F9C0499A23251FAE0E6AB66F585B776F79`,
+signature v2 valide, un signataire RSA 4096 bits et alignement ZIP validé. La
+version 0.6.1 a été relue directement dans l'archive. L'audit ELF contrôle
+56 bibliothèques et retrouve uniquement les deux `libnode.so` déjà documentées.
+Le POCO n'était pas connecté ; aucune installation ni publication n'a eu lieu.
