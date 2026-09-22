@@ -282,8 +282,8 @@ aucune erreur console, aucun débordement ou texte coupé, et aucune violation A
 - la sélection multiple permet maintenant de préparer un classement genre et
   sous-genre ; le serveur renvoie un aperçu lisible et un jeton temporaire à
   usage unique avant d’autoriser l’application, sans accepter de champ titre ;
-- le dernier comptage réel donne 980 fiches à revoir : 669 genres présents mais
-  incertains, 297 genres absents, 36 artistes incertains et 2 années obligatoires
+- le dernier comptage réel donne 979 fiches à revoir : 669 genres présents mais
+  incertains, 297 genres absents, 22 artistes incertains et 2 années obligatoires
   absentes ; les catégories peuvent se recouper ;
 - le diagnostic lit désormais débit, échantillonnage, profondeur, codec et mode
   avec/sans perte, sans juger un FLAC avec les seuils d’un codec destructif ;

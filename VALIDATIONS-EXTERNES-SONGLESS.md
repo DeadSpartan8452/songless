@@ -99,10 +99,10 @@ isolée et sauvegarde automatique. Dans **Bibliothèque**, il reste à traiter :
 2. `Genres absents` — 297 fiches au dernier comptage.
 3. `Années obligatoires absentes` — 2 fiches au dernier comptage ; leurs dates
    YouTube 2025 ne suffisent pas à prouver une première parution.
-4. `Artistes présents à confirmer` — 36 fiches au dernier comptage, après
+4. `Artistes présents à confirmer` — 22 fiches au dernier comptage, après
    correction vérifiée de plusieurs rapprochements de l'ancien repli par titre
    seul, désormais interdit.
-5. `Fiches à revoir` — 980 fiches ayant encore au moins un point à traiter.
+5. `Fiches à revoir` — 979 fiches ayant encore au moins un point à traiter.
 
 Les années 2012 des 14 pistes Solatorobo et les cinq identités/années corrigées
 ont été appliquées le 4 septembre après simulation et sauvegarde. `Good to Be
