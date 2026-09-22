@@ -71,6 +71,22 @@ test('les confirmations d’équipe ne s’affichent qu’après une action réu
   assert.match(controller, /playerAction\('create-team',[\s\S]*?\.then\(success\s*=>\s*{\s*if \(success\) toast\(`Équipe/);
 });
 
+test('les playlists synchronisent les anciens défis sans écraser leurs contributions', () => {
+  const playlists = read('playlists-ui.js');
+  const expansions = read('expansions.js');
+  assert.match(playlists, /songless:playlists-updated/);
+  assert.match(expansions, /addEventListener\('songless:playlists-updated'/);
+  assert.match(expansions, /saveLists\(\{ saveCollections: false \}\)/);
+  assert.match(expansions, /saveLists\(\{ saveChallenges: false \}\)/);
+});
+
+test('une collecte verrouillée retire toutes les anciennes actions d’ajout', () => {
+  const controller = read('controller.js');
+  assert.match(controller, /if \(!collecting\) \{[\s\S]*?playlist-search-results[\s\S]*?playlist-download-btn/);
+  assert.match(controller, /playlistState\.status !== 'collecting'\) return false/);
+  assert.match(controller, /playlistAdd && playlistState && playlistState\.status === 'collecting'/);
+});
+
 test('les trois champs de réponse exposent une liste accessible au clavier', () => {
   const index = read('index.html');
   const app = read('app.js');

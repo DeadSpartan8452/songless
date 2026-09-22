@@ -50,8 +50,8 @@
 
       <div class="header-tools">
         <!-- Trophées et succès -->
-        <button class="ghost-btn trophies-header-btn" id="trophies-btn" title="Galerie des 205 Trophées & Succès">
-          <span class="trophies-icon">🏆</span> <span class="trophies-count-badge">0/205</span>
+        <button class="ghost-btn trophies-header-btn" id="trophies-btn" title="Galerie des 215 Trophées & Succès">
+          <span class="trophies-icon">🏆</span> <span class="trophies-count-badge">0/215</span>
         </button>
 
         <!-- Profil actif : chaque joueur de la maison a ses propres stats -->
@@ -534,13 +534,26 @@
               <div class="mode-status" id="training-status"></div>
             </article>
 
-            <article class="mode-card mode-card-wide">
-              <h3><i data-lucide="library"></i> Collections personnalisées</h3>
-              <p>Crée une collection avec les morceaux correspondant aux filtres actuellement choisis dans « Jouer ».</p>
+            <article class="mode-card mode-card-wide playlist-workbench">
+              <h3><i data-lucide="list-music"></i> Playlists</h3>
+              <p>Crée, organise et rejoue tes sélections. Les morceaux téléchargés restent toujours dans la bibliothèque, même si une playlist est archivée ou supprimée.</p>
               <div class="mode-row">
                 <input id="collection-name" maxlength="60" aria-label="Nom de la collection"
                        placeholder="Ex. Soirée famille">
-                <button class="cta-btn" id="collection-create-btn">Créer avec la sélection actuelle</button>
+                <button class="cta-btn" id="collection-create-btn">Créer avec la sélection</button>
+                <button class="ghost-btn accent" id="playlist-create-empty-btn" type="button">Créer vide</button>
+                <button class="ghost-btn" id="playlist-import-btn" type="button">Importer</button>
+                <input class="hidden" id="playlist-import-file" type="file" accept="application/json,.json">
+              </div>
+              <div class="playlist-toolbar">
+                <input id="playlist-filter" type="search" placeholder="Rechercher une playlist" aria-label="Rechercher une playlist">
+                <select id="playlist-status-filter" aria-label="Filtrer les playlists">
+                  <option value="active">Actives</option>
+                  <option value="all">Toutes</option>
+                  <option value="archived">Archivées</option>
+                </select>
+                <button class="ghost-btn" id="playlist-refresh-btn" type="button">Actualiser</button>
+                <button class="ghost-btn" id="playlist-cleanup-btn" type="button">Titres jamais rejoués</button>
               </div>
               <div class="saved-list" id="collection-list"></div>
             </article>
@@ -573,6 +586,13 @@
               <h3><i data-lucide="users"></i> Soirée multijoueur</h3>
               <p>Chaque téléphone choisit ou crée un profil partagé, puis rejoint la même partie.</p>
               <div class="party-setup" id="party-setup">
+                <div class="playlist-party-source">
+                  <label for="party-playlist-source">Source musicale de la partie</label>
+                  <select id="party-playlist-source">
+                    <option value="library">Bibliothèque complète / sélection actuelle</option>
+                  </select>
+                  <p id="party-playlist-source-help">Tous les morceaux correspondant aux filtres de l’écran Jouer.</p>
+                </div>
                 <div class="mode-row">
                   <select id="party-mode" aria-label="Mode de la soirée multijoueur">
                     <option value="classic">Chargement des modes…</option>
@@ -699,6 +719,7 @@
                   </label>
                 </div>
                 <p class="mode-status">Chaque mode mémorise ses propres options.</p>
+                <div class="playlist-party-panel hidden" id="playlist-party-panel" aria-live="polite"></div>
                 <div class="party-divider hidden"><span>ou rejoindre</span></div>
                 <div class="mode-row hidden">
                   <input id="party-code-input" maxlength="5" placeholder="CODE"
@@ -1463,12 +1484,12 @@
       <div class="modal-head-with-icon">
         <span class="modal-badge-icon">🏆</span>
         <div>
-          <h3>Galerie des Trophées (<span class="trophies-count-badge">0/205</span>)</h3>
+          <h3>Galerie des Trophées (<span class="trophies-count-badge">0/215</span>)</h3>
           <p class="modal-file">Succès et médailles à débloquer en jouant en solo ou en soirée.</p>
         </div>
       </div>
       <div class="genre-panel-head" id="trophies-filter-chips">
-        <button class="chip-action active" data-trophy-filter="all">Tous (205)</button>
+        <button class="chip-action active" data-trophy-filter="all">Tous (215)</button>
         <button class="chip-action" data-trophy-filter="speed">⚡ Rapidité (15)</button>
         <button class="chip-action" data-trophy-filter="accuracy">🎯 Précision (15)</button>
         <button class="chip-action" data-trophy-filter="time">🕰️ Époques (12)</button>
@@ -1534,6 +1555,92 @@
     </div>
   </div>
 
+  <div class="modal-overlay hidden" id="playlist-editor-modal">
+    <div class="modal-card modal-card-large playlist-editor" role="dialog" aria-modal="true"
+         aria-labelledby="playlist-editor-title">
+      <div class="modal-header">
+        <div>
+          <span class="eyebrow">BIBLIOTHÈQUE PERMANENTE</span>
+          <h3 id="playlist-editor-title">Modifier la playlist</h3>
+        </div>
+        <button class="ghost-btn" id="playlist-editor-close" type="button">Fermer</button>
+      </div>
+      <div class="playlist-editor-grid">
+        <section class="playlist-editor-settings">
+          <label>Nom<input id="playlist-edit-name" maxlength="60"></label>
+          <label>Description<textarea id="playlist-edit-description" maxlength="280" rows="3"></textarea></label>
+          <div class="playlist-editor-pair">
+            <label>Type
+              <select id="playlist-edit-collaborative">
+                <option value="false">Playlist personnelle</option>
+                <option value="true">Playlist participative</option>
+              </select>
+            </label>
+            <label>Quota par joueur
+              <select id="playlist-edit-quota">
+                <option value="0">Sans quota</option>
+                <option value="10">10 + 2 réserves</option>
+                <option value="20">20 + 2 réserves</option>
+                <option value="50">50 + 2 réserves</option>
+              </select>
+            </label>
+          </div>
+          <div class="playlist-editor-pair">
+            <label>Collecte
+              <select id="playlist-edit-status">
+                <option value="draft">Brouillon</option>
+                <option value="collecting">Ouverte</option>
+                <option value="locked">Verrouillée</option>
+                <option value="archived">Archivée</option>
+              </select>
+            </label>
+            <label>Minuteur
+              <select id="playlist-edit-timer">
+                <option value="0">Sans limite</option>
+                <option value="5">5 minutes</option>
+                <option value="10">10 minutes</option>
+                <option value="20">20 minutes</option>
+              </select>
+            </label>
+          </div>
+          <div class="playlist-editor-pair">
+            <label>Thème
+              <select id="playlist-edit-theme-type">
+                <option value="none">Aucun</option>
+                <option value="genre">Genre</option>
+                <option value="decade">Décennie</option>
+                <option value="mood">Ambiance / mot-clé</option>
+              </select>
+            </label>
+            <label>Valeur<input id="playlist-edit-theme-value" maxlength="60" placeholder="Ex. Rock ou 2000"></label>
+          </div>
+          <div class="playlist-checks">
+            <label><input id="playlist-edit-hide" type="checkbox"> Choix secrets pendant la collecte</label>
+            <label><input id="playlist-edit-fair" type="checkbox"> Alterner les contributeurs</label>
+            <label><input id="playlist-edit-artists" type="checkbox"> Éviter le même artiste à la suite</label>
+            <label><input id="playlist-edit-explicit" type="checkbox"> Filtre explicite</label>
+          </div>
+          <div class="modal-actions">
+            <button class="cta-btn" id="playlist-edit-save" type="button">Enregistrer</button>
+            <button class="ghost-btn" id="playlist-edit-fill" type="button">Compléter intelligemment</button>
+          </div>
+          <div id="playlist-edit-summary" class="playlist-editor-summary"></div>
+        </section>
+        <section class="playlist-editor-tracks">
+          <div class="playlist-track-toolbar">
+            <input id="playlist-track-filter" type="search" placeholder="Filtrer les morceaux" aria-label="Filtrer les morceaux de la playlist">
+            <button class="ghost-btn" id="playlist-add-selection" type="button">Ajouter la sélection actuelle</button>
+          </div>
+          <div id="playlist-track-list" class="playlist-track-list"></div>
+          <details class="playlist-activity">
+            <summary>Journal de la playlist</summary>
+            <div id="playlist-activity-list"></div>
+          </details>
+        </section>
+      </div>
+    </div>
+  </div>
+
   <!-- Notification Toast -->
   <div id="toast" class="toast hidden">Message de notification</div>
 
@@ -1547,6 +1654,7 @@
   <script src="app.js"></script>
   <script src="duplicate-comparison.js"></script>
   <script src="expansions.js"></script>
+  <script src="playlists-ui.js"></script>
   <script src="source-controls.js"></script>
 </body>
 </html>

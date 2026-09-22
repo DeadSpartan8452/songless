@@ -214,6 +214,21 @@ async function main() {
       ['DELETE', '/api/library/duplicates/decision/fake'],
       ['GET', '/api/library/health'],
       ['GET', '/api/party-history'],
+      ['GET', '/api/playlists'],
+      ['GET', '/api/playlists/cleanup-candidates'],
+      ['POST', '/api/playlists'],
+      ['PUT', '/api/playlists/fake'],
+      ['DELETE', '/api/playlists/fake'],
+      ['POST', '/api/playlists/fake/duplicate'],
+      ['POST', '/api/playlists/fake/merge'],
+      ['POST', '/api/playlists/fake/tracks'],
+      ['POST', '/api/playlists/fake/tracks-bulk'],
+      ['DELETE', '/api/playlists/fake/tracks/fake'],
+      ['PUT', '/api/playlists/fake/order'],
+      ['GET', '/api/playlists/fake/export'],
+      ['POST', '/api/playlists/import'],
+      ['POST', '/api/playlists/fake/fill'],
+      ['POST', '/api/playlists/fake/apply-to-party'],
       ['POST', '/api/party/create'],
       ['POST', `/api/party/${created.body.code}/access`],
       ['DELETE', `/api/party/${created.body.code}/access/fake`],
@@ -229,6 +244,22 @@ async function main() {
       assert.strictEqual(result.status, 403, `${method} ${route} => ${result.status}: ${result.text}`);
     }
     console.log(`OK  ${denied.length} routes administratives refusées malgré une invitation valide`);
+
+    for (const [method, route] of [
+      ['GET', `/api/party/${created.body.code}/playlist`],
+      ['GET', `/api/party/${created.body.code}/playlist/search?q=test`],
+      ['POST', `/api/party/${created.body.code}/playlist/contributions`],
+      ['DELETE', `/api/party/${created.body.code}/playlist/contributions/fake`],
+      ['POST', `/api/party/${created.body.code}/playlist/votes`],
+    ]) {
+      const result = await request(REMOTE, route, {
+        method,
+        headers: { 'Content-Type': 'application/json', ...invitedHeaders, ...partyHeader },
+        body: ['GET', 'HEAD'].includes(method) ? undefined : '{}',
+      });
+      assert.strictEqual(result.status, 403, `${method} ${route} sans jeton => ${result.status}`);
+    }
+    console.log('OK  les routes playlist joueur refusent un invité sans jeton joueur');
   } catch (error) {
     error.message += `\nSortie serveur :\n${serverOutput.slice(-4000)}`;
     throw error;

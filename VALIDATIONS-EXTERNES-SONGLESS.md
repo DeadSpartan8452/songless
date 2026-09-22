@@ -129,3 +129,27 @@ Une section est close uniquement avec une preuve reproductible et un résultat
 noté. Un manque de matériel, de secret ou d'environnement reste documenté comme
 blocage externe ; il ne doit ni provoquer un achat automatique ni être transformé
 en déclaration de compatibilité.
+
+## Mise à jour du 22 septembre 2026 — lot playlists
+
+L'APK à conserver remplace l'empreinte historique indiquée plus haut :
+
+- taille : 212 266 531 octets ;
+- SHA-256 :
+  `18F69D1341EFB65C1904D69B0DB6E2C8B65262F2C32BCFEB0F4BEEB9F7D9FDDB` ;
+- signature v2 valide, unique signataire RSA 4096 bits ;
+- 56 bibliothèques natives contrôlées, avec seulement les deux `libnode.so`
+  encore non natifs 16 Kio.
+
+Manaël a demandé de ne plus attendre le test POCO pour cette livraison. Cette
+décision retire le test du chemin de clôture actuel sans transformer l'absence
+de test matériel en preuve de compatibilité. La reconstruction Linux des deux
+`libnode.so` reste une amélioration externe documentée.
+
+La sauvegarde portable de signature a été créée hors dépôt dans
+`C:\Users\Dead Spartan\Codex\Songless-Sauvegarde-Signature-2026-09-22` après
+autorisation explicite de cette destination. Le PKCS12 contient l'alias
+`songless`, sa lecture avec le mot de passe choisi a réussi, son SHA-256 livré
+correspond à l'empreinte recalculée et aucun fichier temporaire ne subsiste.
+Le mot de passe n'a été écrit dans aucun fichier. Il reste recommandé de copier
+ce dossier sur un support physique séparé du PC.

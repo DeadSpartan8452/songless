@@ -4,6 +4,7 @@
   "description": "Un clone local de Songless / Heardle personnalisable",
   "main": "server.js",
   "scripts": {
+    "pretest": "npm run test:playlists",
     "start": "node server.js",
     "lan": "node server.js --lan",
     "dev": "node --watch server.js",
@@ -61,7 +62,8 @@
     "test:http": "node scripts/audit-http.test.js",
     "test:permissions-matrix": "node scripts/audit-permissions-matrix.test.js",
     "test:load": "node scripts/audit-load.test.js",
-    "test:sources": "node scripts/audit-source-balance.test.js"
+    "test:sources": "node scripts/audit-source-balance.test.js",
+    "test:playlists": "node scripts/audit-playlists.test.js"
   },
   "dependencies": {
     "adm-zip": "^0.6.1",

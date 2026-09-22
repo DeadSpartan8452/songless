@@ -424,3 +424,39 @@ signature v2 valide, un signataire RSA 4096 bits et alignement ZIP validé. La
 version 0.6.1 a été relue directement dans l'archive. L'audit ELF contrôle
 56 bibliothèques et retrouve uniquement les deux `libnode.so` déjà documentées.
 Le POCO n'était pas connecté ; aucune installation ni publication n'a eu lieu.
+
+## Audit playlists et finition — 22 septembre 2026
+
+Le nouveau stockage réutilise `collections` pour rester rétrocompatible, mais
+normalise désormais statut, collaboration, quotas, réserves, contributions,
+journal, réglages, votes et dates. Les routes hôte `/api/playlists` sont
+protégées explicitement en plus du garde-fou réseau. Les routes participatives
+retrouvent le joueur par son jeton et ignorent tout identifiant de profil fourni
+par le navigateur.
+
+Les tests couvrent quotas principaux et réserves, co-crédit sans doublon,
+retrait individuel, verrou serveur, alternance entre contributeurs et équipes,
+artistes consécutifs, votes, fusion, export v2 avec références, import par
+correspondance locale puis liste des absents, diagnostic non destructeur,
+limites 12/22/52 liées aux quotas et persistance rétrocompatible. Une sauvegarde
+partielle des seuls défis préserve désormais les contributions de playlists ;
+un événement synchronise aussi l'ancien module d'extensions après chaque
+rafraîchissement.
+
+Le rapport visuel final est
+`C:\Users\Dead Spartan\Codex\songless-visual-lab\artifacts\playlists-20260922\report.json`.
+Il est vert sur ordinateur, tablette et mobile, y compris la vraie animation
+« DJ en Période d'Essai », les archives, les titres longs, la progression 1/10,
+le verrou sans ancienne action d'ajout et les mouvements réduits. Zéro erreur
+console/HTTP, débordement, contrôle coupé ou violation Axe sérieuse/critique.
+
+La suite `npm.cmd test` est verte. Charge finale : 32 joueurs, 32 réponses
+simultanées, 640 états, huit flux audio et p95 33 ms. Kit Windows : 3 991
+fichiers, environ 594 Mo. APK : 212 266 531 octets, SHA-256
+`18F69D1341EFB65C1904D69B0DB6E2C8B65262F2C32BCFEB0F4BEEB9F7D9FDDB`,
+signature v2 valide, RSA 4096 bits, un signataire. L'audit ELF confirme 56
+bibliothèques et uniquement les deux `libnode.so` non natifs 16 Kio. Aucun push.
+
+La signature Android dispose désormais d'une sauvegarde PKCS12 chiffrée hors
+dépôt dans `Codex\Songless-Sauvegarde-Signature-2026-09-22`. L'alias a été relu
+avec succès, le SHA-256 recalculé concorde et aucun temporaire ne subsiste.

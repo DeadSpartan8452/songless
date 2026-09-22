@@ -308,11 +308,11 @@
     writeLocal(STORAGE_CHALLENGES, challenges);
   }
 
-  function saveLists() {
+  function saveLists({ saveCollections = true, saveChallenges = true } = {}) {
     syncListsToLocal();
     if (!window.songlessShared || !window.songlessShared.ready) return Promise.resolve();
-    const collectionSnapshot = clone(collections);
-    const challengeSnapshot = clone(challenges);
+    const collectionSnapshot = saveCollections ? clone(collections) : undefined;
+    const challengeSnapshot = saveChallenges ? clone(challenges) : undefined;
     listSaveQueue = listSaveQueue.catch(() => {}).then(async () => {
       const state = await window.songlessShared.saveLists(collectionSnapshot, challengeSnapshot);
       collections = Array.isArray(state.collections) ? state.collections : [];
@@ -379,7 +379,8 @@
     if (!ids.length) return showToast('La sélection actuelle est vide.', 'warn');
     collections.push({ id: uid('c'), nom, trackIds: ids, updatedAt: new Date().toISOString() });
     input.value = '';
-    saveLists().then(renderCollections).catch(error => showToast(error.message, 'error'));
+    saveLists({ saveChallenges: false }).then(renderCollections)
+      .catch(error => showToast(error.message, 'error'));
   }
 
   function playCollection(id) {
@@ -389,6 +390,15 @@
     const format = byId('format-rounds').value;
     if (startLimited(format === '0' ? 'infinite' : Number(format), 'collection', ids)) {
       showToast(`Collection « ${item.nom} » lancée.`);
+    }
+  }
+
+  function startPlaylist(trackIds, name = 'Playlist') {
+    const ids = [...new Set((trackIds || []).map(String))];
+    if (!ids.length) return showToast('Cette playlist ne contient aucun morceau prêt.', 'warn');
+    const format = byId('format-rounds').value;
+    if (startLimited(format === '0' ? 'infinite' : Number(format), 'collection', ids)) {
+      showToast(`Playlist « ${name} » lancée.`, 'ok');
     }
   }
 
@@ -413,7 +423,8 @@
     if (!playlist.length) return showToast('La sélection actuelle est vide.', 'warn');
     challenges.push(currentChallenge(nom));
     input.value = '';
-    saveLists().then(renderChallenges).catch(error => showToast(error.message, 'error'));
+    saveLists({ saveCollections: false }).then(renderChallenges)
+      .catch(error => showToast(error.message, 'error'));
   }
 
   function playChallenge(id) {
@@ -451,7 +462,10 @@
     if (!item || !confirm(`Supprimer « ${item.nom} » ?`)) return;
     if (kind === 'collection') collections = collections.filter(entry => entry.id !== id);
     else challenges = challenges.filter(entry => entry.id !== id);
-    saveLists().then(() => {
+    saveLists({
+      saveCollections: kind === 'collection',
+      saveChallenges: kind === 'challenge',
+    }).then(() => {
       renderCollections();
       renderChallenges();
     }).catch(error => showToast(error.message, 'error'));
@@ -788,7 +802,11 @@
     if (!playlist.length) return showToast('Aucun morceau dans la sélection.', 'warn');
     const settings = currentPartyOptions();
     if (window.songlessSources) settings.sourceBalance = window.songlessSources.settings();
-    let trackList = window.songlessSources ? window.songlessSources.candidates() : [...playlist];
+    const playlistSource = window.songlessPlaylists ? window.songlessPlaylists.partySelection() : null;
+    if (playlistSource) settings.playlistId = playlistSource.id;
+    let trackList = playlistSource
+      ? playlist.filter(track => playlistSource.trackIds.includes(String(track.id)))
+      : (window.songlessSources ? window.songlessSources.candidates() : [...playlist]);
     const theme = settings.theme || 'all';
     if (theme === 'favorites') {
       trackList = trackList.filter(t => t.favorite === true);
@@ -805,7 +823,7 @@
       trackList = trackList.filter(t => genreFiable(t)
         && String(t.genre || '').toLowerCase() === targetGenre);
     }
-    if (!trackList.length) {
+    if (!trackList.length && !(playlistSource && playlistSource.collaborative)) {
       return showToast('Aucun morceau ne correspond à cette thématique dans ta sélection.', 'warn');
     }
     const trackIds = trackList.map(track => String(track.id));
@@ -837,6 +855,7 @@
       saveParty();
       receivePartyState(result.state);
       startPolling();
+      if (window.songlessPlaylists) window.songlessPlaylists.bindParty(party);
       openGameTab();
     } catch (error) {
       showToast(error.message, 'error');
@@ -2632,6 +2651,7 @@
     pollTimer = null;
     party = null;
     partyState = null;
+    if (window.songlessPlaylists) window.songlessPlaylists.bindParty(null);
     selectedKind = null;
     selectedTrackIds = null;
     saveParty();
@@ -2697,7 +2717,10 @@
       });
     }
 
-    byId('collection-create-btn').addEventListener('click', createCollection);
+    byId('collection-create-btn').addEventListener('click', () => {
+      if (window.songlessPlaylists) window.songlessPlaylists.createFromSelection(currentSelectionIds());
+      else createCollection();
+    });
     byId('challenge-save-btn').addEventListener('click', saveChallenge);
     byId('collection-list').addEventListener('click', event => {
       const play = event.target.closest('[data-collection-play]');
@@ -3188,6 +3211,7 @@
 
   window.songlessExpansions = {
     filterPlaylist, onRoundStart, onRoundEnd, beforeAdvance,
+    startPlaylist,
     sourceBalanceAllowed: () => !party && selectedKind !== 'challenge',
     shouldStayInGame, blocksManualPlayback,
   };
@@ -3212,5 +3236,12 @@
       return;
     }
     refreshLists(state);
+  });
+
+  document.addEventListener('songless:playlists-updated', event => {
+    const updated = event.detail && event.detail.collections;
+    if (!Array.isArray(updated)) return;
+    collections = clone(updated);
+    writeLocal(STORAGE_COLLECTIONS, collections);
   });
 })();

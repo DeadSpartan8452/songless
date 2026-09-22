@@ -17,6 +17,7 @@ function trophyRuntime() {
   const element = () => ({
     className: '', innerHTML: '', innerText: '', parentNode: null,
     classList: { add() {}, remove() {} },
+    setAttribute() {},
     appendChild(child) { child.parentNode = this; },
     removeChild() {},
   });
@@ -41,13 +42,22 @@ function trophyRuntime() {
   return context.window.songlessTrophies;
 }
 
-test('le catalogue contient 105 succès historiques, 100 séries et le secret Portal', () => {
-  assert.strictEqual(SONGLESS_TROPHIES.length, 206);
-  assert.strictEqual(new Set(SONGLESS_TROPHIES.map(item => item.id)).size, 206);
-  assert.strictEqual(SONGLESS_TROPHIES.filter(item => item.rule).length, 101);
+test('le catalogue contient les succès historiques, les séries, Portal et les playlists', () => {
+  assert.strictEqual(SONGLESS_TROPHIES.length, 215);
+  assert.strictEqual(new Set(SONGLESS_TROPHIES.map(item => item.id)).size, 215);
+  assert.strictEqual(SONGLESS_TROPHIES.filter(item => item.rule).length, 110);
   const portal = SONGLESS_TROPHIES.find(item => item.id === 'secret_portal_cake');
   assert.ok(portal && portal.hidden);
   assert.deepStrictEqual(portal.rule.where, { id: 'portal', outcome: 'success' });
+});
+
+test('les contributions et réserves débloquent leurs succès humoristiques', () => {
+  const trophies = trophyRuntime();
+  trophies.record('playlist_contribution', { reserve: false }, 'playlist:A');
+  trophies.record('playlist_contribution', { reserve: true }, 'playlist:B');
+  const ids = new Set(trophies.getUnlockedIds());
+  assert.ok(ids.has('playlist_first_pick'));
+  assert.ok(ids.has('playlist_first_reserve'));
 });
 
 test('chaque nouveau succès possède un texte précis et une condition bornée', () => {

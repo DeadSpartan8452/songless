@@ -146,6 +146,131 @@ async function main() {
     const trustedId = Buffer.from('alpha-one.mp3').toString('base64url');
     const untrustedId = Buffer.from('beta-two.mp3').toString('base64url');
     const otherThemeId = Buffer.from('gamma-three.mp3').toString('base64url');
+
+    const playlistCreated = await request('/api/playlists', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nom: 'Soirée HTTP', description: 'Collecte isolée',
+        collaborative: true, quotaPerPlayer: 10, reservePerPlayer: 2,
+        status: 'collecting', trackIds: [trustedId] }),
+    });
+    assert.strictEqual(playlistCreated.status, 201);
+    assert.strictEqual(playlistCreated.body.quotaPerPlayer, 10);
+
+    const mergeTarget = await request('/api/playlists', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nom: 'Cible fusion', trackIds: [trustedId] }),
+    });
+    const mergeSource = await request('/api/playlists', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nom: 'Source fusion', trackIds: [trustedId, untrustedId] }),
+    });
+    const merged = await request(`/api/playlists/${mergeTarget.body.id}/merge`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sourceIds: [mergeSource.body.id] }),
+    });
+    assert.strictEqual(merged.status, 200);
+    assert.strictEqual(merged.body.added, 1);
+    assert.deepStrictEqual(new Set(merged.body.playlist.trackIds), new Set([trustedId, untrustedId]));
+
+    const playlistExported = await request(`/api/playlists/${mergeTarget.body.id}/export`);
+    assert.strictEqual(playlistExported.status, 200);
+    assert.strictEqual(playlistExported.body.version, 2);
+    assert.strictEqual(playlistExported.body.format, 'songless-playlist');
+    assert.strictEqual(playlistExported.body.references.length, 2);
+
+    const imported = await request('/api/playlists/import', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        format: 'songless-playlist', version: 2,
+        playlist: { nom: 'Import test', trackIds: ['ancien-gamma', 'absent-id'] },
+        references: [
+          { trackId: 'ancien-gamma', title: 'Gamma Three', artist: 'Gamma' },
+          { trackId: 'absent-id', title: 'Morceau inexistant', artist: 'Personne' },
+        ],
+      }),
+    });
+    assert.strictEqual(imported.status, 201);
+    assert.deepStrictEqual(imported.body.playlist.trackIds, [otherThemeId]);
+    assert.strictEqual(imported.body.found, 1);
+    assert.strictEqual(imported.body.missingCount, 1);
+    assert.strictEqual(imported.body.missing[0].title, 'Morceau inexistant');
+    ok('fusion, export v2 et import rapprochent la bibliothèque puis signalent les absents');
+
+    const filesBeforeCleanup = fs.readdirSync(musicDir).sort();
+    const cleanup = await request('/api/playlists/cleanup-candidates');
+    assert.strictEqual(cleanup.status, 200);
+    assert.match(cleanup.body.note, /aucun fichier.*supprimé/i);
+    assert.deepStrictEqual(fs.readdirSync(musicDir).sort(), filesBeforeCleanup);
+    ok('le diagnostic de nettoyage reste strictement non destructeur');
+
+    const guest = await request('/api/player/profiles', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nom: 'Invité test', emoji: '🎸' }),
+    });
+    assert.strictEqual(guest.status, 201);
+
+    const playlistParty = await request('/api/party/create', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mode: 'classic', profileId: 'initial', totalRounds: 10,
+        seed: 'PLAYLIST-HTTP', settings: { playlistId: playlistCreated.body.id }, trackIds: [] }),
+    });
+    assert.strictEqual(playlistParty.status, 201);
+    const guestJoin = await request(`/api/party/${playlistParty.body.code}/join`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ profileId: guest.body.id }),
+    });
+    assert.strictEqual(guestJoin.status, 200);
+
+    const playlistSearch = await request(`/api/party/${playlistParty.body.code}/playlist/search?playerToken=${encodeURIComponent(guestJoin.body.playerToken)}&q=gamma`);
+    assert.strictEqual(playlistSearch.status, 200);
+    assert.strictEqual(playlistSearch.body.matches[0].id, otherThemeId);
+
+    const contribution = await request(`/api/party/${playlistParty.body.code}/playlist/contributions`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ playerToken: guestJoin.body.playerToken,
+        profileId: 'identite-fabriquee', trackId: otherThemeId }),
+    });
+    assert.strictEqual(contribution.status, 201);
+    assert.strictEqual(contribution.body.contribution.profileId, guest.body.id);
+
+    const challengeOnlySave = await request('/api/player/lists', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ challenges: [
+        { id: 'd<>1', nom: 'Défi', trackIds: ['b'], seed: 'HTTP-SEED', totalRounds: 2 },
+        { id: 'd_apres_contribution', nom: 'Défi conservateur',
+          trackIds: [trustedId], seed: 'KEEP-PLAYLIST', totalRounds: 1 },
+      ] }),
+    });
+    assert.strictEqual(challengeOnlySave.status, 200);
+    const afterChallengeSave = await request('/api/playlists');
+    const preservedPlaylist = afterChallengeSave.body.playlists
+      .find(item => item.id === playlistCreated.body.id);
+    assert.ok(preservedPlaylist);
+    assert.ok(preservedPlaylist.contributions
+      .some(item => item.profileId === guest.body.id && item.trackId === otherThemeId));
+    ok('enregistrer un défi ne supprime pas les contributions récentes d’une playlist');
+
+    const playerView = await request(`/api/party/${playlistParty.body.code}/playlist?playerToken=${encodeURIComponent(guestJoin.body.playerToken)}`);
+    assert.strictEqual(playerView.status, 200);
+    assert.strictEqual(playerView.body.progress.main, 1);
+    assert.ok(playerView.body.tracks.some(track => track.id === otherThemeId));
+
+    const applied = await request(`/api/playlists/${playlistCreated.body.id}/apply-to-party`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code: playlistParty.body.code,
+        hostToken: playlistParty.body.hostToken, lock: true }),
+    });
+    assert.strictEqual(applied.status, 200);
+    assert.deepStrictEqual(new Set(applied.body.trackIds), new Set([trustedId, otherThemeId]));
+
+    const afterLock = await request(`/api/party/${playlistParty.body.code}/playlist/contributions`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ playerToken: guestJoin.body.playerToken, trackId: untrustedId }),
+    });
+    assert.strictEqual(afterLock.status, 400);
+    assert.match(afterLock.body.error, /collecte.*fermée/i);
+    ok('les playlists participatives lient le jeton joueur, recherchent la bibliothèque et se verrouillent');
+
     const trustedYearParty = await request('/api/party/create', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -317,7 +442,7 @@ async function main() {
     });
     assert.strictEqual(restored.status, 200);
     assert.strictEqual(restored.body.profiles.some(profile => profile.id === 'alpha'), true);
-    assert.deepStrictEqual(restored.body.collections[0].trackIds, ['a', 'b']);
+    assert.deepStrictEqual(restored.body.collections.find(item => item.id === 'c1').trackIds, ['a', 'b']);
     assert.strictEqual(restored.body.challenges[0].seed, 'HTTP-SEED');
     ok('la sauvegarde exportée restaure tout le parcours via la route d’import');
 

@@ -923,3 +923,50 @@ Sa signature Release v2, son unique signataire RSA 4096 bits, son alignement ZIP
 et son empreinte livrée ont été revérifiés. Les deux `libnode.so` restent les
 seules bibliothèques non natives 16 Kio. Aucun appareil n'a été connecté et
 aucun push n'a été effectué.
+
+## 20. Playlists permanentes et soirées participatives — 22 septembre 2026
+
+Songless permet maintenant de choisir la bibliothèque complète ou une playlist
+persistante pour une partie. Les playlists sont nommables, descriptibles,
+recherchables, réordonnables, fusionnables, duplicables, archivables,
+restaurables, exportables et importables. Les anciens objets « collections »
+sont migrés sans perte. Un diagnostic propose les titres jamais rejoués sans
+supprimer automatiquement le moindre fichier.
+
+Le mode participatif accepte les quotas hôte 10, 20 ou 50, plus deux réserves
+par joueur. La recherche locale précède toujours l'autodownload ; tout nouveau
+morceau rejoint durablement la bibliothèque. Les jetons joueurs déterminent
+l'auteur réel, les quotas et le verrouillage sont imposés côté serveur, et les
+choix partagés ne créent aucun doublon. L'ordre alterne contributeurs puis
+équipes et évite deux artistes identiques à la suite lorsque possible. Les
+réserves complètent les quotas incomplets et les fichiers absents sont ignorés
+sans bloquer toute la soirée.
+
+Sont aussi livrés : collecte minutée, choix secrets, thèmes genre/décennie/
+mot-clé, filtre explicite, progression individuelle, résumé avant verrouillage,
+QR participatif, journal et ajouts récents, complément aléatoire, vote musical
+après partie et reprise des données. Enregistrer un ancien défi ne peut plus
+écraser une contribution récente. Une collecte verrouillée retire immédiatement
+les anciennes actions Ajouter, Réserve et Autodownload de l'écran joueur.
+
+Le catalogue compte désormais 215 succès, dont neuf nouveaux succès de playlist
+à tonalité humoristique. Leur toast violet, leurs étincelles et leur son ont été
+contrôlés, avec neutralisation des mouvements sous
+`prefers-reduced-motion: reduce`.
+
+Validation : 15 tests métier playlists, 17 tests HTTP profils/listes, 36 tests
+statiques d'interface, sept tests du catalogue de succès, 61 routes
+administratives refusées à distance et cinq refus spécifiques sans jeton joueur.
+La suite complète est verte ; dernière charge : 32 joueurs, 640 états, huit
+flux audio et p95 33 ms. Le contrôle Playwright/Axe réel couvre 1440×1000,
+820×1180 et 390×844, listes actives/archivées, éditeur, titres longs, recherche,
+ajout, progression, animation de succès, verrouillage et mouvements réduits :
+aucune erreur console/HTTP, aucun débordement ou contrôle coupé, aucune violation
+Axe sérieuse/critique.
+
+Livrables reconstruits : kit Windows x64 de 3 991 fichiers, environ 594 Mo ;
+APK Release de 212 266 531 octets, signé v2 par un unique signataire RSA 4096
+bits, SHA-256
+`18F69D1341EFB65C1904D69B0DB6E2C8B65262F2C32BCFEB0F4BEEB9F7D9FDDB`.
+Les deux variantes de `libnode.so` restent les seules bibliothèques non natives
+16 Kio. Le test POCO a été explicitement retiré de cette livraison. Aucun push.

@@ -264,7 +264,20 @@ const PORTAL_TROPHY = {
   rule: { event: 'easter_egg', target: 1, where: { id: 'portal', outcome: 'success' } },
 };
 
-SONGLESS_TROPHIES.push(...SONGLESS_TROPHY_EXPANSION, ...MODE_TROPHIES, PORTAL_TROPHY);
+const PLAYLIST_TROPHIES = [
+  { id: 'playlist_first_pick', cat: 'party', icon: '🎵', name: 'DJ en Période d’Essai', desc: 'Ajouter son premier morceau à une playlist participative.', rule: { event: 'playlist_contribution', target: 1 } },
+  { id: 'playlist_three_picks', cat: 'party', icon: '🎚️', name: 'Trois Boutons et Beaucoup d’Avis', desc: 'Proposer trois morceaux au fil des soirées.', rule: { event: 'playlist_contribution', target: 3 } },
+  { id: 'playlist_ten_picks', cat: 'party', icon: '📻', name: 'La Radio, C’est Moi', desc: 'Proposer dix morceaux aux playlists participatives.', rule: { event: 'playlist_contribution', target: 10 } },
+  { id: 'playlist_twenty_picks', cat: 'party', icon: '🪩', name: 'Ministre de la Piste de Danse', desc: 'Proposer vingt morceaux aux playlists participatives.', rule: { event: 'playlist_contribution', target: 20 } },
+  { id: 'playlist_fifty_picks', cat: 'party', icon: '🧳', name: 'J’avais Préparé une Petite Sélection', desc: 'Proposer cinquante morceaux. Petite, vraiment ?', hidden: true, rule: { event: 'playlist_contribution', target: 50 } },
+  { id: 'playlist_first_reserve', cat: 'party', icon: '🛟', name: 'Au Cas Où le Wi-Fi Décide', desc: 'Préparer son premier morceau de réserve.', rule: { event: 'playlist_contribution', target: 1, where: { reserve: true } } },
+  { id: 'playlist_five_reserves', cat: 'party', icon: '🧰', name: 'Ceinture, Bretelles et Deux Refrains', desc: 'Préparer cinq morceaux de réserve.', rule: { event: 'playlist_contribution', target: 5, where: { reserve: true } } },
+  { id: 'playlist_hundred_picks', cat: 'secrets', icon: '📚', name: 'La Playlist Était un Album Double', desc: 'Cumuler cent propositions.', hidden: true, rule: { event: 'playlist_contribution', target: 100 } },
+  { id: 'playlist_reserve_ten', cat: 'secrets', icon: '🧯', name: 'Plan B, C, D et le Reste de l’Alphabet', desc: 'Cumuler dix morceaux de réserve.', hidden: true, rule: { event: 'playlist_contribution', target: 10, where: { reserve: true } } },
+];
+
+SONGLESS_TROPHIES.push(...SONGLESS_TROPHY_EXPANSION, ...MODE_TROPHIES, PORTAL_TROPHY,
+  ...PLAYLIST_TROPHIES);
 
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = { SONGLESS_TROPHIES };

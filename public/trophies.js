@@ -121,9 +121,13 @@
     }
 
     const toast = document.createElement('div');
-    toast.className = 'trophy-toast';
+    const category = String(trophy.cat || 'party').replace(/[^a-z-]/g, '');
+    toast.className = `trophy-toast trophy-toast-${category}`;
+    toast.setAttribute('role', 'status');
+    toast.setAttribute('aria-live', 'polite');
     toast.innerHTML = `
       <div class="trophy-toast-glow"></div>
+      <div class="trophy-toast-sparks" aria-hidden="true">${'<i></i>'.repeat(8)}</div>
       <div class="trophy-toast-icon">${trophy.icon || '🏆'}</div>
       <div class="trophy-toast-body">
         <span class="trophy-toast-badge">✨ SUCCÈS DÉBLOQUÉ</span>

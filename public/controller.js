@@ -32,6 +32,8 @@
   let reverseBufferPromise = null;
   let answerSuggestionTimer = null;
   let lastChatId = 0;
+  let playlistState = null;
+  let playlistPolledAt = 0;
 
   // Nettoie l'ancienne association créée par les versions précédentes.
   try { localStorage.removeItem('songless_controller_profile'); } catch (_) {}
@@ -247,7 +249,7 @@
       ? window.songlessTrophies.getUnlockedIds()
       : []);
     const unlockedCount = unlockedIds.size;
-    const totalCount = allTrophies.length || 206;
+    const totalCount = allTrophies.length || 215;
     const percent = Math.min(100, Math.round((unlockedCount / totalCount) * 100));
 
     byId('palmares-count-label').innerText = `${unlockedCount} / ${totalCount} (${percent}%)`;
@@ -268,7 +270,7 @@
             </div>
           `;
         }).join('')
-      : '<div class="wait-note">206 trophées à débloquer au fil des soirées !</div>';
+      : '<div class="wait-note">215 trophées à débloquer au fil des soirées !</div>';
 
     sheet.classList.remove('hidden');
   }
@@ -365,6 +367,10 @@
     try {
       const query = new URLSearchParams({ playerToken: party.playerToken });
       receiveState(await api(`/api/party/${encodeURIComponent(party.code)}?${query}`));
+      if (Date.now() - playlistPolledAt > 1000) {
+        playlistPolledAt = Date.now();
+        pollPlaylist();
+      }
     } catch (error) {
       if (/introuvable|terminée/i.test(error.message)) leaveParty();
       else console.warn(error.message);
@@ -1702,17 +1708,221 @@
       const body = new FormData();
       body.append('audio', file);
       body.append('sourceLabel', profile ? profile.nom : '');
-      const result = await api('/api/upload', { method: 'POST', body });
+      const result = await api('/api/upload', {
+        method: 'POST', body,
+        headers: party ? { 'X-Songless-Player': party.playerToken } : {},
+      });
       const count = Array.isArray(result.ajoutes) ? result.ajoutes.length : 0;
       const duplicates = Array.isArray(result.doublons) ? result.doublons.length : 0;
       if (count) setGiftStatus('Musique ajoutée à Songless.', 'success');
       else if (duplicates) setGiftStatus('Cette musique était déjà dans Songless.', 'success');
       else setGiftStatus('Fichier reçu, mais aucune musique n’a été ajoutée.', 'error');
       input.value = '';
+      if (playlistState && playlistState.status === 'collecting') {
+        const reserve = Boolean(byId('playlist-download-reserve') && byId('playlist-download-reserve').checked);
+        for (const item of result.ajoutes || []) {
+          if (item.id) await addPlaylistContribution(item.id, reserve);
+        }
+      }
     } catch (error) {
       setGiftStatus(error.message, 'error');
     } finally {
       button.disabled = false;
+    }
+  }
+
+  async function pollPlaylist() {
+    if (!party) return;
+    try {
+      const query = new URLSearchParams({ playerToken: party.playerToken });
+      playlistState = await api(`/api/party/${encodeURIComponent(party.code)}/playlist?${query}`);
+      renderPlaylistContribution();
+    } catch (error) {
+      playlistState = null;
+      renderPlaylistContribution();
+      if (!/aucune playlist|introuvable/i.test(error.message)) console.warn(error.message);
+    }
+  }
+
+  function renderPlaylistContribution() {
+    const zone = byId('playlist-contribution');
+    if (!zone) return;
+    if (!playlistState || !playlistState.collaborative) {
+      zone.classList.add('hidden');
+      return;
+    }
+    zone.classList.remove('hidden');
+    byId('playlist-contribution-title').innerText = playlistState.nom;
+    const collecting = playlistState.status === 'collecting';
+    const quota = Number(playlistState.quotaPerPlayer) || 0;
+    const reserveLimit = Number(playlistState.reservePerPlayer) || 0;
+    const main = Number(playlistState.progress && playlistState.progress.main) || 0;
+    const reserve = Number(playlistState.progress && playlistState.progress.reserve) || 0;
+    byId('playlist-contribution-copy').innerText = collecting
+      ? (playlistState.description || 'Choisis tes morceaux. Songless cherche toujours dans la bibliothèque avant de télécharger.')
+      : 'La collecte est verrouillée. Tes morceaux restent enregistrés dans la playlist.';
+    const percentage = quota ? Math.min(100, Math.round(main * 100 / quota)) : (main ? 100 : 0);
+    byId('playlist-mobile-progress-fill').style.width = `${percentage}%`;
+    byId('playlist-mobile-counts').innerText = quota
+      ? `${main}/${quota} principaux · ${reserve}/${reserveLimit} réserves`
+      : `${main} proposition${main > 1 ? 's' : ''}`;
+    byId('playlist-query').disabled = !collecting;
+    byId('playlist-search-btn').disabled = !collecting;
+    byId('playlist-download-btn').disabled = !collecting;
+    byId('playlist-download-reserve').disabled = !collecting || !reserveLimit;
+    if (!collecting) {
+      byId('playlist-search-results').innerHTML = '';
+      byId('playlist-download-btn').classList.add('hidden');
+    }
+
+    const own = (playlistState.tracks || []).filter(track => track.mine);
+    const voteOpen = state && state.status === 'finished';
+    const votes = voteOpen ? `<p class="eyebrow">COUPS DE CŒUR DE LA SOIRÉE</p>${(playlistState.tracks || []).map(track => `
+      <div class="playlist-own-track">
+        <span><strong>${escapeHtml(track.title)}</strong><small>${escapeHtml(track.artist || '')} · score ${Number(track.rating) || 0}</small></span>
+        <span class="playlist-result-actions">
+          <button class="secondary-btn" type="button" data-playlist-vote="${escapeHtml(track.id)}" data-vote-value="1" aria-pressed="${track.myRating === 1}">👍</button>
+          <button class="secondary-btn" type="button" data-playlist-vote="${escapeHtml(track.id)}" data-vote-value="-1" aria-pressed="${track.myRating === -1}">👎</button>
+        </span>
+      </div>`).join('')}` : '';
+    byId('playlist-my-tracks').innerHTML = (own.length
+      ? `<p class="eyebrow">TES MORCEAUX</p>${own.map(track => `
+          <div class="playlist-own-track ${track.reserve ? 'reserve' : ''}">
+            <span><strong>${escapeHtml(track.title)}</strong><small>${escapeHtml(track.artist || '')}${track.reserve ? ' · réserve' : ''}</small></span>
+            ${collecting ? `<button class="secondary-btn remove-own-track" type="button" data-playlist-remove="${escapeHtml(track.id)}">Retirer</button>` : ''}
+          </div>`).join('')}`
+      : '<p class="wait-note">Tu n’as encore proposé aucun morceau.</p>') + votes;
+  }
+
+  async function searchPlaylistLibrary() {
+    if (!party || !playlistState) return;
+    const query = byId('playlist-query').value.trim();
+    if (!query) return toast('Écris un titre ou un artiste.');
+    const button = byId('playlist-search-btn');
+    button.disabled = true;
+    setPlaylistStatus('Recherche dans la bibliothèque…');
+    try {
+      const params = new URLSearchParams({ playerToken: party.playerToken, q: query });
+      const result = await api(`/api/party/${encodeURIComponent(party.code)}/playlist/search?${params}`);
+      renderPlaylistSearch(result.matches || []);
+      byId('playlist-download-btn').classList.remove('hidden');
+      setPlaylistStatus(result.matches && result.matches.length
+        ? `${result.matches.length} résultat(s) déjà présent(s).`
+        : 'Aucun résultat : Songless peut maintenant le télécharger.');
+    } catch (error) {
+      setPlaylistStatus(error.message, 'error');
+    } finally {
+      button.disabled = false;
+    }
+  }
+
+  function renderPlaylistSearch(matches) {
+    const zone = byId('playlist-search-results');
+    if (!playlistState || playlistState.status !== 'collecting') {
+      zone.innerHTML = '';
+      byId('playlist-download-btn').classList.add('hidden');
+      return;
+    }
+    zone.innerHTML = matches.length ? matches.map(track => `
+      <div class="playlist-result">
+        <span class="playlist-result-copy"><strong>${escapeHtml(track.title)}</strong><small>${escapeHtml(track.artist || 'Artiste inconnu')} · ${track.match === 'strong' ? 'correspondance forte' : 'correspondance possible'}</small></span>
+        <span class="playlist-result-actions">
+          <button class="primary-btn" type="button" data-playlist-add="${escapeHtml(track.id)}">Ajouter</button>
+          ${playlistState.reservePerPlayer ? `<button class="secondary-btn" type="button" data-playlist-add-reserve="${escapeHtml(track.id)}">Réserve</button>` : ''}
+        </span>
+      </div>`).join('') : '<p class="wait-note">Pas encore dans la bibliothèque.</p>';
+  }
+
+  function setPlaylistStatus(message, type = '') {
+    const status = byId('playlist-contribution-status');
+    status.innerText = message;
+    status.className = `gift-status${type ? ` ${type}` : ''}`;
+  }
+
+  async function addPlaylistContribution(trackId, reserve = false) {
+    if (!party || !playlistState || playlistState.status !== 'collecting') return false;
+    try {
+      await api(`/api/party/${encodeURIComponent(party.code)}/playlist/contributions`, {
+        method: 'POST',
+        body: JSON.stringify({ playerToken: party.playerToken, trackId, reserve }),
+      });
+      await pollPlaylist();
+      setPlaylistStatus(reserve ? 'Morceau ajouté à tes réserves.' : 'Morceau ajouté à la playlist.', 'success');
+      if (window.songlessTrophies) {
+        window.songlessTrophies.record('playlist_contribution', { reserve }, `${party.code}:${trackId}:${reserve}`);
+      }
+      return true;
+    } catch (error) {
+      setPlaylistStatus(error.message, 'error');
+      return false;
+    }
+  }
+
+  async function downloadForPlaylist() {
+    const query = byId('playlist-query').value.trim();
+    if (!query) return toast('Écris un titre, un artiste ou colle une URL.');
+    const reserve = Boolean(byId('playlist-download-reserve').checked);
+    const button = byId('playlist-download-btn');
+    button.disabled = true;
+    setPlaylistStatus('Téléchargement et analyse en cours…');
+    try {
+      const response = await fetch('/api/download', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Songless-Pair': pair,
+          'X-Songless-Invite': invite,
+          'X-Songless-Party': invitedCode,
+        },
+        body: JSON.stringify({ query, sourceLabel: profile ? profile.nom : '',
+          playerToken: party.playerToken, partyCode: party.code }),
+      });
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || `Erreur ${response.status}`);
+      }
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let done = null;
+      while (true) {
+        const part = await reader.read();
+        buffer += decoder.decode(part.value || new Uint8Array(), { stream: !part.done });
+        const events = buffer.split('\n\n');
+        buffer = events.pop() || '';
+        for (const raw of events) {
+          const event = (raw.match(/^event:\s*(.+)$/m) || [])[1];
+          const json = (raw.match(/^data:\s*(.+)$/m) || [])[1];
+          const data = json ? JSON.parse(json) : {};
+          if (event === 'progress' && data.message) setPlaylistStatus(data.message);
+          if (event === 'error') throw new Error(data.error || 'Téléchargement impossible.');
+          if (event === 'done') done = data;
+        }
+        if (part.done) break;
+      }
+      if (!done || !done.track || !done.track.id) throw new Error('Le morceau a été reçu mais son identifiant manque.');
+      await addPlaylistContribution(done.track.id, reserve);
+      byId('playlist-query').value = '';
+      byId('playlist-search-results').innerHTML = '';
+      byId('playlist-download-btn').classList.add('hidden');
+    } catch (error) {
+      setPlaylistStatus(error.message, 'error');
+    } finally {
+      button.disabled = false;
+    }
+  }
+
+  async function votePlaylistTrack(trackId, value) {
+    if (!party || !state || state.status !== 'finished') return;
+    try {
+      await api(`/api/party/${encodeURIComponent(party.code)}/playlist/votes`, {
+        method: 'POST',
+        body: JSON.stringify({ playerToken: party.playerToken, trackId, value }),
+      });
+      await pollPlaylist();
+      setPlaylistStatus('Vote enregistré.', 'success');
+    } catch (error) {
+      setPlaylistStatus(error.message, 'error');
     }
   }
 
@@ -1742,6 +1952,8 @@
     pollTimer = null;
     party = null;
     state = null;
+    playlistState = null;
+    renderPlaylistContribution();
     if (window.songlessEasterEggs) window.songlessEasterEggs.remove('controller');
     actionSignature = '';
     audioRoundKey = '';
@@ -1831,6 +2043,28 @@
     if (event.target.closest('#chat-send-btn')) sendChat();
     if (event.target.closest('#gift-link-btn')) giveMusicLink();
     if (event.target.closest('#gift-file-btn')) giveMusicFile();
+    if (event.target.closest('#playlist-search-btn')) searchPlaylistLibrary();
+    if (event.target.closest('#playlist-download-btn')) downloadForPlaylist();
+    const playlistAdd = event.target.closest('[data-playlist-add]');
+    if (playlistAdd && playlistState && playlistState.status === 'collecting') {
+      addPlaylistContribution(playlistAdd.getAttribute('data-playlist-add'), false);
+    }
+    const playlistReserve = event.target.closest('[data-playlist-add-reserve]');
+    if (playlistReserve && playlistState && playlistState.status === 'collecting') {
+      addPlaylistContribution(playlistReserve.getAttribute('data-playlist-add-reserve'), true);
+    }
+    const playlistRemove = event.target.closest('[data-playlist-remove]');
+    if (playlistRemove && party) {
+      api(`/api/party/${encodeURIComponent(party.code)}/playlist/contributions/${encodeURIComponent(playlistRemove.getAttribute('data-playlist-remove'))}`, {
+        method: 'DELETE',
+        body: JSON.stringify({ playerToken: party.playerToken }),
+      }).then(pollPlaylist).catch(error => setPlaylistStatus(error.message, 'error'));
+    }
+    const playlistVote = event.target.closest('[data-playlist-vote]');
+    if (playlistVote) votePlaylistTrack(
+      playlistVote.getAttribute('data-playlist-vote'),
+      Number(playlistVote.getAttribute('data-vote-value'))
+    );
 
     const reactionBtn = event.target.closest('.mobile-quick-reactions [data-reaction]');
     if (reactionBtn) {
@@ -1932,6 +2166,7 @@
       }
     }
     if (event.key === 'Enter' && event.target.id === 'gift-query') giveMusicLink();
+    if (event.key === 'Enter' && event.target.id === 'playlist-query') searchPlaylistLibrary();
   });
 
   byId('party-code').addEventListener('input', event => {

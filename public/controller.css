@@ -1204,6 +1204,30 @@ h2 { margin: 0 0 14px; font-size: 1.05rem; }
   font-size: 1.8rem;
   line-height: 1;
   filter: drop-shadow(0 0 6px rgba(255, 215, 0, 0.6));
+  animation: trophyMobileIconPop .65s cubic-bezier(.2, 1.8, .4, 1) both;
+}
+
+@keyframes trophyMobileIconPop {
+  0% { transform: scale(.25) rotate(-18deg); }
+  65% { transform: scale(1.16) rotate(5deg); }
+  100% { transform: scale(1) rotate(0); }
+}
+.trophy-toast-sparks { position: absolute; inset: 0; pointer-events: none; }
+.trophy-toast-sparks i { position: absolute; left: 32px; top: 50%; width: 5px; height: 5px; border-radius: 50%; background: #fde047; animation: trophyMobileSpark .8s ease-out both; }
+.trophy-toast-sparks i:nth-child(2) { --x: 27px; --y: -23px; animation-delay: .04s; }
+.trophy-toast-sparks i:nth-child(3) { --x: 34px; --y: 5px; animation-delay: .08s; }
+.trophy-toast-sparks i:nth-child(4) { --x: 17px; --y: 25px; animation-delay: .12s; }
+.trophy-toast-sparks i:nth-child(5) { --x: -20px; --y: 24px; animation-delay: .06s; }
+.trophy-toast-sparks i:nth-child(6) { --x: -32px; --y: 2px; animation-delay: .1s; }
+.trophy-toast-sparks i:nth-child(7) { --x: -24px; --y: -22px; animation-delay: .14s; }
+.trophy-toast-sparks i:nth-child(8) { --x: 3px; --y: -31px; animation-delay: .02s; }
+.trophy-toast-sparks i:first-child { --x: 19px; --y: -14px; }
+@keyframes trophyMobileSpark { from { transform: translate(0, 0) scale(1); opacity: 1; } to { transform: translate(var(--x), var(--y)) scale(0); opacity: 0; } }
+.trophy-toast-party { border-color: rgba(167, 139, 250, .58); box-shadow: 0 10px 25px rgba(0,0,0,.7), 0 0 20px rgba(139,92,246,.3); }
+
+@media (prefers-reduced-motion: reduce) {
+  .trophy-toast, .trophy-toast.hide, .trophy-toast-glow,
+  .trophy-toast-icon, .trophy-toast-sparks i { animation: none !important; }
 }
 
 .trophy-toast-body {
@@ -1505,4 +1529,51 @@ h2 { margin: 0 0 14px; font-size: 1.05rem; }
 @media (max-width: 460px) {
   .topbar { flex-direction: column; gap: 12px; }
   .topbar-right { width: 100%; justify-content: center; }
+}
+/* Collecte de playlist : compacte, lisible debout et utilisable au pouce. */
+.playlist-contribution {
+  margin: -4px -2px 18px;
+  padding: 16px;
+  border: 1px solid rgba(167, 139, 250, .3);
+  border-radius: 16px;
+  background: radial-gradient(circle at 100% 0, rgba(139, 92, 246, .17), transparent 42%),
+    rgba(20, 16, 29, .88);
+}
+.playlist-mobile-progress { height: 9px; margin: 12px 0 8px; border-radius: 99px; overflow: hidden; background: #2b2634; }
+.playlist-mobile-progress span { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #7c3aed, #c4b5fd); transition: width .3s ease; }
+.playlist-mobile-counts { margin-bottom: 13px; color: #d8d0e7; font-size: .86rem; font-weight: 750; }
+.playlist-search-results,
+.playlist-my-tracks { display: grid; gap: 8px; margin-top: 10px; }
+.playlist-result,
+.playlist-own-track {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 9px;
+  align-items: center;
+  padding: 10px;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 12px;
+  background: rgba(255,255,255,.025);
+}
+.playlist-result-copy strong,
+.playlist-result-copy small,
+.playlist-own-track strong,
+.playlist-own-track small { display: block; overflow-wrap: anywhere; }
+.playlist-result-copy small,
+.playlist-own-track small { color: #aaa1b7; margin-top: 2px; }
+.playlist-result-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 5px; }
+.playlist-result-actions button { min-height: 40px; padding: 8px 10px; }
+.playlist-reserve-choice { display: flex; gap: 8px; align-items: center; margin: 11px 0; color: #cfc6dc; }
+.playlist-reserve-choice input { width: 19px; height: 19px; }
+.playlist-own-track.reserve { border-style: dashed; }
+.playlist-own-track .remove-own-track { min-height: 40px; }
+
+@media (max-width: 390px) {
+  .playlist-result, .playlist-own-track { grid-template-columns: 1fr; }
+  .playlist-result-actions { justify-content: stretch; }
+  .playlist-result-actions button { flex: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .playlist-mobile-progress span { transition: none; }
 }

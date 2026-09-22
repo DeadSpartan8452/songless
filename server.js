@@ -28,6 +28,8 @@ const sourceBalance = require('./public/source-balance');
 const duplicateComparison = require('./lib/duplicate-comparison');
 const preflight = require('./lib/preflight');
 const instanceAuthModule = require('./lib/instance-auth');
+const registerPlaylistRoutes = require('./lib/playlist-routes');
+const playlistTools = require('./lib/playlists');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -330,8 +332,17 @@ app.use((req, res, next) => {
   // à la bibliothèque, par fichier ou par recherche/URL.
   if (req.path === '/api/upload' || req.path === '/api/download') {
     if (!paired && !invited) return res.status(403).json({ error: 'Invitation Songless invalide ou expirée.' });
-    if (!rateAllowed(req, 'music', 10, 60 * 60_000)) {
-      return res.status(429).json({ error: 'Limite de 10 propositions de musique par heure atteinte.' });
+    const invitedParty = invited && partyStore.get(
+      req.get('X-Songless-Party') || (req.body && req.body.partyCode)
+    );
+    const playerToken = req.get('X-Songless-Player') || (req.body && req.body.playerToken);
+    const invitedPlayer = invitedParty && partyStore.findPlayer(invitedParty, playerToken);
+    const activePlaylist = invitedParty && playerStore.playlistById(
+      invitedParty.settings && invitedParty.settings.playlistId
+    );
+    const playlistLimit = playlistTools.proposalLimit(activePlaylist, Boolean(invitedPlayer));
+    if (!rateAllowed(req, 'music', playlistLimit, 60 * 60_000)) {
+      return res.status(429).json({ error: `Limite de ${playlistLimit} propositions de musique par heure atteinte.` });
     }
     if (req.method === 'POST') return next();
   }
@@ -814,12 +825,26 @@ app.post('/api/party/create', async (req, res) => {
         || 'none',
     };
     const partyMode = modeRegistry.normalizeModeId(req.body.mode);
+    const selectedPlaylist = mergedSettings.playlistId
+      ? playerStore.playlistById(mergedSettings.playlistId) : null;
+    if (selectedPlaylist && selectedPlaylist.collaborative && selectedPlaylist.status === 'draft') {
+      const timerMinutes = Number(selectedPlaylist.settings && selectedPlaylist.settings.timerMinutes) || 0;
+      playerStore.updatePlaylist(selectedPlaylist.id, {
+        status: 'collecting',
+        deadlineAt: timerMinutes ? new Date(Date.now() + timerMinutes * 60_000).toISOString() : null,
+      });
+      selectedPlaylist.status = 'collecting';
+      selectedPlaylist.deadlineAt = timerMinutes
+        ? new Date(Date.now() + timerMinutes * 60_000).toISOString() : null;
+    }
+    const requestedTrackIds = Array.isArray(req.body.trackIds) && req.body.trackIds.length
+      ? req.body.trackIds : (selectedPlaylist ? selectedPlaylist.trackIds : req.body.trackIds);
     const filteredTrackIds = await partyTrackIdsAfterBlacklist(
-      req.body.trackIds,
+      requestedTrackIds,
       partyMode,
       mergedSettings
     );
-    if (Array.isArray(req.body.trackIds) && req.body.trackIds.length && filteredTrackIds.length === 0) {
+    if (Array.isArray(requestedTrackIds) && requestedTrackIds.length && filteredTrackIds.length === 0) {
       throw new Error('Aucune chanson exploitable dans cette sélection et ces réglages.');
     }
     const created = partyStore.create({
@@ -1455,7 +1480,10 @@ app.post('/api/upload', (req, res) => {
         antivirus: `${scanResult.engine} : fichier sain`,
         archive,
         file: nom,
-        ajoutes: rapport.ajoutes,
+        ajoutes: rapport.ajoutes.map(item => ({
+          ...item,
+          id: item.fichier ? Buffer.from(item.fichier).toString('base64url') : null,
+        })),
         doublons: rapport.doublons,
         erreurs: rapport.erreurs,
         aRevoir: rapport.aRevoir,
@@ -1869,6 +1897,14 @@ app.post('/api/download/approvals/:id', (req, res) => {
  */
 require('./lib/source-routes')(app, {store, downloader, allBuiltTracks,
   validPartyTrackIds, resoudreMorceau, ouvrirFlux});
+registerPlaylistRoutes(app, {
+  playerStore,
+  partyStore,
+  allBuiltTracks,
+  validPartyTrackIds,
+  qrCode: QRCode,
+  isHostRequest: estLocal,
+});
 
 function importOrigin(req, defaultLabel = 'Ajouts libres') {
   return sourceBalance.source(String(req.body && req.body.sourceLabel || '').trim()
@@ -1977,7 +2013,8 @@ app.post('/api/download', async (req, res) => {
             send('item', { index: index + 1, total: selectedEntries.length,
               titre: entry.title || item.title, etat: 'doublon' });
           } else {
-            bilan.ajoutes.push({ titre: entry.title, artiste: entry.artist, genre: entry.genre });
+            bilan.ajoutes.push({ titre: entry.title, artiste: entry.artist, genre: entry.genre,
+              id: entry.fileName ? Buffer.from(entry.fileName).toString('base64url') : null });
             send('item', { index: index + 1, total: selectedEntries.length,
               titre: entry.title, etat: 'ajoute', genre: entry.genre });
           }
@@ -2004,7 +2041,10 @@ app.post('/api/download', async (req, res) => {
       prefetchedInfo: media ? media.info : null,
       onLog: (message) => send('progress', { message }),
     });
-    send('done', { track: entry });
+    send('done', { track: {
+      ...entry,
+      id: entry.fileName ? Buffer.from(entry.fileName).toString('base64url') : null,
+    } });
   } catch (error) {
     console.error('Erreur téléchargement:', error.message);
     send('error', { error: error.message });
@@ -2067,7 +2107,8 @@ app.post('/api/download/playlist', async (req, res) => {
           bilan.doublons.push({ titre: entry.title || item.title });
           send('item', { index: i + 1, total: entrees.length, titre: entry.title || item.title, etat: 'doublon' });
         } else {
-          bilan.ajoutes.push({ titre: entry.title, artiste: entry.artist, genre: entry.genre });
+          bilan.ajoutes.push({ titre: entry.title, artiste: entry.artist, genre: entry.genre,
+            id: entry.fileName ? Buffer.from(entry.fileName).toString('base64url') : null });
           send('item', { index: i + 1, total: entrees.length, titre: entry.title, etat: 'ajoute', genre: entry.genre });
         }
       } catch (e) {
@@ -2238,4 +2279,3 @@ if (INTERNET) {
     console.log(`🔐 Entrée Internet isolée : http://127.0.0.1:${PUBLIC_PORT}`);
   });
 }
-

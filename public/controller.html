@@ -132,6 +132,24 @@
     </section>
 
     <section id="music-gift" class="card music-gift hidden">
+      <div id="playlist-contribution" class="playlist-contribution hidden">
+        <p class="eyebrow">PLAYLIST PARTICIPATIVE</p>
+        <h2 id="playlist-contribution-title">Tes choix pour la soirée</h2>
+        <p id="playlist-contribution-copy" class="gift-copy"></p>
+        <div class="playlist-mobile-progress" aria-hidden="true"><span id="playlist-mobile-progress-fill"></span></div>
+        <div class="playlist-mobile-counts" id="playlist-mobile-counts"></div>
+        <div class="gift-form">
+          <input id="playlist-query" type="search" autocomplete="off"
+                 placeholder="Chercher d’abord dans la bibliothèque" aria-label="Chercher un morceau dans la bibliothèque">
+          <button id="playlist-search-btn" class="primary-btn" type="button">Chercher</button>
+        </div>
+        <div id="playlist-search-results" class="playlist-search-results"></div>
+        <button id="playlist-download-btn" class="secondary-btn hidden" type="button">Absent ? Télécharger et ajouter</button>
+        <label class="playlist-reserve-choice"><input id="playlist-download-reserve" type="checkbox"> Ajouter comme morceau de réserve</label>
+        <div id="playlist-my-tracks" class="playlist-my-tracks"></div>
+        <p id="playlist-contribution-status" class="gift-status" aria-live="polite"></p>
+        <div class="divider"><span>Ajout libre à la bibliothèque</span></div>
+      </div>
       <p class="eyebrow">AJOUTER UNE MUSIQUE</p>
       <h2>Donne une musique à Songless</h2>
       <p class="gift-copy">Recherche un titre, colle une URL, ou choisis un fichier audio sur ce téléphone.</p>
