@@ -91,6 +91,19 @@ test('les playlists synchronisent les anciens défis sans écraser leurs contrib
   assert.match(expansions, /saveLists\(\{ saveChallenges: false \}\)/);
 });
 
+test('un contrôleur ne sonde la playlist que si la partie en utilise une', () => {
+  const controller = read('controller.js');
+  assert.match(controller, /state\s*&&\s*state\.settings\s*&&\s*state\.settings\.playlistId/);
+  assert.match(controller, /if\s*\(playlistId\s*&&\s*Date\.now\(\)\s*-\s*playlistPolledAt/);
+});
+
+test('la synchronisation des équipes ne peut pas effacer un nom en cours de saisie', () => {
+  const controller = read('controller.js');
+  assert.match(controller, /teamDetailsSignature/);
+  assert.match(controller, /draftInput\s*&&\s*document\.activeElement\s*===\s*draftInput/);
+  assert.match(controller, /detailsSignature\s*===\s*teamDetailsSignature/);
+});
+
 test('une collecte verrouillée retire toutes les anciennes actions d’ajout', () => {
   const controller = read('controller.js');
   assert.match(controller, /if \(!collecting\) \{[\s\S]*?playlist-search-results[\s\S]*?playlist-download-btn/);

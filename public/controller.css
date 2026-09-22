@@ -911,6 +911,19 @@ h2 { margin: 0 0 14px; font-size: 1.05rem; }
   font-size: 0.8rem;
   cursor: pointer;
   padding: 0 2px;
+  min-width: 36px;
+  min-height: 36px;
+}
+
+#mobile-team-btn {
+  min-width: 52px;
+  min-height: 40px;
+  padding: 8px 10px;
+}
+
+.action-accept,
+.action-refuse {
+  min-height: 36px;
 }
 
 .leave-team-btn {

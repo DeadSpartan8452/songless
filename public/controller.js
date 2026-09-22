@@ -34,6 +34,7 @@
   let lastChatId = 0;
   let playlistState = null;
   let playlistPolledAt = 0;
+  let teamDetailsSignature = '';
 
   // Nettoie l'ancienne association créée par les versions précédentes.
   try { localStorage.removeItem('songless_controller_profile'); } catch (_) {}
@@ -367,9 +368,13 @@
     try {
       const query = new URLSearchParams({ playerToken: party.playerToken });
       receiveState(await api(`/api/party/${encodeURIComponent(party.code)}?${query}`));
-      if (Date.now() - playlistPolledAt > 1000) {
+      const playlistId = state && state.settings && state.settings.playlistId;
+      if (playlistId && Date.now() - playlistPolledAt > 1000) {
         playlistPolledAt = Date.now();
         pollPlaylist();
+      } else if (!playlistId && playlistState) {
+        playlistState = null;
+        renderPlaylistContribution();
       }
     } catch (error) {
       if (/introuvable|terminée/i.test(error.message)) leaveParty();
@@ -909,6 +914,23 @@
 
     const details = byId('mobile-team-details');
     if (!details || details.classList.contains('hidden')) return;
+
+    const detailsSignature = JSON.stringify({
+      me: [me.profileId, me.teamId || '', Boolean(me.teamLockedByHost)],
+      teams: teams.map(team => ({
+        id: team.id,
+        name: team.name,
+        captainProfileId: team.captainProfileId,
+        members: (team.members || []).map(member => [
+          member.profileId, member.nom, Boolean(member.locked),
+        ]),
+        requests: (team.joinRequests || []).map(request => [request.profileId, request.nom]),
+      })),
+    });
+    const draftInput = details.querySelector('#mobile-new-team-name');
+    if (draftInput && document.activeElement === draftInput) return;
+    if (detailsSignature === teamDetailsSignature) return;
+    teamDetailsSignature = detailsSignature;
 
     if (myTeam) {
       const isCaptain = myTeam.captainProfileId === me.profileId;
@@ -1953,6 +1975,7 @@
     party = null;
     state = null;
     playlistState = null;
+    teamDetailsSignature = '';
     renderPlaylistContribution();
     if (window.songlessEasterEggs) window.songlessEasterEggs.remove('controller');
     actionSignature = '';
@@ -2077,6 +2100,7 @@
       const details = byId('mobile-team-details');
       if (details) {
         details.classList.toggle('hidden');
+        teamDetailsSignature = '';
         renderTeamCard();
       }
       return;
