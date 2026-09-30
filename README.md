@@ -25,6 +25,10 @@ aucune chanson depuis GitHub. Une installation antérieure à la v1.0.0 doit
 télécharger et installer cette première version manuellement pour obtenir le
 bouton de mise à jour.
 
+Le [guide d’installation et d’hébergement](GUIDE-INSTALLATION-HEBERGEMENT.md)
+explique le premier lancement, les mises à jour, la conservation des données et
+la configuration de Tailscale Funnel pour une partie Internet.
+
 Le paquet Linux ouvre son mini-menu dans le terminal avec `./Songless` après extraction.
 Il vise Linux x86-64 avec glibc 2.28 ou plus récente. Il héberge les parties en
 local et sur le Wi-Fi ; le tunnel Internet Tailscale reste disponible dans le
