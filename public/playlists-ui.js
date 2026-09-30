@@ -84,7 +84,7 @@
             <span class="playlist-pill ${summary.ready ? 'ready' : 'warn'}">${Number(summary.playable) || 0}/${Number(summary.total) || 0} prêts</span>
             <span class="playlist-pill">${escapeHtml(statusLabel(item.status))}</span>
             ${item.collaborative ? `<span class="playlist-pill">${people} contributeur${people > 1 ? 's' : ''}</span>` : ''}
-            ${item.quotaPerPlayer ? `<span class="playlist-pill">${item.quotaPerPlayer} + ${item.reservePerPlayer || 0} réserves</span>` : ''}
+            ${item.collaborative ? `<span class="playlist-pill">${item.quotaPerPlayer ? item.quotaPerPlayer + ' par joueur' : 'Quota illimité'} · ${item.reservePerPlayer || 0} réserve(s)</span>` : ''}
             <span class="playlist-pill">≈ ${estimate} min</span>
           </div>
         </div>
@@ -146,7 +146,12 @@
     byId('playlist-edit-name').value = item.nom || '';
     byId('playlist-edit-description').value = item.description || '';
     byId('playlist-edit-collaborative').value = String(Boolean(item.collaborative));
-    byId('playlist-edit-quota').value = String(item.quotaPerPlayer || 0);
+    const quotaSelect = byId('playlist-edit-quota');
+    const quota = Number(item.quotaPerPlayer) || 0;
+    quotaSelect.value = [0, 10, 20, 50].includes(quota) ? String(quota) : 'custom';
+    byId('playlist-edit-custom-quota').value = String(quota && ![10, 20, 50].includes(quota) ? quota : 30);
+    byId('playlist-edit-reserves').value = String(Number(item.reservePerPlayer) || 0);
+    byId('playlist-custom-quota-wrap').classList.toggle('hidden', quotaSelect.value !== 'custom');
     byId('playlist-edit-status').value = item.status || 'draft';
     byId('playlist-edit-timer').value = String(item.settings && item.settings.timerMinutes || 0);
     byId('playlist-edit-theme-type').value = item.settings && item.settings.themeType || 'none';
@@ -215,7 +220,11 @@
     const status = byId('playlist-edit-status').value;
     const deadlineAt = status === 'collecting' && timerMinutes
       ? new Date(Date.now() + timerMinutes * 60_000).toISOString() : null;
-    const quota = Number(byId('playlist-edit-quota').value) || 0;
+    const selectedQuota = byId('playlist-edit-quota').value;
+    const quota = selectedQuota === 'custom'
+      ? Math.min(500, Math.max(1, Math.floor(Number(byId('playlist-edit-custom-quota').value) || 1)))
+      : Number(selectedQuota) || 0;
+    const reserves = Math.min(10, Math.max(0, Math.floor(Number(byId('playlist-edit-reserves').value) || 0)));
     try {
       await api(`/api/playlists/${encodeURIComponent(item.id)}`, {
         method: 'PUT',
@@ -224,7 +233,7 @@
           description: byId('playlist-edit-description').value,
           collaborative: byId('playlist-edit-collaborative').value === 'true',
           quotaPerPlayer: quota,
-          reservePerPlayer: quota ? 2 : 0,
+          reservePerPlayer: reserves,
           status,
           deadlineAt,
           settings: {
@@ -456,6 +465,9 @@
     byId('party-playlist-source').addEventListener('change', () => { updatePartySourceHelp(); renderPartyPanel(); });
     byId('playlist-editor-close').addEventListener('click', closeEditor);
     byId('playlist-edit-save').addEventListener('click', saveEditor);
+    byId('playlist-edit-quota').addEventListener('change', event => {
+      byId('playlist-custom-quota-wrap').classList.toggle('hidden', event.target.value !== 'custom');
+    });
     byId('playlist-edit-fill').addEventListener('click', fillPlaylist);
     byId('playlist-add-selection').addEventListener('click', addSelection);
     byId('playlist-track-filter').addEventListener('input', () => {

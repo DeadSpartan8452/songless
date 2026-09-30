@@ -8,15 +8,41 @@ $InstallRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 $AppRoot = Join-Path $InstallRoot 'app'
 $DataRoot = Join-Path $env:LOCALAPPDATA 'Songless-Data'
 $RuntimeRoot = Join-Path $InstallRoot 'runtime'
+$LibraryRoot = Join-Path $env:USERPROFILE 'Codex\Songless'
+$LibraryMusicDir = Join-Path $LibraryRoot 'musiques'
+$LibraryMetadataFile = Join-Path $LibraryRoot 'metadata.json'
+
+if (-not (Test-Path -LiteralPath $LibraryMusicDir -PathType Container)) {
+  throw "Bibliotheque Songless introuvable : $LibraryMusicDir"
+}
+if (-not (Test-Path -LiteralPath $LibraryMetadataFile -PathType Leaf)) {
+  throw "Metadonnees Songless introuvables : $LibraryMetadataFile"
+}
+$AudioExtensions = @('.mp3', '.wav', '.ogg', '.m4a', '.mp4', '.aac', '.flac', '.opus')
+$LibraryAudioCount = @(
+  Get-ChildItem -LiteralPath $LibraryMusicDir -File |
+    Where-Object { $AudioExtensions -contains $_.Extension.ToLowerInvariant() }
+).Count
+if ($LibraryAudioCount -eq 0) {
+  throw "Bibliotheque Songless vide : $LibraryMusicDir. Aucun dossier de test ne sera utilise."
+}
 
 New-Item -ItemType Directory -Force -Path $DataRoot | Out-Null
 New-Item -ItemType Directory -Force -Path (Join-Path $DataRoot 'musiques') | Out-Null
 New-Item -ItemType Directory -Force -Path (Join-Path $DataRoot 'metadata-backups') | Out-Null
 
-$env:PATH = "$RuntimeRoot;$env:PATH"
-$env:SONGLESS_MUSIC_DIR = Join-Path $DataRoot 'musiques'
-$env:SONGLESS_METADATA_FILE = Join-Path $DataRoot 'metadata.json'
-$env:SONGLESS_METADATA_BACKUP_DIR = Join-Path $DataRoot 'metadata-backups'
+$ProcessPath = [Environment]::GetEnvironmentVariable(
+  'Path', [EnvironmentVariableTarget]::Process
+)
+[Environment]::SetEnvironmentVariable(
+  'Path', $null, [EnvironmentVariableTarget]::Process
+)
+[Environment]::SetEnvironmentVariable(
+  'Path', "$RuntimeRoot;$ProcessPath", [EnvironmentVariableTarget]::Process
+)
+$env:SONGLESS_MUSIC_DIR = $LibraryMusicDir
+$env:SONGLESS_METADATA_FILE = $LibraryMetadataFile
+$env:SONGLESS_METADATA_BACKUP_DIR = Join-Path $LibraryRoot 'metadata-backups'
 $env:SONGLESS_DATA_FILE = Join-Path $DataRoot 'songless-data.json'
 $env:SONGLESS_BACKUP_DIR = Join-Path $DataRoot 'metadata-backups'
 $env:SONGLESS_INSTANCE_KEY_FILE = Join-Path $DataRoot 'instance-key.dpapi'

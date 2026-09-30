@@ -460,3 +460,33 @@ bibliothèques et uniquement les deux `libnode.so` non natifs 16 Kio. Aucun push
 La signature Android dispose désormais d'une sauvegarde PKCS12 chiffrée hors
 dépôt dans `Codex\Songless-Sauvegarde-Signature-2026-09-22`. L'alias a été relu
 avec succès, le SHA-256 recalculé concorde et aucun temporaire ne subsiste.
+
+## Paquets hôtes Windows, Linux et Android — 30 septembre 2026
+
+`Build Songless.bat` produit trois fichiers transférables. Le ZIP Windows fait
+243 225 897 octets (3 936 fichiers au manifeste), l’archive Linux x86-64 fait
+50 654 521 octets (3 924 fichiers) et l’APK Android signé fait 212 188 127
+octets. Les empreintes sont dans `dist\Songless-SHA256SUMS.txt`.
+
+Le lanceur Linux intègre Node.js 24.15.0, stocke données et profils dans le
+dossier XDG personnel et propose les modes local et Wi-Fi. Le runtime officiel
+a été vérifié avec le manifeste SHA-256 de `nodejs.org`. L’archive a été relue,
+ses deux exécutables ont le bit POSIX requis, et aucun fichier de musique,
+profil, métadonnée locale ou secret n’est inclus. ClamAV, `yt-dlp` et `ffmpeg`
+restent des dépendances système Linux pour l’import et les téléchargements.
+L’exécution sur une machine Linux réelle reste à valider.
+
+La création a mis au jour un avis modéré Multer 2.3.0. La dépendance a été
+mise à jour vers 2.4.0 depuis le registre npm officiel ; l’audit des dépendances
+de l’archive Linux indique zéro vulnérabilité connue.
+
+La compilation Android a été réparée après détection d’un cache
+`android/build/generated/autolinking` pointant vers l’ancien clone Gemini. Le
+constructeur purge maintenant ce cache précis et restaure les dépendances
+React Native verrouillées si elles manquent. L’APK Release a compilé, sa
+signature v2 RSA 4096 bits est valide et son audit natif 16 Kio conserve deux
+`libnode.so` incompatibles, comme documenté.
+
+Le manifeste Windows déclare `personalDataIncluded=false`. Aucun test logiciel
+du projet n’a été lancé ; les contrôles effectués portent sur les archives,
+leurs empreintes et la signature APK. Aucun push ni publication.

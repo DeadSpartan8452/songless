@@ -37,6 +37,9 @@ const appLauncher = fs.readFileSync(path.join(__dirname, '..', 'Songless.ps1'), 
 assert.match(appLauncher, /Add-Type -AssemblyName System\.Security/);
 assert.match(appLauncher, /Security\.Cryptography\.ProtectedData/);
 assert.match(appLauncher, /SONGLESS_INSTANCE_KEY_FILE/);
+assert.match(appLauncher, /SONGLESS_MUSIC_DIR/);
+assert.match(appLauncher, /SONGLESS_METADATA_FILE/);
+assert.match(appLauncher, /Bibliotheque Songless vide/);
 
 const internetLauncher = fs.readFileSync(
   path.join(__dirname, '..', 'tools', 'start-internet.ps1'),
@@ -47,6 +50,9 @@ assert.match(internetLauncher, /Retape exactement ce compte/);
 assert.match(internetLauncher, /Compte non confirme/);
 assert.match(internetLauncher, /tailscalePath switch|Executable switch/i);
 assert.match(internetLauncher, /Restauration du compte Tailscale precedent/);
+assert.match(internetLauncher, /SONGLESS_MUSIC_DIR/);
+assert.match(internetLauncher, /SONGLESS_METADATA_FILE/);
+assert.match(internetLauncher, /Bibliotheque Songless vide/);
 assert.doesNotMatch(internetLauncher, /Bascule manuellement vers le compte Songless/);
 
 const menuLauncher = fs.readFileSync(path.join(__dirname, '..', 'packaging', 'windows', 'Songless.bat'), 'utf8');

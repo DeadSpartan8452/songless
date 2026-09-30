@@ -189,6 +189,30 @@ if (-not $OwnsInstanceLock) {
 }
 
 $ProjectRoot = Split-Path -Parent $PSScriptRoot
+$LibraryRoot = Join-Path $env:USERPROFILE 'Codex\Songless'
+$LibraryMusicDir = Join-Path $LibraryRoot 'musiques'
+$LibraryMetadataFile = Join-Path $LibraryRoot 'metadata.json'
+$DataRoot = Join-Path $env:LOCALAPPDATA 'Songless-Data'
+if (-not (Test-Path -LiteralPath $LibraryMusicDir -PathType Container)) {
+  throw "Bibliotheque Songless introuvable : $LibraryMusicDir"
+}
+if (-not (Test-Path -LiteralPath $LibraryMetadataFile -PathType Leaf)) {
+  throw "Metadonnees Songless introuvables : $LibraryMetadataFile"
+}
+$AudioExtensions = @('.mp3', '.wav', '.ogg', '.m4a', '.mp4', '.aac', '.flac', '.opus')
+$LibraryAudioCount = @(Get-ChildItem -LiteralPath $LibraryMusicDir -File |
+  Where-Object { $AudioExtensions -contains $_.Extension.ToLowerInvariant() }).Count
+if ($LibraryAudioCount -eq 0) {
+  throw "Bibliotheque Songless vide : $LibraryMusicDir"
+}
+New-Item -ItemType Directory -Force -Path $DataRoot | Out-Null
+$env:SONGLESS_MUSIC_DIR = $LibraryMusicDir
+$env:SONGLESS_METADATA_FILE = $LibraryMetadataFile
+$env:SONGLESS_METADATA_BACKUP_DIR = Join-Path $LibraryRoot 'metadata-backups'
+$env:SONGLESS_DATA_FILE = Join-Path $DataRoot 'songless-data.json'
+$env:SONGLESS_BACKUP_DIR = Join-Path $DataRoot 'metadata-backups'
+$env:SONGLESS_INSTANCE_KEY_FILE = Join-Path $DataRoot 'instance-key.dpapi'
+$env:SONGLESS_TAILSCALE_ACCOUNT_FILE = Join-Path $DataRoot 'tailscale-account.txt'
 $InstanceKeyPath = if ($env:SONGLESS_INSTANCE_KEY_FILE) {
   [IO.Path]::GetFullPath($env:SONGLESS_INSTANCE_KEY_FILE)
 } else {

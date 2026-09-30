@@ -6,6 +6,22 @@ bibliothèque musicale.
 **Raccourci `Songless` sur le Bureau** : double-clic, ça démarre le serveur et
 ouvre le jeu. Rien d'autre à faire.
 
+### Fichiers hôtes à transférer
+
+Double-clique sur **`Build Songless.bat`** pour créer les trois paquets dans
+`dist\` : `Songless-Windows-x64.zip`, `Songless-Linux-x64.tar.gz` et
+`Songless-Android.apk`. Le fichier `Songless-SHA256SUMS.txt` contient leurs
+empreintes. La compilation Linux récupère le runtime Node.js x64 depuis
+`nodejs.org` et vérifie sa somme SHA-256 officielle. Les bibliothèques, profils
+et clés personnels ne sont pas inclus dans les paquets.
+
+Le paquet Linux se lance depuis un terminal avec `./Songless` après extraction.
+Il vise Linux x86-64 avec glibc 2.28 ou plus récente. Il héberge les parties en
+local et sur le Wi-Fi ; le tunnel Internet Tailscale reste disponible dans le
+kit Windows uniquement. ClamAV est requis pour importer ou télécharger des
+fichiers audio sur Linux ; `yt-dlp` et `ffmpeg` sont aussi requis pour les
+téléchargements YouTube.
+
 Une fenêtre réduite « Songless - serveur » apparaît dans la barre des tâches :
 **la fermer arrête Songless**. Relancer le raccourci quand le jeu tourne déjà
 n'ouvre qu'un onglet, ça ne démarre pas un second serveur.
@@ -116,13 +132,16 @@ sur Linux avant d’annoncer une compatibilité native 16 Kio complète.
 
 | Plateforme | État vérifié | Livrable |
 |---|---|---|
-| Windows 11 x64 | Validé : installation, réparation, conservation des données, désinstallation, modes local/Wi-Fi/Internet et manifeste complet | `dist/Songless-Windows-x64` |
+| Windows 11 x64 | Validé : installation, réparation, conservation des données, désinstallation, modes local/Wi-Fi/Internet et manifeste complet | `dist/Songless-Windows-x64.zip` |
 | Android x86-64 | Validé sur émulateur Android 17 à pages de 16 Kio, en mode de compatibilité | `dist/Songless-Android/Songless-Android.apk` |
 | Android ARM64 / POCO X5 Pro | APK construit et signé, mais test sur le téléphone réel encore requis | même APK |
-Windows et Android sont les deux seules plateformes hôtes prévues. Un navigateur
-reste utilisable comme joueur, TV ou télécommande sur Linux, macOS, iPhone,
-iPad et les autres systèmes modernes. Cela ne transforme pas le navigateur en
-hôte autonome : le serveur Songless doit toujours tourner sur Windows ou Android.
+| Linux x86-64 | Paquet autonome créé ; exécution sur une machine Linux réelle encore à valider | `dist/Songless-Linux-x64.tar.gz` |
+
+Windows x64, Linux x86-64 et Android sont les plateformes hôtes prévues. Linux
+nécessite glibc 2.28 ou plus récente ; macOS, iPhone, iPad et les autres systèmes
+peuvent rejoindre la partie depuis leur navigateur, sans héberger le serveur.
+Les builds Windows et Android conservent les validations décrites plus haut ;
+la génération d'un paquet Linux ne vaut pas encore validation sur Linux réel.
 
 ### Invitations et accès Internet
 
@@ -537,6 +556,27 @@ fichiers musicaux ne font jamais partie de cette sauvegarde.
 
 ---
 
+## 4 octies. Playlists permanentes et soirées participatives
+
+Les playlists Songless peuvent être personnelles ou participatives. Elles se
+créent depuis la bibliothèque, gardent leur ordre et se recherchent, fusionnent,
+dupliquent, archivent, restaurent, importent et exportent. Une partie peut
+utiliser toute la bibliothèque ou une playlist choisie. Les anciennes
+collections sont conservées lors de la migration.
+
+Pour une collecte participative, l’hôte ouvre la playlist et choisit un quota
+par joueur : illimité, 10, 20, 50 ou une valeur personnalisée de 1 à 500. Le
+nombre de réserves se règle indépendamment, de 0 à 10. Les limites sont
+contrôlées par le serveur. Les choix restent attribués à leur contributeur,
+les doublons sont évités, les réserves complètent les quotas incomplets et
+l’ordre alterne les contributeurs puis les équipes lorsque le mode équipe
+est actif. La collecte peut être minutée, thématique, masquée ou verrouillée.
+
+Les téléphones contribuent par QR code : recherche locale d’abord, puis ajout
+ou téléchargement si nécessaire. Le joueur voit sa progression et ses ajouts,
+puis peut voter après la partie. L’hôte conserve la bibliothèque et les
+commandes d’administration ; un fichier manquant n’interrompt pas toute la
+soirée.
 ## 5. Doublons
 
 ```bash

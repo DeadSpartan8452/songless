@@ -21,8 +21,11 @@ $sourceRelative = 'app\build\outputs\apk\release\app-release.apk'
 $sourceApk = Join-Path $androidRoot $sourceRelative
 $generatedNodeAssets = Join-Path $androidRoot 'build\nodejs-assets'
 $generatedAppBuild = Join-Path $androidRoot 'app\build'
+$generatedAutolinking = Join-Path $androidRoot 'build\generated\autolinking'
 $nodeMobileRoot = Join-Path $projectRoot `
     'mobile\android-host\node_modules\nodejs-mobile-react-native\android'
+$androidPackageRoot = Join-Path $projectRoot 'mobile\android-host'
+$reactNativePackage = Join-Path $androidPackageRoot 'node_modules\react-native'
 $generatedNodeMobileBuild = Join-Path $nodeMobileRoot 'build'
 $outputApk = Join-Path $outputRoot 'Songless-Android.apk'
 $payloadBuilder = Join-Path $projectRoot 'scripts\build-android-payload.js'
@@ -73,6 +76,21 @@ function Unprotect-Password([string]$encrypted) {
 
 if (-not (Test-Path -LiteralPath $gradle)) {
     throw 'Le projet Android Songless est incomplet.'
+}
+
+if (-not (Test-Path -LiteralPath (Join-Path $reactNativePackage 'package.json'))) {
+    $npm = (Get-Command 'npm.cmd' -ErrorAction Stop).Source
+    Write-Host 'Installation des dependances Android verrouillees...'
+    Push-Location $androidPackageRoot
+    try {
+        & $npm ci --ignore-scripts `
+            --registry=https://registry.npmjs.org/
+        if ($LASTEXITCODE -ne 0) {
+            throw 'Installation des dependances Android impossible.'
+        }
+    } finally {
+        Pop-Location
+    }
 }
 
 New-Item -ItemType Directory -Force -Path $signingRoot | Out-Null
@@ -158,6 +176,7 @@ $nodeMobileRootFull = [IO.Path]::GetFullPath($nodeMobileRoot).TrimEnd('\')
 $generatedBuildDirectories = @(
     @($generatedNodeAssets, (Join-Path $androidRootFull 'build\nodejs-assets')),
     @($generatedAppBuild, (Join-Path $androidRootFull 'app\build')),
+    @($generatedAutolinking, (Join-Path $androidRootFull 'build\generated\autolinking')),
     @($generatedNodeMobileBuild, (Join-Path $nodeMobileRootFull 'build'))
 )
 foreach ($entry in $generatedBuildDirectories) {

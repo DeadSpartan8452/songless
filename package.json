@@ -68,7 +68,7 @@
   "dependencies": {
     "adm-zip": "^0.6.1",
     "express": "5.2.1",
-    "multer": "2.3.0",
+    "multer": "2.4.0",
     "music-metadata": "^11.15.0",
     "qrcode": "^1.5.4",
     "youtubei.js": "18.0.0"

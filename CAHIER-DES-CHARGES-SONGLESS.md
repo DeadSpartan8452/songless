@@ -970,3 +970,60 @@ bits, SHA-256
 `18F69D1341EFB65C1904D69B0DB6E2C8B65262F2C32BCFEB0F4BEEB9F7D9FDDB`.
 Les deux variantes de `libnode.so` restent les seules bibliothèques non natives
 16 Kio. Le test POCO a été explicitement retiré de cette livraison. Aucun push.
+
+## Extension du 30 septembre 2026 — hôte Linux x86-64
+
+Le livrable hôte vise désormais trois systèmes : kit Windows x64, paquet Linux
+x86-64 et APK Android. Le paquet Linux est une archive transférable autonome
+avec runtime Node.js vérifié par SHA-256 depuis la distribution officielle ; il
+ne contient aucune musique, métadonnée locale, profil ou clé privée. Son
+lanceur crée les données dans l'espace personnel XDG, ouvre l'interface sur la
+boucle locale et peut activer le mode Wi-Fi avec `--lan`. Le tunnel Tailscale
+Internet reste propre au lanceur Windows.
+
+Limites à garder explicites : la cible Linux demande glibc 2.28 ou plus récente,
+ClamAV pour importer/télécharger des fichiers audio, et `yt-dlp` avec `ffmpeg`
+pour les téléchargements YouTube. La génération sur Windows et la lecture de
+l'archive ne prouvent pas encore que l'hôte s'exécute correctement sur une
+machine Linux réelle ; cette validation doit rester distincte du build.
+
+## Vérification de la copie locale — 30 septembre 2026
+
+L’éditeur de playlist participative accepte maintenant un quota par joueur
+illimité, prédéfini (10, 20, 50) ou personnalisé de 1 à 500, et un plafond de
+0 à 10 réserves réglé séparément. Le serveur applique les plafonds ; en mode
+illimité, la collecte reste bornée par la capacité maximale de 5 000 titres et
+par les limites générales de requêtes.
+
+Vérification exécutée sur la copie locale : `npm.cmd test` a parcouru toute la
+suite configurée, du tirage par sources à la charge HTTP. Les audits playlist
+sont à 16 scénarios ; le contrôle statique couvre 39 contrôles d’interface ;
+la matrice des permissions contrôle 61 routes administratives refusées et les
+routes playlists sans jeton joueur ; la charge finale a atteint 32 joueurs,
+640 états, huit flux audio et un p95 de 16 ms. Tous les contrôles de la suite
+ont terminé avec succès.
+
+Cette vérification porte sur le code source local. Les trois archives dans
+`dist/` ont été produites avant cette modification du quota et ne contiennent
+pas encore cette amélioration. Aucun push GitHub n’a été fait. Linux réel,
+téléphone POCO et compatibilité Android native complète 16 Kio restent des
+validations matérielles distinctes non réalisées.
+### Paquets reconstruits après le contrôle — 30 septembre 2026
+
+Les trois livrables ont ensuite été reconstruits depuis cette source locale et
+le contrôle des archives a retrouvé le nouvel éditeur de quota dans Windows,
+Linux et Android, ainsi que la logique serveur dans les trois paquets :
+
+- Windows x64 : 243 226 323 octets, SHA-256
+  `9E22E033F7DE5493DC774228CBEE72090ACF667EC4AC301E0844A6FE92BCE8F3` ;
+- Linux x86-64 : 50 655 235 octets, SHA-256
+  `B0D4817409427DCFE7BC87A2EC97E67C6B5D5FF88304730EFA435AD4B7360577` ;
+- Android APK : 212 188 551 octets, SHA-256
+  `B3F8CACEE7AE17C50CD906CCA8E467DDFA5CC834457A0131926F1BBBDADE2764`.
+
+Gradle Release a réussi en 10 min 9 s. `apksigner` confirme une signature v2,
+un signataire RSA 4096 bits. Le rapport natif Android 16 Kio conserve deux
+bibliothèques `libnode.so` en compatibilité ; l’essai POCO reste à faire. Le
+paquet Linux a été reconstruit et relu, mais n’a pas été démarré sur Linux réel.
+Les archives courantes ont été sauvegardées et leurs empreintes revérifiées dans
+`Codex\Songless-Source-Backup-20260930\release-packages-quota-20260930`.

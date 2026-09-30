@@ -16,6 +16,39 @@ param(
 $ErrorActionPreference = 'Stop'
 
 $dossier = Split-Path -Parent $MyInvocation.MyCommand.Path
+$racineBibliotheque = Join-Path $env:USERPROFILE 'Codex\Songless'
+$dossierMusique = Join-Path $racineBibliotheque 'musiques'
+$fichierMetadonnees = Join-Path $racineBibliotheque 'metadata.json'
+$dossierDonnees = Join-Path $env:LOCALAPPDATA 'Songless-Data'
+$extensionsAudio = @('.mp3', '.wav', '.ogg', '.m4a', '.mp4', '.aac', '.flac', '.opus')
+if (-not (Test-Path -LiteralPath $dossierMusique -PathType Container)) {
+    throw "Bibliotheque Songless introuvable : $dossierMusique"
+}
+if (-not (Test-Path -LiteralPath $fichierMetadonnees -PathType Leaf)) {
+    throw "Metadonnees Songless introuvables : $fichierMetadonnees"
+}
+$nombreMorceaux = @(Get-ChildItem -LiteralPath $dossierMusique -File |
+    Where-Object { $extensionsAudio -contains $_.Extension.ToLowerInvariant() }).Count
+if ($nombreMorceaux -eq 0) {
+    throw "Bibliotheque Songless vide : $dossierMusique"
+}
+New-Item -ItemType Directory -Force -Path $dossierDonnees | Out-Null
+$env:SONGLESS_MUSIC_DIR = $dossierMusique
+$env:SONGLESS_METADATA_FILE = $fichierMetadonnees
+$env:SONGLESS_METADATA_BACKUP_DIR = Join-Path $racineBibliotheque 'metadata-backups'
+$env:SONGLESS_DATA_FILE = Join-Path $dossierDonnees 'songless-data.json'
+$env:SONGLESS_BACKUP_DIR = Join-Path $dossierDonnees 'metadata-backups'
+$env:SONGLESS_INSTANCE_KEY_FILE = Join-Path $dossierDonnees 'instance-key.dpapi'
+$env:SONGLESS_TAILSCALE_ACCOUNT_FILE = Join-Path $dossierDonnees 'tailscale-account.txt'
+$processPath = [Environment]::GetEnvironmentVariable(
+    'Path', [EnvironmentVariableTarget]::Process
+)
+[Environment]::SetEnvironmentVariable(
+    'Path', $null, [EnvironmentVariableTarget]::Process
+)
+[Environment]::SetEnvironmentVariable(
+    'Path', $processPath, [EnvironmentVariableTarget]::Process
+)
 $port    = 3000
 $url     = "http://localhost:$port"
 
@@ -137,9 +170,12 @@ if (-not (Test-Path (Join-Path $dossier 'node_modules'))) {
 # Volontairement réduite et non masquée : la fermer arrête Songless.
 $argsNode = if ($Lan) { 'node server.js --lan' } else { 'node server.js' }
 $env:SONGLESS_INSTANCE_SECRET = $instanceToken
+$journalServeur = Join-Path $dossierDonnees 'server.log'
+$journalErreur = Join-Path $dossierDonnees 'server-error.log'
+$commandeServeur = "title Songless - serveur (fermer cette fenetre arrete le jeu) && $argsNode 1> `"$journalServeur`" 2> `"$journalErreur`" || pause"
 
 Start-Process -FilePath 'cmd.exe' `
-    -ArgumentList '/c', "title Songless - serveur (fermer cette fenetre arrete le jeu) && $argsNode || pause" `
+    -ArgumentList '/d', '/c', $commandeServeur `
     -WorkingDirectory $dossier -WindowStyle Minimized
 
 # --- On attend que le serveur réponde avant d'ouvrir le navigateur,

@@ -491,7 +491,7 @@
                 <select id="format-rounds" aria-label="Nombre de morceaux">
                   <option value="5">Rapide · 5 morceaux</option>
                   <option value="10" selected>Normale · 10 morceaux</option>
-                  <option value="20">Longue · 20 morceaux</option>
+                  <option value="20">20 morceaux</option>
                   <option value="50">Marathon · 50 morceaux</option>
                   <option value="0">Sans fin</option>
                 </select>
@@ -1578,11 +1578,20 @@
             </label>
             <label>Quota par joueur
               <select id="playlist-edit-quota">
-                <option value="0">Sans quota</option>
-                <option value="10">10 + 2 réserves</option>
-                <option value="20">20 + 2 réserves</option>
-                <option value="50">50 + 2 réserves</option>
+                <option value="0">Illimité</option>
+                <option value="10">10 morceaux</option>
+                <option value="20">20 morceaux</option>
+                <option value="50">50 morceaux</option>
+                <option value="custom">Personnalisé</option>
               </select>
+            </label>
+          </div>
+          <div class="playlist-editor-pair">
+            <label id="playlist-custom-quota-wrap" class="hidden">Quota personnalisé (1 à 500)
+              <input id="playlist-edit-custom-quota" type="number" min="1" max="500" step="1" value="30">
+            </label>
+            <label>Réserves par joueur (0 à 10)
+              <input id="playlist-edit-reserves" type="number" min="0" max="10" step="1" value="2">
             </label>
           </div>
           <div class="playlist-editor-pair">

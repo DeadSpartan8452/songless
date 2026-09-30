@@ -32,7 +32,7 @@ const registerPlaylistRoutes = require('./lib/playlist-routes');
 const playlistTools = require('./lib/playlists');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = Number(process.env.PORT) || 3000;
 const INTERNET = process.argv.includes('--internet');
 const PUBLIC_PORT = Number(process.env.SONGLESS_PUBLIC_PORT) || 3001;
 const PUBLIC_URL = /^https:\/\/[a-z0-9.-]+(?::\d+)?$/i.test(String(process.env.SONGLESS_PUBLIC_URL || '').replace(/\/$/, ''))

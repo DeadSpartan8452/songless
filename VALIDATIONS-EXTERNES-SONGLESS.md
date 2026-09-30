@@ -1,6 +1,6 @@
 # Validations externes restantes — Songless
 
-Dernière mise à jour vérifiée : **22 septembre 2026** (APK actualisé).
+Dernière mise à jour vérifiée : **30 septembre 2026** (paquets hôtes mis à jour).
 
 Ce document ne remplace pas le cahier des charges. Il regroupe uniquement les
 contrôles qui ne peuvent pas être terminés sur le PC actuel. Aucun achat n'est
@@ -12,11 +12,13 @@ compatible avant l'exécution réelle de sa section.
 Cette validation exige le téléphone déverrouillé et l'accord de Manaël au moment
 de l'installation. L'APK à tester est :
 
-`dist\Songless-Android\Songless-Android.apk`
+`dist\Songless-Android.apk`
 
-Empreinte SHA-256 attendue :
+Empreinte SHA-256 de l’APK livré :
 
-`E7AAF42F913FD4201F10B97437F9E1F9C0499A23251FAE0E6AB66F585B776F79`
+`B3F8CACEE7AE17C50CD906CCA8E467DDFA5CC834457A0131926F1BBBDADE2764`
+
+Taille : 212 188 551 octets. Signature v2 vérifiée, un signataire RSA 4096 bits.
 
 Parcours utilisateur à contrôler :
 
@@ -117,11 +119,32 @@ sensibles restent volontairement verrouillés tant que la confiance est faible.
 Ne jamais certifier automatiquement une correspondance ambiguë ni confondre la
 date de mise en ligne d'une vidéo avec la première sortie du morceau.
 
-## 5. Autres systèmes
+## 5. Linux x86-64 — hôte
 
-macOS, Linux, iPhone et iPad ne sont pas des plateformes hôtes prévues. Ils
-restent utilisables par navigateur comme joueur, TV ou télécommande. Aucun
-installateur hôte ni contrôle de distribution n'est attendu sur ces systèmes.
+Paquet créé : `dist\Songless-Linux-x64.tar.gz` (Node.js x64 intégré, glibc 2.28
+minimum). L’archive a été relue sur Windows, les exécutables ont leurs bits
+d’exécution POSIX et aucun contenu de bibliothèque/profil n’y figure. Le
+lancement réel sur Linux n’a pas encore été effectué faute d’environnement
+Linux disponible sur ce PC.
+
+À valider sur une machine Linux x86-64 :
+
+1. Extraire l’archive et lancer `./Songless` dans un terminal.
+2. Vérifier l’ouverture du navigateur sur l’hôte et l’arrêt en fermant le terminal.
+3. Relancer Songless et confirmer qu’aucun second serveur ne se crée.
+4. Tester `./Songless --lan` avec un téléphone du même Wi-Fi.
+5. Vérifier l’import avec ClamAV et un téléchargement avec `yt-dlp` et `ffmpeg`.
+6. Noter la distribution, sa version et la version de glibc.
+
+Les données restent dans le dossier XDG personnel. Aucun droit administrateur
+ni dossier Windows n’est requis. Le tunnel Tailscale Internet n’est pas inclus
+dans le paquet Linux.
+
+## 6. Autres systèmes
+
+macOS, Linux ARM, iPhone et iPad ne sont pas des plateformes hôtes prévues.
+Ils restent utilisables par navigateur comme joueur, TV ou télécommande. Aucun
+installateur hôte n’est attendu sur ces systèmes.
 
 ## Critère de clôture
 
@@ -153,3 +176,57 @@ autorisation explicite de cette destination. Le PKCS12 contient l'alias
 correspond à l'empreinte recalculée et aucun fichier temporaire ne subsiste.
 Le mot de passe n'a été écrit dans aucun fichier. Il reste recommandé de copier
 ce dossier sur un support physique séparé du PC.
+
+## Mise à jour du 30 septembre 2026 — paquets Windows, Linux et Android
+
+Trois fichiers transférables sont générés par `Build Songless.bat` :
+
+- Windows x64 : `Songless-Windows-x64.zip`, 243 226 323 octets,
+  SHA-256 `9E22E033F7DE5493DC774228CBEE72090ACF667EC4AC301E0844A6FE92BCE8F3` ;
+- Linux x86-64 : `Songless-Linux-x64.tar.gz`, 50 655 235 octets,
+  SHA-256 `B0D4817409427DCFE7BC87A2EC97E67C6B5D5FF88304730EFA435AD4B7360577` ;
+- Android : `Songless-Android.apk`, 212 188 551 octets,
+  SHA-256 `B3F8CACEE7AE17C50CD906CCA8E467DDFA5CC834457A0131926F1BBBDADE2764`.
+
+Les contrôles ZIP/TAR confirment l’absence de musique, profils, métadonnées
+personnelles et clés ; le manifeste Windows indique `personalDataIncluded=false`.
+Le runtime Node Linux 24.15.0 a été téléchargé depuis `nodejs.org` et comparé
+au manifeste SHA-256 officiel. Les dépendances Linux ont été installées depuis
+`registry.npmjs.org` avec leurs scripts d’installation désactivés. Multer est
+passé en 2.4.0 ; l’audit npm de l’ensemble Linux indique zéro vulnérabilité
+connue.
+
+L’APK a été reconstruit, signé en v2 et vérifié. Le contrôle d’alignement Android
+retrouve encore deux bibliothèques `libnode.so` non natives 16 Kio ; l’APK reste
+fonctionnel en mode de compatibilité. Le test POCO n’a pas été effectué et reste
+hors du chemin de clôture demandé le 22 septembre.
+
+La reconstruction Android a d’abord révélé un cache d’autolink Gradle contenant
+des chemins vers l’ancien clone Gemini. Le constructeur purge désormais ce
+cache précis avant Gradle ; il restaure également les dépendances Android
+verrouillées si elles manquent. La compilation Release est ensuite passée.
+
+Le paquet Linux n’a pas encore été démarré sur une machine Linux réelle. Les
+tests du projet n’ont pas été lancés. Aucune publication, installation Android
+sur téléphone, modification du système Windows ou dépense n’a été effectuée.
+
+## Recontrôle local du 30 septembre 2026
+
+La suite complète `npm.cmd test` a été exécutée après les changements du jour
+et s’est terminée sans échec. Cela valide les scénarios automatisés sur la
+copie source locale, mais ne change pas les validations matérielles ouvertes :
+lancement Linux réel, essai sur POCO et compatibilité native Android 16 Kio.
+Les paquets présents dans `dist/` précèdent le changement de quotas et devront
+être reconstruits pour le transférer dans Windows, Linux et Android.
+### Reconstruction des trois livrables — 30 septembre 2026
+
+Le constructeur local a régénéré Windows, Linux et Android après la modification
+des quotas. L’inspection des paquets confirme que l’interface et la logique
+serveur mises à jour sont présentes dans les trois fichiers. APK Release
+reconstruit avec Gradle, signature v2 et signataire RSA 4096 bits vérifiés.
+Les empreintes et tailles finales sont dans la section 30 septembre du cahier
+des charges et dans `dist\Songless-SHA256SUMS.txt`.
+
+Cette reconstruction ne remplace pas les essais matériels : le paquet Linux
+n’a pas été lancé sur Linux réel, le POCO n’a pas été testé et deux `libnode.so`
+restent en mode de compatibilité Android 16 Kio.

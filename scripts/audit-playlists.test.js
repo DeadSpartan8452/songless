@@ -11,8 +11,7 @@ function test(name, fn) {
   fn();
   passed++;
   console.log(`✓ ${name}`);
-}
-function base(overrides = {}) {
+}function base(overrides = {}) {
   return playlists.cleanPlaylist({ id: 'pl_test', nom: 'Soirée test', collaborative: true,
     quotaPerPlayer: 10, reservePerPlayer: 2, status: 'collecting',
     settings: { hideOthers: true, fairOrder: true, avoidSameArtist: true }, ...overrides });
@@ -26,7 +25,8 @@ test('migration transparente des anciennes collections', () => {
 });
 test('quotas limités aux valeurs prévues', () => {
   assert.equal(base({ quotaPerPlayer: 20 }).quotaPerPlayer, 20);
-  assert.equal(base({ quotaPerPlayer: 17 }).quotaPerPlayer, 0);
+  assert.equal(base({ quotaPerPlayer: 17 }).quotaPerPlayer, 17);
+  assert.equal(base({ quotaPerPlayer: 900 }).quotaPerPlayer, 500);
 });
 test('quota principal imposé côté moteur', () => {
   const item = base();
@@ -97,6 +97,7 @@ test('limite de propositions adaptée au quota de la collecte', () => {
   assert.equal(playlists.proposalLimit(base({ quotaPerPlayer: 10, reservePerPlayer: 2 }), true), 12);
   assert.equal(playlists.proposalLimit(base({ quotaPerPlayer: 20, reservePerPlayer: 2 }), true), 22);
   assert.equal(playlists.proposalLimit(base({ quotaPerPlayer: 50, reservePerPlayer: 2 }), true), 52);
+  assert.equal(playlists.proposalLimit(base({ quotaPerPlayer: 0 }), true), 5000);
   assert.equal(playlists.proposalLimit(base({ quotaPerPlayer: 50, status: 'locked' }), true), 10);
   assert.equal(playlists.proposalLimit(base({ quotaPerPlayer: 50 }), false), 10);
 });
@@ -144,4 +145,12 @@ test('persistance et rétrocompatibilité du stockage', () => {
   fs.rmSync(root, { recursive: true, force: true });
 });
 
-console.log(`\n${passed} tests playlists réussis.`);
+test('unlimited main quota keeps independent reserve cap', () => {
+  const item = base({ quotaPerPlayer: 0, reservePerPlayer: 1 });
+  for (let i = 0; i < 12; i++) playlists.addTrack(item,
+    { trackId: `u${i}`, profileId: 'p1', profileName: 'Player 1' });
+  playlists.addTrack(item,
+    { trackId: 'reserve', profileId: 'p1', profileName: 'Player 1', reserve: true });
+  assert.throws(() => playlists.addTrack(item,
+    { trackId: 'reserve2', profileId: 'p1', profileName: 'Player 1', reserve: true }), /1 morceaux/);
+});console.log(`\n${passed} tests playlists réussis.`);
