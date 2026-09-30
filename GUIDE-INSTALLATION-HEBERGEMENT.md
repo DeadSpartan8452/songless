@@ -1,6 +1,6 @@
 # Guide d’installation et d’hébergement Songless
 
-Les versions prêtes à l’emploi sont publiées dans les [Releases GitHub](https://github.com/DeadSpartan8452/songless/releases). Choisis le fichier correspondant à l’appareil qui hébergera la partie. Les joueurs peuvent rejoindre avec un navigateur récent.
+Les versions prêtes à l’emploi seront disponibles dans les [Releases GitHub](https://github.com/DeadSpartan8452/songless/releases) dès la publication de la première Release. Choisis ensuite le fichier correspondant à l’appareil qui hébergera la partie. Les joueurs peuvent rejoindre avec un navigateur récent.
 
 ## Windows
 
@@ -59,4 +59,3 @@ Le PC hôte doit rester allumé et connecté à Internet pendant toute la partie
 - `Songless-Linux-x64.tar.gz` : hôte Linux x86-64.
 - `Songless-Android.apk` : application hôte Android.
 - `Songless-SHA256SUMS.txt` : empreintes SHA-256 des trois paquets, pour vérifier les téléchargements.
-
