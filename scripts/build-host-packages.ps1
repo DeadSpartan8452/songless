@@ -103,10 +103,14 @@ $linuxPackaging = Join-Path $linuxStage 'packaging\linux'
 New-Item -ItemType Directory -Force -Path $linuxPackaging | Out-Null
 Copy-Item -LiteralPath (Join-Path $root 'packaging\linux\launcher.js') `
     -Destination (Join-Path $linuxPackaging 'launcher.js')
+Copy-Item -LiteralPath (Join-Path $root 'packaging\linux\update-after-exit.sh') `
+    -Destination (Join-Path $linuxPackaging 'update-after-exit.sh')
 Copy-Item -LiteralPath (Join-Path $root 'packaging\linux\Songless') `
     -Destination (Join-Path $linuxStage 'Songless')
 Copy-Item -LiteralPath (Join-Path $root 'packaging\linux\README-Linux.txt') `
     -Destination (Join-Path $linuxStage 'README-Linux.txt')
+Copy-Item -LiteralPath (Join-Path $root 'VERSION') `
+    -Destination (Join-Path $linuxStage 'VERSION')
 
 $windowsOnly = Get-ChildItem -LiteralPath (Join-Path $linuxApp 'tools') `
     -File -Recurse -Force | Where-Object {

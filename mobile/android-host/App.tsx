@@ -2,6 +2,7 @@ import React, {useEffect, useRef, useState} from 'react';
 import {
   ActivityIndicator,
   NativeModules,
+  Pressable,
   SafeAreaView,
   StatusBar,
   StyleSheet,
@@ -25,14 +26,78 @@ type FolderResult = {
 };
 
 const LOCAL_URL = /^http:\/\/(127\.0\.0\.1|localhost):3000(?:\/|$)/i;
+const REPOSITORY = 'DeadSpartan8452/songless';
+const APK_ASSET = 'Songless-Android.apk';
+const CHECKSUM_ASSET = 'Songless-SHA256SUMS.txt';
 
 function App(): React.JSX.Element {
   const started = useRef(false);
   const webView = useRef<WebView>(null);
   const [adminUrl, setAdminUrl] = useState('');
   const [error, setError] = useState('');
+  const [launched, setLaunched] = useState(false);
+  const [version, setVersion] = useState('…');
+  const [updateStatus, setUpdateStatus] = useState('Les mises à jour téléchargent uniquement le programme.');
+
+  const updateFromGitHub = async () => {
+    const updater = NativeModules.SonglessUpdater;
+    if (!updater || typeof updater.installUpdate !== 'function') {
+      setUpdateStatus('Le module de mise à jour Android est indisponible.');
+      return;
+    }
+    setUpdateStatus('Recherche de la version publiée sur GitHub…');
+    try {
+      const response = await fetch(
+        `https://api.github.com/repos/${REPOSITORY}/releases/latest`,
+        {headers: {Accept: 'application/vnd.github+json'}},
+      );
+      if (!response.ok) throw new Error(`GitHub répond HTTP ${response.status}.`);
+      const release = await response.json();
+      if (!release.tag_name || release.draft || release.prerelease) {
+        throw new Error('Aucune version stable n’est publiée.');
+      }
+      const latest = String(release.tag_name).replace(/^v/i, '');
+      if (latest === version.replace(/^v/i, '')) {
+        setUpdateStatus(`Songless est déjà à jour (${release.tag_name}).`);
+        return;
+      }
+      const apk = (release.assets || []).find((asset: any) => asset.name === APK_ASSET);
+      const sums = (release.assets || []).find((asset: any) => asset.name === CHECKSUM_ASSET);
+      if (!apk?.browser_download_url || !sums?.browser_download_url) {
+        throw new Error('APK ou manifeste SHA-256 absent de la Release.');
+      }
+      const sumResponse = await fetch(sums.browser_download_url);
+      if (!sumResponse.ok) throw new Error('Le manifeste SHA-256 GitHub est inaccessible.');
+      const sumText = await sumResponse.text();
+      const line = sumText.split(/\r?\n/).find((entry: string) =>
+        new RegExp(`^([a-f0-9]{64})\\s+${APK_ASSET}$`, 'i').test(entry),
+      );
+      const expectedHash = line?.trim().split(/\s+/)[0];
+      if (!expectedHash) throw new Error('Empreinte de l’APK absente du manifeste.');
+      setUpdateStatus(`Téléchargement de Songless ${release.tag_name}…`);
+      const result = await updater.installUpdate(
+        apk.browser_download_url,
+        expectedHash,
+        release.tag_name,
+      );
+      setUpdateStatus(String(result || 'Confirme l’installation dans Android.'));
+    } catch (updateError) {
+      const detail = updateError instanceof Error
+        ? updateError.message
+        : 'La mise à jour Android a échoué.';
+      setUpdateStatus(detail);
+    }
+  };
 
   useEffect(() => {
+    const updater = NativeModules.SonglessUpdater;
+    if (updater && typeof updater.getVersion === 'function') {
+      updater.getVersion()
+        .then((value: string) => setVersion(value))
+        .catch(() => setVersion('inconnue'));
+    } else {
+      setVersion('inconnue');
+    }
     let readyTimer: ReturnType<typeof setInterval> | undefined;
     const handleMessage = (payload: HostMessage) => {
       if (payload?.type === 'ready' && payload.url && LOCAL_URL.test(payload.url)) {
@@ -93,7 +158,7 @@ function App(): React.JSX.Element {
     }
   };
 
-  if (adminUrl) {
+  if (adminUrl && launched) {
     return (
       <SafeAreaView style={styles.webShell}>
         <StatusBar barStyle="light-content" backgroundColor="#09090b" />
@@ -129,7 +194,7 @@ function App(): React.JSX.Element {
             <Text style={styles.errorTitle}>Démarrage interrompu</Text>
             <Text style={styles.detail}>{error}</Text>
           </>
-        ) : (
+        ) : !adminUrl ? (
           <>
             <ActivityIndicator size="large" color="#7c3aed" />
             <Text style={styles.bootTitle}>Songless démarre</Text>
@@ -137,13 +202,37 @@ function App(): React.JSX.Element {
               Préparation du serveur privé, de la bibliothèque et de la session administrateur…
             </Text>
           </>
+        ) : (
+          <>
+            <Text style={styles.bootTitle}>Songless est prêt</Text>
+            <Text style={styles.detail}>
+              Lance la version installée ou recherche une mise à jour.
+            </Text>
+          </>
         )}
         <View style={styles.statusRow}>
           <View style={[styles.dot, error ? styles.dotError : styles.dotActive]} />
-          <Text style={styles.statusText}>{error ? 'ACTION REQUISE' : 'PRÉPARATION LOCALE'}</Text>
+          <Text style={styles.statusText}>
+            {error ? 'ACTION REQUISE' : adminUrl ? 'PRÊT' : 'PRÉPARATION LOCALE'}
+          </Text>
         </View>
       </View>
-      <Text style={styles.footer}>Aucune musique n’est envoyée sur Internet</Text>
+      <Text style={styles.version}>Version installée : {version}</Text>
+      <Pressable
+        accessibilityRole="button"
+        disabled={!adminUrl}
+        onPress={() => setLaunched(true)}
+        style={[styles.menuButton, !adminUrl && styles.menuButtonDisabled]}>
+        <Text style={styles.menuButtonText}>Lancer la version actuelle</Text>
+      </Pressable>
+      <Pressable
+        accessibilityRole="button"
+        onPress={updateFromGitHub}
+        style={[styles.menuButton, styles.updateButton]}>
+        <Text style={styles.menuButtonText}>Mise à jour</Text>
+      </Pressable>
+      <Text style={styles.updateStatus}>{updateStatus}</Text>
+      <Text style={styles.footer}>Les chansons locales ne viennent pas de GitHub.</Text>
     </SafeAreaView>
   );
 }
@@ -161,6 +250,12 @@ const styles = StyleSheet.create({
   bootTitle: {color: '#f4f4f5', fontSize: 20, fontWeight: '700', marginTop: 24, textAlign: 'center'},
   errorTitle: {color: '#ff6b6b', fontSize: 21, fontWeight: '800'},
   detail: {color: '#a1a1aa', fontSize: 15, lineHeight: 23, marginTop: 12, textAlign: 'center'},
+  version: {color: '#d4d4d8', fontSize: 12, marginTop: 18, textAlign: 'center'},
+  menuButton: {width: '100%', minHeight: 48, borderRadius: 10, backgroundColor: '#7c3aed', alignItems: 'center', justifyContent: 'center', marginTop: 12, paddingHorizontal: 12},
+  updateButton: {backgroundColor: '#27272a', borderWidth: 1, borderColor: '#7c3aed'},
+  menuButtonDisabled: {opacity: 0.45},
+  menuButtonText: {color: '#fff', fontSize: 15, fontWeight: '800'},
+  updateStatus: {color: '#a1a1aa', minHeight: 36, fontSize: 11, lineHeight: 16, marginTop: 8, textAlign: 'center'},
   statusRow: {flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 30},
   dot: {width: 7, height: 7, borderRadius: 4, marginRight: 9},
   dotActive: {backgroundColor: '#10b981'},

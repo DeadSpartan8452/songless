@@ -25,6 +25,7 @@ class MainApplication : Application(), ReactApplication {
         override fun getPackages(): List<ReactPackage> =
             PackageList(this).packages.apply {
               add(SonglessFolderPackage())
+              add(SonglessUpdaterPackage())
             }
 
         override fun getJSMainModuleName(): String = "index"

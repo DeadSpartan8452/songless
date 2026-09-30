@@ -96,7 +96,7 @@ function Install-Songless {
   }
   Mirror-Directory (Join-Path $PayloadRoot 'app') (Join-Path $InstallRoot 'app')
   Mirror-Directory (Join-Path $PayloadRoot 'runtime') (Join-Path $InstallRoot 'runtime')
-  foreach ($Name in @('Lancer-Songless.ps1', 'Songless.bat', 'Songless-local.bat', 'Songless-WiFi.bat', 'Songless-Internet.bat')) {
+  foreach ($Name in @('Lancer-Songless.ps1', 'Update-Songless.ps1', 'Songless.bat', 'Songless-local.bat', 'Songless-WiFi.bat', 'Songless-Internet.bat', 'VERSION')) {
     Copy-Item -Force -LiteralPath (Join-Path $PayloadRoot $Name) -Destination (Join-Path $InstallRoot $Name)
   }
   if (-not $NoShortcut) {

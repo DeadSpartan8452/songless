@@ -16,23 +16,20 @@ param(
 $ErrorActionPreference = 'Stop'
 
 $dossier = Split-Path -Parent $MyInvocation.MyCommand.Path
-$racineBibliotheque = Join-Path $env:USERPROFILE 'Codex\Songless'
+$dossierDonnees = Join-Path $env:LOCALAPPDATA 'Songless-Data'
+$racineHistorique = Join-Path $env:USERPROFILE 'Codex\Songless'
+$dossierHistoriqueMusique = Join-Path $racineHistorique 'musiques'
+$fichierHistoriqueMetadonnees = Join-Path $racineHistorique 'metadata.json'
+if ((Test-Path -LiteralPath $dossierHistoriqueMusique -PathType Container) -and
+    (Test-Path -LiteralPath $fichierHistoriqueMetadonnees -PathType Leaf)) {
+    $racineBibliotheque = $racineHistorique
+} else {
+    $racineBibliotheque = $dossierDonnees
+}
 $dossierMusique = Join-Path $racineBibliotheque 'musiques'
 $fichierMetadonnees = Join-Path $racineBibliotheque 'metadata.json'
-$dossierDonnees = Join-Path $env:LOCALAPPDATA 'Songless-Data'
-$extensionsAudio = @('.mp3', '.wav', '.ogg', '.m4a', '.mp4', '.aac', '.flac', '.opus')
-if (-not (Test-Path -LiteralPath $dossierMusique -PathType Container)) {
-    throw "Bibliotheque Songless introuvable : $dossierMusique"
-}
-if (-not (Test-Path -LiteralPath $fichierMetadonnees -PathType Leaf)) {
-    throw "Metadonnees Songless introuvables : $fichierMetadonnees"
-}
-$nombreMorceaux = @(Get-ChildItem -LiteralPath $dossierMusique -File |
-    Where-Object { $extensionsAudio -contains $_.Extension.ToLowerInvariant() }).Count
-if ($nombreMorceaux -eq 0) {
-    throw "Bibliotheque Songless vide : $dossierMusique"
-}
 New-Item -ItemType Directory -Force -Path $dossierDonnees | Out-Null
+New-Item -ItemType Directory -Force -Path $dossierMusique | Out-Null
 $env:SONGLESS_MUSIC_DIR = $dossierMusique
 $env:SONGLESS_METADATA_FILE = $fichierMetadonnees
 $env:SONGLESS_METADATA_BACKUP_DIR = Join-Path $racineBibliotheque 'metadata-backups'

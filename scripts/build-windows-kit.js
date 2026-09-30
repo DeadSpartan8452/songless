@@ -96,9 +96,10 @@ function build() {
   const tools = copyOptionalTools(appRoot);
 
   const templates = path.join(ROOT, 'packaging', 'windows');
-  for (const name of ['Lancer-Songless.ps1', 'Songless.bat', 'Songless-local.bat', 'Songless-WiFi.bat', 'Songless-Internet.bat']) {
+  for (const name of ['Lancer-Songless.ps1', 'Update-Songless.ps1', 'Songless.bat', 'Songless-local.bat', 'Songless-WiFi.bat', 'Songless-Internet.bat']) {
     fs.copyFileSync(path.join(templates, name), path.join(PAYLOAD, name));
   }
+  fs.copyFileSync(path.join(ROOT, 'VERSION'), path.join(PAYLOAD, 'VERSION'));
   for (const name of ['Installer-Songless.ps1', 'Installer Songless.bat']) {
     fs.copyFileSync(path.join(templates, name), path.join(OUTPUT, name));
   }

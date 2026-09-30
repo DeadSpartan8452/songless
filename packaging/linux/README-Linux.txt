@@ -10,6 +10,7 @@ Installation et premier lancement
 1. Extraire Songless-Linux-x64.tar.gz dans un dossier accessible en écriture.
 2. Ouvrir un terminal dans le dossier extrait.
 3. Lancer : ./Songless
+4. Choisir « Lancer la version actuelle » ou « Mise à jour depuis GitHub ».
 
 Songless ouvre le navigateur sur l’ordinateur hôte. Pour démarrer le serveur,
 le terminal reste ouvert ; le fermer arrête Songless. Un second lancement
@@ -17,6 +18,13 @@ réutilise le serveur existant au lieu d’en créer un autre.
 
 Pour permettre aux téléphones du même réseau Wi-Fi de rejoindre la partie,
 lancer : ./Songless --lan
+
+Mise à jour
+----------
+
+La mise à jour ne remplace que les fichiers du programme. Les chansons,
+playlists, profils et réglages restent dans le dossier XDG personnel. Les
+archives GitHub ne servent jamais à télécharger des chansons.
 
 Données et compatibilité
 ------------------------

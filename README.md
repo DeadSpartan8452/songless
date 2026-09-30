@@ -3,8 +3,8 @@
 Clone de Songless / Heardle qui tourne sur ta machine, avec ta propre
 bibliothèque musicale.
 
-**Raccourci `Songless` sur le Bureau** : double-clic, ça démarre le serveur et
-ouvre le jeu. Rien d'autre à faire.
+**Raccourci `Songless` sur le Bureau** : double-clic pour ouvrir le mini-menu,
+puis choisir de lancer Songless ou de rechercher une mise à jour.
 
 ### Fichiers hôtes à transférer
 
@@ -15,7 +15,17 @@ empreintes. La compilation Linux récupère le runtime Node.js x64 depuis
 `nodejs.org` et vérifie sa somme SHA-256 officielle. Les bibliothèques, profils
 et clés personnels ne sont pas inclus dans les paquets.
 
-Le paquet Linux se lance depuis un terminal avec `./Songless` après extraction.
+Les paquets téléchargeables sont publiés dans les
+[Releases GitHub](https://github.com/DeadSpartan8452/songless/releases). Les
+menus Windows et Linux vérifient la dernière version stable et contrôlent son
+SHA-256 avant de remplacer les fichiers du programme. Sur Android, le menu
+télécharge l’APK puis Android demande de confirmer l’installation. Les mises à
+jour conservent chansons, playlists, profils et réglages ; elles ne téléchargent
+aucune chanson depuis GitHub. Une installation antérieure à la v1.0.0 doit
+télécharger et installer cette première version manuellement pour obtenir le
+bouton de mise à jour.
+
+Le paquet Linux ouvre son mini-menu dans le terminal avec `./Songless` après extraction.
 Il vise Linux x86-64 avec glibc 2.28 ou plus récente. Il héberge les parties en
 local et sur le Wi-Fi ; le tunnel Internet Tailscale reste disponible dans le
 kit Windows uniquement. ClamAV est requis pour importer ou télécharger des
@@ -152,9 +162,15 @@ configuré, un QR code ouvre directement l'invitation Internet sécurisée et un
 second bouton permet toujours de copier le lien. Sans tunnel, le QR code utilise
 automatiquement l'adresse du wifi local.
 
-Le mode Internet tourne exclusivement sur ce PC avec Tailscale Funnel. Il
-n'utilise aucun serveur distant personnel et n'ouvre aucun port entrant sur la
-box. Funnel fournit gratuitement une adresse `https://…ts.net` et son
+Le mode Internet intégré fonctionne uniquement sur Windows avec Tailscale
+Funnel. Linux et Android prennent actuellement en charge les parties locales
+et le Wi-Fi, sans Funnel intégré. Sur un autre PC Windows, installe Tailscale,
+connecte-le à un compte Tailscale dédié à cet hôte, autorise Funnel pour cet
+appareil dans le compte Tailscale puis lance Songless en mode Internet. Funnel
+expose alors le serveur de ce PC sous une adresse HTTPS ; les invités ouvrent
+le lien sans installer Tailscale. Le PC hôte doit rester allumé pendant la
+soirée. Aucun serveur Songless central n'est nécessaire et aucun port entrant
+n'est ouvert sur la box. Funnel fournit gratuitement une adresse `https://…ts.net` et son
 certificat ; Songless ajoute un secret d'invitation,
 des commandes d'hôte séparées, une limitation de débit, des en-têtes de sécurité,
 des URL distantes limitées à YouTube, un plafond mobile de 200 Mo et l'analyse

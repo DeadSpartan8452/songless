@@ -189,23 +189,20 @@ if (-not $OwnsInstanceLock) {
 }
 
 $ProjectRoot = Split-Path -Parent $PSScriptRoot
-$LibraryRoot = Join-Path $env:USERPROFILE 'Codex\Songless'
+$DataRoot = Join-Path $env:LOCALAPPDATA 'Songless-Data'
+$LegacyLibraryRoot = Join-Path $env:USERPROFILE 'Codex\Songless'
+$LegacyMusicDir = Join-Path $LegacyLibraryRoot 'musiques'
+$LegacyMetadataFile = Join-Path $LegacyLibraryRoot 'metadata.json'
+if ((Test-Path -LiteralPath $LegacyMusicDir -PathType Container) -and
+    (Test-Path -LiteralPath $LegacyMetadataFile -PathType Leaf)) {
+  $LibraryRoot = $LegacyLibraryRoot
+} else {
+  $LibraryRoot = $DataRoot
+}
 $LibraryMusicDir = Join-Path $LibraryRoot 'musiques'
 $LibraryMetadataFile = Join-Path $LibraryRoot 'metadata.json'
-$DataRoot = Join-Path $env:LOCALAPPDATA 'Songless-Data'
-if (-not (Test-Path -LiteralPath $LibraryMusicDir -PathType Container)) {
-  throw "Bibliotheque Songless introuvable : $LibraryMusicDir"
-}
-if (-not (Test-Path -LiteralPath $LibraryMetadataFile -PathType Leaf)) {
-  throw "Metadonnees Songless introuvables : $LibraryMetadataFile"
-}
-$AudioExtensions = @('.mp3', '.wav', '.ogg', '.m4a', '.mp4', '.aac', '.flac', '.opus')
-$LibraryAudioCount = @(Get-ChildItem -LiteralPath $LibraryMusicDir -File |
-  Where-Object { $AudioExtensions -contains $_.Extension.ToLowerInvariant() }).Count
-if ($LibraryAudioCount -eq 0) {
-  throw "Bibliotheque Songless vide : $LibraryMusicDir"
-}
 New-Item -ItemType Directory -Force -Path $DataRoot | Out-Null
+New-Item -ItemType Directory -Force -Path $LibraryMusicDir | Out-Null
 $env:SONGLESS_MUSIC_DIR = $LibraryMusicDir
 $env:SONGLESS_METADATA_FILE = $LibraryMetadataFile
 $env:SONGLESS_METADATA_BACKUP_DIR = Join-Path $LibraryRoot 'metadata-backups'
