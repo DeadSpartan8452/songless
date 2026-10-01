@@ -440,6 +440,11 @@
 
             <div class="party-podium hidden" id="party-podium"></div>
             <div class="party-players" id="party-players"></div>
+            <div class="party-admin-panel hidden" id="party-admin-panel">
+              <strong>Outils de l’hôte</strong>
+              <button type="button" class="ghost-btn" data-party-playback disabled>▶ Lecture</button>
+              <button type="button" class="ghost-btn" id="party-give-hint">Donner un indice de genre</button>
+            </div>
             <div class="party-player-actions" id="party-player-actions"></div>
             <div class="party-votes hidden" id="party-votes"></div>
 
@@ -466,6 +471,7 @@
             </section>
             <div class="party-host-actions hidden" id="party-host-actions">
               <button class="cta-btn" id="party-round-btn">Lancer la manche</button>
+              <button class="ghost-btn" type="button" data-party-playback disabled>▶ Lecture</button>
               <button class="ghost-btn" id="party-reveal-btn">Révéler et compter</button>
               <button class="ghost-btn" id="party-history-btn" title="Voir l'historique et palmarès des soirées">🏆 Palmarès</button>
               <button class="danger-btn-text" id="party-finish-btn">Terminer</button>
@@ -752,6 +758,10 @@
             <h2>Gérer votre Bibliothèque Musicale</h2>
             <p class="desktop-library-intro">Glissez-déposez des fichiers audio ci-dessous, ou ajoutez-les directement dans le dossier <code>musiques</code> de votre ordinateur.</p>
             <p class="mobile-library-intro hidden">Ajoutez des fichiers audio depuis le stockage de ce téléphone. Ils restent enregistrés localement sur cet appareil.</p>
+            <a class="metadata-review-launch" href="metadata-review.html">
+              <span class="metadata-review-launch-mark" aria-hidden="true">↗</span>
+              <span><strong>Révision musicale</strong><small>Artistes, genres et langues</small></span>
+            </a>
           </div>
 
           <div class="mobile-host-note hidden" id="mobile-host-note" role="status">
@@ -1059,6 +1069,8 @@
                 <input type="file" id="file-input" aria-label="Fichiers audio à importer"
                        accept="audio/*,.zip,application/zip" class="hidden">
               </div>
+              <label class="import-no-scan-option"><input type="checkbox" id="import-no-scan"> Import local sans analyse Songless</label>
+              <small class="import-security-note">À utiliser seulement pour un fichier de confiance. Le fichier reste soumis aux protections du système et aux contrôles de format.</small>
               <div class="import-report hidden" id="import-report"></div>
               <!-- Barre de progression de l'upload -->
               <div class="upload-progress-container hidden" id="upload-progress-container">
@@ -1084,6 +1096,9 @@
                 </select>
                 <select id="library-genre-detail-filter" aria-label="Filtrer par sous-genre">
                   <option value="">Tous les sous-genres</option>
+                </select>
+                <select id="library-language-filter" aria-label="Filtrer par langue chantée">
+                  <option value="">Toutes les langues</option>
                 </select>
                 <select id="library-year-filter" aria-label="Filtrer par année ou décennie">
                   <option value="">Toutes les années</option>

@@ -156,9 +156,34 @@ test('le joueur voit encore ses propres tentatives', () => {
 
 test('le mode classique permet de passer un palier', () => {
   const ctx = makeParty('classic');
+  ctx.first.host = true;
   startRound(ctx);
   partyStore.playerAction(ctx.party, ctx.first.token, 'skip');
   assert.strictEqual(ctx.first.currentAttempt, 1);
+});
+
+test('la lecture se met en pause et reprend à la position serveur', () => {
+  const ctx = makeParty('classic');
+  startRound(ctx);
+  const startedAt = ctx.party.playback.startedAt;
+  partyStore.command(ctx.party, ctx.hostToken, 'toggle-playback');
+  assert.ok(ctx.party.playback.pausedAt);
+  assert.throws(
+    () => partyStore.command(ctx.party, 'faux-jeton', 'toggle-playback'),
+    /réservée à l’hôte/i
+  );
+  ctx.party.playback.pausedAt -= 3000;
+  partyStore.command(ctx.party, ctx.hostToken, 'toggle-playback');
+  assert.strictEqual(ctx.party.playback.pausedAt, null);
+  assert.ok(ctx.party.playback.startedAt >= startedAt + 3000);
+  partyStore.command(ctx.party, ctx.hostToken, 'reveal', {
+    highlightOffset: 0, highlightDuration: 5, autoNext: true,
+  });
+  const nextAt = ctx.party.autoNextAt;
+  partyStore.command(ctx.party, ctx.hostToken, 'toggle-playback');
+  ctx.party.playback.pausedAt -= 3000;
+  partyStore.command(ctx.party, ctx.hostToken, 'toggle-playback');
+  assert.ok(ctx.party.autoNextAt >= nextAt + 3000);
 });
 
 test('le buzzer impose de buzzer avant de répondre', () => {
@@ -459,6 +484,7 @@ test('deux équipes à égalité conservent exactement le même score', () => {
 
 test('un easter egg reste serveur jusqu’au verdict et un skip final ne le révèle pas', () => {
   const ctx = makeParty();
+  ctx.first.host = true;
   partyStore.command(ctx.party, ctx.hostToken, 'start-round', {
     round: 1,
     trackId: 'portal-track',

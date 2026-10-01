@@ -35,6 +35,8 @@ function activeParty() {
   partyStore.command(created.party, created.hostToken, 'start-round', {
     round: 1, trackId: challenge.answerId, intruderChallenge: challenge,
   });
+  created.party.roundStartedAt = Date.now() - 10;
+  created.party.playback.startedAt = Date.now() - 10;
   return { ...created, first, second, challenge };
 }
 

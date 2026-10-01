@@ -7,6 +7,7 @@
   const STORAGE_CHALLENGES = 'songless_defis';
   const STORAGE_PARTY = 'songless_party';
   const STORAGE_PARTY_OPTIONS = 'songless_party_options';
+  const STORAGE_PARTY_SELECTION = 'songless_party_selection_filters';
 
   let collections = readLocal(STORAGE_COLLECTIONS, []);
   let challenges = readLocal(STORAGE_CHALLENGES, []);
@@ -19,6 +20,7 @@
   let syncingRound = false;
   let partyRoundStarting = false;
   let hostPartyPlayTimer = null;
+  let hostPartyLoopTimer = null;
   let partyAutoNextTimer = null;
   let partyAutoNextSignature = '';
   let partyAutoRevealRound = null;
@@ -32,6 +34,9 @@
   let hostPlaybackSignature = '';
   let partyActionSignature = '';
   let partySuggestionTimer = null;
+  let partyQrSignature = '';
+  const partyQrUrls = new Set();
+  const partyQrRequests = new WeakMap();
   let listSaveQueue = Promise.resolve();
   let partyOptions = readLocal(STORAGE_PARTY_OPTIONS, {});
 
@@ -708,6 +713,206 @@
     return normalizedPartyOptions(mode, partyOptions[mode]);
   }
 
+  const PARTY_SELECTION_FIELDS = [
+    { key: 'genre', label: 'Genre', empty: 'Tous les genres', trusted: isPartyGenreTrusted },
+    { key: 'genreDetail', label: 'Sous-genre', empty: 'Tous les sous-genres', trusted: isPartyGenreTrusted },
+    { key: 'artist', label: 'Artiste', empty: 'Tous les artistes', trusted: isPartyArtistTrusted },
+    { key: 'language', label: 'Langue', empty: 'Toutes les langues', trusted: isPartyLanguageTrusted },
+    { key: 'year', label: 'Année', empty: 'Toutes les années', trusted: isPartyYearTrusted },
+  ];
+  const PARTY_DRAW_COUNTS = [5, 10, 15, 20, 25, 30, 35, 40, 50, 60, 70, 80, 90, 100, 125, 150, 175, 200];
+
+  function isPartyGenreTrusted(track) {
+    if (typeof genreFiable === 'function') return genreFiable(track);
+    return Boolean(track && track.genre && track.genre !== 'Autre'
+      && ['high', 'medium'].includes(track.genreConfidence));
+  }
+
+  function isPartyArtistTrusted(track) {
+    if (typeof aUnArtiste === 'function') return aUnArtiste(track);
+    return Boolean(track && String(track.artist || '').trim()
+      && !/^artiste inconnu$/i.test(String(track.artist).trim()));
+  }
+
+  function isPartyLanguageTrusted(track) {
+    return Boolean(track && String(track.language || '').trim()
+      && ['high', 'medium'].includes(track.languageConfidence));
+  }
+
+  function isPartyYearTrusted(track) {
+    if (typeof anneeFiable === 'function') return anneeFiable(track);
+    const year = Number(track && track.year);
+    return Boolean(track && Number.isInteger(year) && year >= 1900
+      && year <= new Date().getFullYear() + 1
+      && ['high', 'medium'].includes(track.yearConfidence));
+  }
+
+  function partySelectionValues() {
+    const saved = readLocal(STORAGE_PARTY_SELECTION, {});
+    const filters = {};
+    for (const field of PARTY_SELECTION_FIELDS) {
+      const select = byId(`party-pick-${field.key}`);
+      const exclude = byId(`party-pick-${field.key}-exclude`);
+      filters[field.key] = {
+        value: select ? select.value : '',
+        exclude: Boolean(exclude && exclude.checked),
+      };
+    }
+    const drawCount = byId('party-pick-count');
+    return {
+      filters,
+      count: drawCount ? Number(drawCount.value) || 0 : Number(saved.count) || 0,
+      genreDraws: [...document.querySelectorAll('[data-party-genre-draw]')].map(row => ({
+        genre: row.querySelector('[data-genre-value]')?.value || '',
+        count: Number(row.querySelector('[data-genre-count]')?.value) || 0,
+      })).filter(draw => draw.genre && draw.count),
+    };
+  }
+
+  function savePartySelectionValues() {
+    writeLocal(STORAGE_PARTY_SELECTION, partySelectionValues());
+    updatePartySelectionCount();
+  }
+
+  function updatePartySelectionCount() {
+    const summary = byId('party-pick-summary');
+    if (!summary || typeof playlist === 'undefined') return;
+    const { filters, count } = partySelectionValues();
+    const available = filterPartySelection(playlist, filters).length;
+    const draws = partySelectionValues().genreDraws;
+    const draw = draws.length
+      ? draws.reduce((total, item) => total + Math.min(item.count, playlist.filter(track =>
+        fieldValueMatches(track, 'genre', item.genre) && filterPartySelection([track], filters).length
+      ).length), 0)
+      : (count ? Math.min(count, available) : available);
+    summary.textContent = count
+      ? `${draw} morceau${draw > 1 ? 's' : ''} tiré${draw > 1 ? 's' : ''} sur ${available} disponible${available > 1 ? 's' : ''}.`
+      : `${available} morceau${available > 1 ? 's' : ''} disponible${available > 1 ? 's' : ''} après filtres.`;
+  }
+
+  function fieldValueMatches(track, key, value) {
+    if (!isPartyGenreTrusted(track)) return false;
+    return String(track[key] || '').localeCompare(String(value || ''), 'fr-FR', { sensitivity: 'base' }) === 0;
+  }
+
+  function filterPartySelection(source, filters = partySelectionValues().filters) {
+    return source.filter(track => PARTY_SELECTION_FIELDS.every(field => {
+      const rule = filters[field.key] || {};
+      if (!rule.value) return true;
+      const raw = track && track[field.key];
+      const candidate = field.trusted(track) ? String(raw || '').trim() : '';
+      const matches = candidate.localeCompare(String(rule.value), 'fr-FR', { sensitivity: 'base' }) === 0;
+      return rule.exclude ? !matches : matches;
+    }));
+  }
+
+  function refreshPartySelectionFilterOptions() {
+    const panel = byId('party-selection-filters');
+    if (!panel || typeof playlist === 'undefined') return;
+    const saved = readLocal(STORAGE_PARTY_SELECTION, {});
+    for (const field of PARTY_SELECTION_FIELDS) {
+      const select = byId(`party-pick-${field.key}`);
+      if (!select) continue;
+      const previous = select.value || (saved.filters && saved.filters[field.key]
+        ? saved.filters[field.key].value : '');
+      const values = [...new Set(playlist
+        .filter(track => field.trusted(track))
+        .map(track => String(track[field.key] || '').trim())
+        .filter(Boolean))]
+        .sort((a, b) => a.localeCompare(b, 'fr-FR'));
+      select.replaceChildren(new Option(field.empty, ''));
+      for (const value of values) {
+        const option = new Option(value, value);
+        select.add(option);
+      }
+      select.value = values.includes(previous) ? previous : '';
+      const exclude = byId(`party-pick-${field.key}-exclude`);
+      if (exclude && saved.filters && saved.filters[field.key]) {
+        exclude.checked = Boolean(saved.filters[field.key].exclude);
+      }
+    }
+    const countSelect = byId('party-pick-count');
+    if (countSelect) {
+      const previousCount = countSelect.value || String(Number(saved.count) || 0);
+      countSelect.value = [...countSelect.options].some(option => option.value === previousCount)
+        ? previousCount : '0';
+    }
+    updatePartySelectionCount();
+  }
+
+  function ensurePartySelectionFilters() {
+    if (byId('party-selection-filters')) return;
+    const themeSelect = byId('party-theme-filter');
+    const options = themeSelect && themeSelect.closest('.party-options');
+    if (!options) return;
+
+    const panel = document.createElement('fieldset');
+    panel.id = 'party-selection-filters';
+    panel.className = 'party-selection-filters';
+    panel.innerHTML = `
+      <legend>Filtres de la sélection pour la soirée</legend>
+      <p class="party-selection-hint">Combine plusieurs critères. Un critère exclu retire les morceaux correspondants.</p>
+      <div class="party-selection-grid"></div>
+      <div class="party-selection-draw">
+        <label>Pioche aléatoire
+          <select id="party-pick-count">
+            <option value="0">Toute la sélection filtrée</option>
+            ${PARTY_DRAW_COUNTS.map(count => `<option value="${count}">${count} morceaux</option>`).join('')}
+          </select>
+        </label>
+        <small id="party-pick-summary" aria-live="polite"></small>
+      </div>`;
+    const genreBox = document.createElement('div');
+    genreBox.className = 'party-genre-draws';
+    genreBox.innerHTML = '<strong>Pioche par genre</strong><div class="party-genre-draw-list"></div><button type="button" class="secondary-btn" data-add-genre-draw>+ Ajouter un genre</button>';
+    panel.append(genreBox);
+    const grid = panel.querySelector('.party-selection-grid');
+    for (const field of PARTY_SELECTION_FIELDS) {
+      const group = document.createElement('div');
+      group.className = 'party-selection-field';
+      const label = document.createElement('label');
+      label.htmlFor = `party-pick-${field.key}`;
+      label.textContent = field.label;
+      const select = document.createElement('select');
+      select.id = `party-pick-${field.key}`;
+      const excludeLabel = document.createElement('label');
+      excludeLabel.className = 'party-selection-exclude';
+      excludeLabel.htmlFor = `party-pick-${field.key}-exclude`;
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.id = `party-pick-${field.key}-exclude`;
+      excludeLabel.append(checkbox, document.createTextNode(' Exclure'));
+      group.append(label, select, excludeLabel);
+      grid.append(group);
+    }
+    options.append(panel);
+    const addGenreDraw = (savedDraw = {}, persist = true) => {
+      const list = panel.querySelector('.party-genre-draw-list');
+      if (list.children.length >= 20) return;
+      const row = document.createElement('div');
+      row.className = 'party-genre-draw-row';
+      row.setAttribute('data-party-genre-draw', '');
+      const genres = [...new Set(playlist.filter(isPartyGenreTrusted).map(track => String(track.genre || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'fr-FR'));
+      row.innerHTML = `<select data-genre-value aria-label="Genre">${genres.map(genre => `<option value="${escapeHtml(genre)}">${escapeHtml(genre)}</option>`).join('')}</select><select data-genre-count aria-label="Quantité">${PARTY_DRAW_COUNTS.map(count => `<option value="${count}">${count} chansons</option>`).join('')}</select><button type="button" data-remove-genre-draw aria-label="Retirer ce genre">×</button>`;
+      if (savedDraw.genre && genres.includes(savedDraw.genre)) row.querySelector('[data-genre-value]').value = savedDraw.genre;
+      if (savedDraw.count && PARTY_DRAW_COUNTS.includes(Number(savedDraw.count))) row.querySelector('[data-genre-count]').value = String(savedDraw.count);
+      list.append(row);
+      if (persist) savePartySelectionValues();
+    };
+    panel.addEventListener('click', event => {
+      if (event.target.closest('[data-add-genre-draw]')) addGenreDraw();
+      if (event.target.closest('[data-remove-genre-draw]')) {
+        event.target.closest('[data-party-genre-draw]').remove();
+        savePartySelectionValues();
+      }
+    });
+    panel.addEventListener('change', savePartySelectionValues);
+    panel.addEventListener('focusin', refreshPartySelectionFilterOptions);
+    for (const draw of Array.isArray(readLocal(STORAGE_PARTY_SELECTION, {}).genreDraws)
+      ? readLocal(STORAGE_PARTY_SELECTION, {}).genreDraws.slice(0, 20) : []) addGenreDraw(draw, false);
+    refreshPartySelectionFilterOptions();
+  }
+
   function updateThemeFilterGenres() {
     const select = byId('party-theme-filter');
     if (!select || typeof playlist === 'undefined') return;
@@ -726,6 +931,8 @@
 
   function renderPartyOptions() {
     updateThemeFilterGenres();
+    ensurePartySelectionFilters();
+    refreshPartySelectionFilterOptions();
     const value = currentPartyOptions();
     const mode = byId('party-mode').value;
     byId('party-answer-mode').value = value.answer;
@@ -823,7 +1030,18 @@
       trackList = trackList.filter(t => genreFiable(t)
         && String(t.genre || '').toLowerCase() === targetGenre);
     }
-    if (!trackList.length && !(playlistSource && playlistSource.collaborative)) {
+    ensurePartySelectionFilters();
+    refreshPartySelectionFilterOptions();
+    const selection = partySelectionValues();
+    const matchingTracks = filterPartySelection(trackList, selection.filters);
+    const selectedTrackCount = selection.genreDraws.length
+      ? selection.genreDraws.reduce((total, draw) => total + Math.min(draw.count, matchingTracks.filter(track => fieldValueMatches(track, 'genre', draw.genre)).length), 0)
+      : selection.count
+      ? Math.min(selection.count, matchingTracks.length) : matchingTracks.length;
+    if (selection.count && matchingTracks.length > 0 && matchingTracks.length < selection.count) {
+      showToast(`La sélection ne contient que ${matchingTracks.length} morceau${matchingTracks.length > 1 ? 's' : ''} pour cette pioche.`, 'warn');
+    }
+    if (!matchingTracks.length && !(playlistSource && playlistSource.collaborative)) {
       return showToast('Aucun morceau ne correspond à cette thématique dans ta sélection.', 'warn');
     }
     const trackIds = trackList.map(track => String(track.id));
@@ -837,9 +1055,10 @@
           audioFx: settings.audioFx,
           totalRounds: roundChoice === 'infinite'
             ? 'infinite'
-            : Math.min(Number(roundChoice) || 10, trackIds.length),
+            : Math.min(Number(roundChoice) || 10, selectedTrackCount),
           seed: currentSeed,
           settings,
+          selectionFilters: selection,
           trackIds,
         }),
       });
@@ -884,15 +1103,51 @@
 
   function partyUrl() {
     if (!party) return '';
-    const query = new URLSearchParams({ playerToken: party.playerToken || '' });
-    if (party.hostToken) query.set('hostToken', party.hostToken);
-    return `/api/party/${encodeURIComponent(party.code)}?${query}`;
+    return `/api/party/${encodeURIComponent(party.code)}`;
+  }
+
+  function loadProtectedPartyQr(image, endpoint, payload, key) {
+    if (!image || partyQrRequests.get(image) === key) return;
+    partyQrRequests.set(image, key);
+    fetch(endpoint, {
+      method: 'POST',
+      cache: 'no-store',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    }).then(response => {
+      if (!response.ok) throw new Error('QR Songless indisponible.');
+      return response.blob();
+    }).then(blob => {
+      if (partyQrRequests.get(image) !== key) return;
+      const previous = image.dataset.objectUrl;
+      if (previous) {
+        URL.revokeObjectURL(previous);
+        partyQrUrls.delete(previous);
+      }
+      const objectUrl = URL.createObjectURL(blob);
+      partyQrUrls.add(objectUrl);
+      image.dataset.objectUrl = objectUrl;
+      image.src = objectUrl;
+    }).catch(() => {
+      if (partyQrRequests.get(image) === key) image.alt = 'QR code indisponible';
+    });
+  }
+
+  function clearPartyQrUrls() {
+    for (const url of partyQrUrls) URL.revokeObjectURL(url);
+    partyQrUrls.clear();
+    partyQrSignature = '';
   }
 
   async function pollParty() {
     if (!party) return;
     try {
-      receivePartyState(await window.songlessShared.api(partyUrl()));
+      receivePartyState(await window.songlessShared.api(partyUrl(), {
+        headers: {
+          'X-Songless-Player': party.playerToken || '',
+          'X-Songless-Host': party.hostToken || '',
+        },
+      }));
     } catch (error) {
       if (/introuvable/i.test(error.message)) leaveParty();
       else console.warn('Salon multijoueur indisponible :', error.message);
@@ -1211,11 +1466,20 @@
   function syncHostPartyPlayback(next, force = false) {
     if (!next || !['round', 'reveal'].includes(next.status)
         || !next.playback || !currentTrack) return;
+    if (next.mode === 'auction'
+        && next.auction && next.auction.activeProfileId !== next.viewerProfileId) {
+      clearTimeout(hostPartyPlayTimer);
+      clearTimeout(hostPartyLoopTimer);
+      pauseAudio();
+      hostPlaybackSignature = '';
+      return;
+    }
     const playback = next.playback;
-    const signature = `${next.round}:${next.status}:${Number(playback.startedAt) || 0}:${Number(playback.pausedAt) || 0}:${Number(playback.duration) || 0}:${(next.buzzer || {}).solvedByProfileId || ''}`;
+    const signature = `${next.round}:${next.status}:${Number(playback.startedAt) || 0}:${Number(playback.pausedAt) || 0}:${Number(playback.duration) || 0}:${(next.buzzer || {}).solvedByProfileId || ''}:${next.auction && next.auction.activeProfileId || ''}`;
     if (!force && signature === hostPlaybackSignature) return;
     hostPlaybackSignature = signature;
     clearTimeout(hostPartyPlayTimer);
+    clearTimeout(hostPartyLoopTimer);
 
     if (playback.pausedAt) {
       pauseAudio();
@@ -1249,8 +1513,36 @@
         elapsed,
       };
       if (next.status === 'reveal' || playback.reveal) jouerPassageResultat(sync);
-      else playAudio(sync);
+      else {
+        playAudio(sync);
+        const speed = Math.max(0.1, Number(playback.speed) || 1);
+        const duration = Math.max(0.1, Number(playback.duration) || 0.2);
+        const loopDelay = Number(playback.loopDelay)
+          || Math.min(4.2, Math.max(2.2, 2 + duration * 0.15));
+        const remaining = Math.max(0, duration - elapsed);
+        scheduleHostPartyLoop(next.round, signature, playback,
+          ((remaining + loopDelay) / speed) * 1000);
+      }
     }, delay);
+  }
+
+  function scheduleHostPartyLoop(round, signature, playback, delay) {
+    hostPartyLoopTimer = setTimeout(() => {
+      if (!partyState || partyState.status !== 'round' || partyState.round !== round
+          || partyState.playback && partyState.playback.pausedAt
+          || hostPlaybackSignature !== signature) return;
+      playAudio({
+        offset: Number(playback.offset) || 0,
+        duration: Number(playback.duration) || 0.2,
+        elapsed: 0,
+      });
+      const speed = Math.max(0.1, Number(playback.speed) || 1);
+      const duration = Math.max(0.1, Number(playback.duration) || 0.2);
+      const loopDelay = Number(playback.loopDelay)
+        || Math.min(4.2, Math.max(2.2, 2 + duration * 0.15));
+      scheduleHostPartyLoop(round, signature, playback,
+        ((duration + loopDelay) / speed) * 1000);
+    }, Math.max(0, delay));
   }
 
   function primePartyHighlight(track, round) {
@@ -1299,7 +1591,8 @@
   }
 
   function schedulePartyAutoNext(next) {
-    if (!next || !next.isHost || next.status !== 'reveal' || !next.autoNextAt) {
+    if (!next || !next.isHost || next.status !== 'reveal' || !next.autoNextAt
+        || next.playback && next.playback.pausedAt) {
       clearTimeout(partyAutoNextTimer);
       partyAutoNextTimer = null;
       partyAutoNextSignature = '';
@@ -1389,11 +1682,12 @@
     const qrKind = internetUrl ? 'internet' : (lanUrl ? 'lan' : '');
     qrWrapper.classList.toggle('hidden', !partyState.isHost || !qrKind);
     if (partyState.isHost && qrKind) {
-      const qrSource = `/api/party/${encodeURIComponent(party.code)}/qr.svg?hostToken=${encodeURIComponent(party.hostToken)}&kind=${qrKind}`;
-      if (qrImage.dataset.source !== qrSource) {
-        qrImage.src = qrSource;
-        qrImage.dataset.source = qrSource;
-      }
+      loadProtectedPartyQr(
+        qrImage,
+        `/api/party/${encodeURIComponent(party.code)}/qr.svg`,
+        { hostToken: party.hostToken, kind: qrKind },
+        `invite:${party.code}:${qrKind}`
+      );
       qrLabel.innerText = qrKind === 'internet'
         ? 'Fonctionne à distance grâce au lien HTTPS'
         : 'Téléphone connecté au même Wi-Fi';
@@ -1414,16 +1708,12 @@
         if (!['http:', 'https:'].includes(parsed.protocol)) continue;
         accessUrl = parsed.href;
       } catch (_) { continue; }
-      const accessToken = new URL(accessUrl).searchParams.get('access');
+      const accessToken = new URLSearchParams(new URL(accessUrl).hash.slice(1)).get('access');
       if (!accessToken) continue;
-      const qrSource = `/api/party/${encodeURIComponent(party.code)}/access-qr.svg`
-        + `?hostToken=${encodeURIComponent(party.hostToken)}`
-        + `&accessToken=${encodeURIComponent(accessToken)}`
-        + `&role=${encodeURIComponent(role)}`;
       const [title, description] = accessLabels[role];
       deviceQrCards.push(`
         <article class="party-device-qr-card">
-          <img src="${escapeHtml(qrSource)}" alt="QR code ${escapeHtml(title)}">
+          <img data-party-qr-role="${escapeHtml(role)}" alt="QR code ${escapeHtml(title)}">
           <div>
             <strong>${escapeHtml(title)}</strong>
             <small>${escapeHtml(description)} · valable 3 h</small>
@@ -1433,7 +1723,25 @@
     }
     if (deviceQrGrid) {
       deviceQrGrid.classList.toggle('hidden', deviceQrCards.length === 0);
-      deviceQrGrid.innerHTML = deviceQrCards.join('');
+      const nextSignature = deviceQrCards.join('|');
+      if (partyQrSignature !== nextSignature) {
+        partyQrSignature = nextSignature;
+        deviceQrGrid.innerHTML = deviceQrCards.join('');
+      }
+      for (const role of ['tv', 'remote_admin']) {
+        const grant = party.accessGrants && party.accessGrants[role];
+        if (!grant || !grant.url) continue;
+        let accessToken = '';
+        try { accessToken = new URLSearchParams(new URL(grant.url, window.location.origin).hash.slice(1)).get('access') || ''; } catch (_) {}
+        if (!accessToken) continue;
+        const image = deviceQrGrid.querySelector(`[data-party-qr-role="${role}"]`);
+        loadProtectedPartyQr(
+          image,
+          `/api/party/${encodeURIComponent(party.code)}/access-qr.svg`,
+          { hostToken: party.hostToken, accessToken, role },
+          `access:${party.code}:${role}:${accessToken}`
+        );
+      }
     }
 
     renderPartyPodium(partyState);
@@ -1458,12 +1766,24 @@
           </div>
           <span class="party-answer">${partyAnswerLabel(player)} · session ${Number(player.session && player.session.correct) || 0}/${Number(player.session && player.session.rounds) || 0}</span>
           <span class="party-score">${Number(player.score) || 0} pt<small>${player.cooperation ? `+${Number(player.cooperation.contribution) || 0} pts pour l’équipe` : `${Number(player.globalStats && player.globalStats.wins) || 0} victoire${Number(player.globalStats && player.globalStats.wins) > 1 ? 's' : ''} globale${Number(player.globalStats && player.globalStats.wins) > 1 ? 's' : ''}`}</small></span>
+          ${partyState.isHost && !player.host ? `<span class="party-admin-actions"><button type="button" data-party-admin="unstuck-player" data-profile-id="${escapeHtml(player.profileId)}">Débloquer</button><button type="button" data-party-admin="kick-player" data-profile-id="${escapeHtml(player.profileId)}">Exclure 60 s</button><button type="button" data-party-admin="ban-player" data-profile-id="${escapeHtml(player.profileId)}">Bannir</button></span>` : ''}
         </div>`;
     }).join('');
+    let hintNode = byId('party-admin-hint');
+    if (!hintNode) {
+      hintNode = document.createElement('div');
+      hintNode.id = 'party-admin-hint';
+      hintNode.className = 'party-admin-hint hidden';
+      byId('party-players').after(hintNode);
+    }
+    const hint = partyState.adminHint;
+    hintNode.textContent = hint && hint.genre ? `Indice de l’hôte : genre ${hint.genre}` : '';
+    hintNode.classList.toggle('hidden', !hint || !hint.genre);
     renderPartyChat();
     renderPartyTyping();
 
     byId('party-host-actions').classList.toggle('hidden', !partyState.isHost);
+    byId('party-admin-panel').classList.toggle('hidden', !partyState.isHost);
     byId('party-round-btn').disabled = partyRoundStarting
       || partyState.status === 'round' || partyState.status === 'finished';
     byId('party-round-btn').innerText = partyState.finalDuel && partyState.finalDuel.active
@@ -1473,6 +1793,18 @@
       ? 'Terminer la partie'
       : partyState.round > 0 ? 'Manche suivante' : 'Lancer la manche';
     byId('party-reveal-btn').disabled = partyState.status !== 'round';
+    const playbackButtonEnabled = ['round', 'reveal'].includes(partyState.status)
+      && Boolean(partyState.playback)
+      && !(partyState.mode === 'buzzer' && partyState.buzzer
+        && partyState.buzzer.activeProfileId);
+    document.querySelectorAll('[data-party-playback]').forEach(button => {
+      button.disabled = !partyState.isHost || !playbackButtonEnabled;
+      button.innerText = partyState.playback && partyState.playback.pausedAt
+        ? '▶ Lecture' : '⏸ Pause';
+      button.setAttribute('aria-pressed', String(Boolean(
+        partyState.playback && partyState.playback.pausedAt
+      )));
+    });
     renderPlayerActions();
     renderPartyVotes();
   }
@@ -1996,12 +2328,12 @@
     const threshold = Number(votes.threshold) || 1;
     let buttonsHtml = '';
 
-    if (['classic', 'confidence', 'cooperation', 'joker', 'missions'].includes(partyState.mode)
+    if (['classic', 'confidence', 'cooperation', 'royale', 'duel', 'joker', 'missions'].includes(partyState.mode)
         && votes.nextStep && votes.nextStep.nextDuration) {
       buttonsHtml += `
         <button class="party-vote${votes.nextStep.voted ? ' voted' : ''}"
                 id="party-vote-step">
-          ⏭ Débloquer palier suivant (${votes.nextStep.nextDuration}s) <strong>${Number(votes.nextStep.count) || 0}/${threshold}</strong>
+          ⏭ Débloquer palier suivant (${votes.nextStep.nextDuration}s) <strong>${Number(votes.nextStep.count) || 0}/${threshold} · 70 %</strong>
         </button>
       `;
     }
@@ -2010,12 +2342,15 @@
       buttonsHtml += `
         <button class="party-vote${votes.skip.voted ? ' voted' : ''}"
                 id="party-vote-skip"${votes.skip.passed ? ' disabled' : ''}>
-          ⏭ Passer la manche entière <strong>${Number(votes.skip.count) || 0}/${threshold}</strong>
+          ⏭ Voter pour passer la manche <strong>${Number(votes.skip.count) || 0}/${threshold} · 70 %</strong>
         </button>
       `;
     }
 
     if (buttonsHtml) {
+      if (votes.skip && votes.skip.result === 'nul') buttonsHtml += '<small class="vote-result">Vote nul : abstentions ou votes insuffisants.</small>';
+      else if (votes.skip && votes.skip.result === 'passe') buttonsHtml += '<small class="vote-result">Vote accepté : la manche va être révélée.</small>';
+      else if (votes.nextStep && votes.nextStep.result === 'palier') buttonsHtml += '<small class="vote-result">Palier suivant débloqué.</small>';
       zone.innerHTML = buttonsHtml;
       zone.classList.remove('hidden');
     } else {
@@ -2245,7 +2580,7 @@
         const inp = byId('party-answer-input');
         if (inp) {
           if (previousVal && !inp.value) inp.value = previousVal;
-          if (hadFocus || document.activeElement !== inp) inp.focus();
+          if (hadFocus && document.activeElement !== inp) inp.focus();
           try { if (previousVal) inp.setSelectionRange(selStart, selEnd); } catch (_) {}
         }
         return;
@@ -2274,9 +2609,9 @@
     const attemptIndex = Number(me.currentAttempt) || 0;
     const currentDur = paliers[attemptIndex] !== undefined ? paliers[attemptIndex] : paliers[0];
     const nextDur = paliers[attemptIndex + 1];
-    const skipLabel = nextDur !== undefined
+    const skipLabel = me && me.host && nextDur !== undefined
       ? `Passer (+${(nextDur - currentDur).toFixed(1).replace('.0', '')}s)`
-      : 'Dernier essai !';
+      : '';
     const attemptsList = Array.isArray(me.attempts) && me.attempts.length
       ? `<div class="party-attempts-history">${me.attempts.map(att => `<span class="party-attempt-badge ${att.type}">${att.type === 'skipped' ? '↷ Passé' : `❌ ${escapeHtml(att.text || 'Raté')}`}</span>`).join('')}</div>`
       : '';
@@ -2289,7 +2624,7 @@
     const inp = byId('party-answer-input');
     if (inp) {
       if (previousVal && !inp.value) inp.value = previousVal;
-      if (hadFocus || document.activeElement !== inp) inp.focus();
+      if (hadFocus && document.activeElement !== inp) inp.focus();
       try { if (previousVal) inp.setSelectionRange(selStart, selEnd); } catch (_) {}
     }
   }
@@ -2646,6 +2981,7 @@
     partyAutoRevealRound = null;
     partyHighlightRound = null;
     partyHighlightPromise = null;
+    clearPartyQrUrls();
     partyLastChatId = 0;
     pauseAudio();
     pollTimer = null;
@@ -2865,6 +3201,10 @@
     }
 
     byId('party-room').addEventListener('click', event => {
+      if (event.target.closest('[data-party-playback]')) {
+        partyCommand('toggle-playback').catch(showPartyError);
+        return;
+      }
       const suggestion = event.target.closest('[data-party-suggestion]');
       if (suggestion) {
         const input = byId('party-answer-input');
@@ -2886,6 +3226,20 @@
       if (reactionBtn) {
         const emoji = reactionBtn.getAttribute('data-reaction');
         partyPlayerAction('reaction', { emoji }).catch(showPartyError);
+        return;
+      }
+
+      const adminButton = event.target.closest('[data-party-admin]');
+      if (adminButton) {
+        const action = adminButton.getAttribute('data-party-admin');
+        partyCommand(action, { profileId: adminButton.getAttribute('data-profile-id') })
+          .catch(showPartyError);
+        return;
+      }
+
+      if (event.target.closest('#party-give-hint')) {
+        partyCommand('give-hint', { genre: currentTrack && currentTrack.genre || '' })
+          .catch(showPartyError);
         return;
       }
 
@@ -3206,14 +3560,22 @@
   }
 
   function blocksManualPlayback() {
-    return Boolean(party && partyState && partyState.status === 'round');
+    return Boolean(party && partyState
+      && ['round', 'reveal'].includes(partyState.status));
+  }
+
+  function toggleHostPartyPlayback() {
+    if (!party || !partyState || !['round', 'reveal'].includes(partyState.status)
+        || !partyState.isHost) return false;
+    partyCommand('toggle-playback').catch(showPartyError);
+    return true;
   }
 
   window.songlessExpansions = {
     filterPlaylist, onRoundStart, onRoundEnd, beforeAdvance,
     startPlaylist,
     sourceBalanceAllowed: () => !party && selectedKind !== 'challenge',
-    shouldStayInGame, blocksManualPlayback,
+    shouldStayInGame, blocksManualPlayback, toggleHostPartyPlayback,
   };
 
   document.addEventListener('DOMContentLoaded', () => {

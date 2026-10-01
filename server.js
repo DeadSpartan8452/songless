@@ -17,6 +17,7 @@ const health = require('./lib/health');
 const playerStore = require('./lib/player-store');
 const partyStore = require('./lib/party');
 const partyEngineModule = require('./lib/party-engine');
+const partySelection = require('./lib/party-selection');
 const partySuggestions = require('./lib/party-suggestions');
 const partyIntruder = require('./lib/party-intruder');
 const partyEasterEggs = require('./lib/party-easter-eggs');
@@ -222,10 +223,17 @@ const remoteUpload = multer({
   limits: { fileSize: REMOTE_UPLOAD_MAX, files: 1 },
 });
 
-// Middleware
-app.use('/api/sources/assign/preview', express.json({limit:'2mb'}));
-app.use(express.json());
+// Le catalogue complet ne contient que des identifiants et peut dépasser 100 Ko.
+// Les autres routes gardent une limite stricte afin d'éviter les gros payloads.
+app.use((req, res, next) => {
+  const limit = req.path === '/api/party/create' ? '8mb'
+    : req.path === '/api/sources/assign/preview' ? '2mb' : '100kb';
+  express.json({ limit })(req, res, next);
+});
 app.use((err, req, res, next) => {
+  if (err && err.type === 'entity.too.large') {
+    return res.status(413).json({ error: 'La sélection envoyée est trop volumineuse. Réduis-la ou utilise une playlist enregistrée.' });
+  }
   if (err instanceof SyntaxError && err.status === 400 && 'body' in err) {
     return res.status(400).json({ error: 'Payload JSON invalide.' });
   }
@@ -322,8 +330,11 @@ app.use((req, res, next) => {
   const partyAudio = req.path.match(/^\/api\/party\/([^/]+)\/audio$/);
   if (req.method === 'GET' && partyAudio) {
     const party = partyStore.get(decodeURIComponent(partyAudio[1]));
-    const role = party && partyStore.accessRole(party, req.query.accessToken);
-    if (party && (partyStore.findPlayer(party, req.query.playerToken)
+    const role = party && partyStore.accessRole(party, req.get('X-Songless-Access'));
+    const player = party && partyStore.findPlayer(party, req.get('X-Songless-Player'));
+    const allowedPlayer = player && (party.mode !== 'auction'
+      || party.auction && party.auction.activeProfileId === player.profileId);
+    if (party && (allowedPlayer
       || role === 'tv' || role === 'remote_admin')) return next();
     return res.status(403).json({ error: 'Accès audio réservé aux joueurs de cette partie.' });
   }
@@ -350,11 +361,16 @@ app.use((req, res, next) => {
   if (req.path.startsWith('/api/party/')) {
     const match = req.path.match(/^\/api\/party\/([^/]+)/);
     const party = match && partyStore.get(decodeURIComponent(match[1]));
+    const playerToken = req.get('X-Songless-Player') || (req.body && req.body.playerToken);
+    const authenticatedPlayer = party && partyStore.findPlayer(party, playerToken);
     const accessRole = party && partyStore.accessRole(
       party,
       req.get('X-Songless-Access') || req.query.accessToken || (req.body && req.body.accessToken)
     );
-    if (!paired && !invited && !accessRole) {
+    const invitedCode = String(req.get('X-Songless-Party') || '').toUpperCase();
+    const invitedForParty = invited && match
+      && invitedCode === String(decodeURIComponent(match[1])).toUpperCase();
+    if (!paired && !invitedForParty && !accessRole && !authenticatedPlayer) {
       return res.status(403).json({ error: 'Invitation Songless invalide ou expirée.' });
     }
     if (req.path === '/api/party/create') {
@@ -547,8 +563,9 @@ function profileById(id) {
 
 function partyInviteUrl(base, party) {
   if (!base) return null;
-  const query = new URLSearchParams({ party: party.code, invite: party.inviteToken });
-  return `${base}/controller.html?${query}`;
+  const query = new URLSearchParams({ party: party.code });
+  const fragment = new URLSearchParams({ invite: party.inviteToken });
+  return `${base}/controller.html?${query}#${fragment}`;
 }
 
 function estLocal(req) {
@@ -563,11 +580,9 @@ function estLocal(req) {
 function partyAccessUrl(base, party, issued) {
   if (!base) return null;
   const page = issued.role === 'tv' ? 'tv.html' : 'remote.html';
-  const query = new URLSearchParams({
-    party: party.code,
-    access: issued.accessToken,
-  });
-  return `${base}/${page}?${query}`;
+  const query = new URLSearchParams({ party: party.code });
+  const fragment = new URLSearchParams({ access: issued.accessToken });
+  return `${base}/${page}?${query}#${fragment}`;
 }
 
 function validPartyTrackIds(values) {
@@ -575,7 +590,7 @@ function validPartyTrackIds(values) {
   const available = new Set(listAudioFiles());
   const valid = [];
   const seen = new Set();
-  for (const value of values.slice(0, 5000)) {
+  for (const value of values.slice(0, partySelection.MAX_PARTY_TRACK_IDS)) {
     const id = String(value || '');
     const resolved = resoudreMorceau(id);
     if (!resolved || !available.has(resolved.fileName) || seen.has(id)) continue;
@@ -623,13 +638,15 @@ async function sha256File(filePath) {
   }
 }
 
-async function partyTrackIdsAfterBlacklist(values, mode, settings = {}) {
+async function partyTrackIdsAfterBlacklist(values, mode, settings = {}, selectionInput = null) {
   const validIds = validPartyTrackIds(values);
   const built = await tracksFromIds(validIds);
+  const selection = partySelection.normalizeSelection(selectionInput);
+  const selectionEligible = partySelection.filterTracks(built, selection);
   const answer = String(settings.answer || 'titre');
   const theme = String(settings.theme || 'all');
   const allowed = new Set(blacklist.evaluate(
-    built.filter(track => {
+    selectionEligible.filter(track => {
       if (answer === 'annee' && !trackMetadata.isTrusted(track, 'year')) return false;
       if (theme.startsWith('decade:')) {
         if (!trackMetadata.isTrusted(track, 'year')) return false;
@@ -647,15 +664,41 @@ async function partyTrackIdsAfterBlacklist(values, mode, settings = {}) {
     playerStore.blacklistRules(),
     mode
   ).allowed.map(track => track.id));
-  const eligible = built.filter(track => allowed.has(track.id));
+  const eligible = selectionEligible.filter(track => allowed.has(track.id));
   const balance = settings.sourceBalance;
+  if (selection.genreDraws && selection.genreDraws.length) {
+    const seed = String(settings.sourceSeed || 'songless');
+    const excludedIds = Array.isArray(balance && balance.excludedIds)
+      ? balance.excludedIds.slice(0, 500).map(String) : [];
+    const selected = [];
+    for (const [index, draw] of selection.genreDraws.entries()) {
+      const group = eligible.filter(track => trackMetadata.isTrusted(track, 'genre')
+        && String(track.genre || '').trim().localeCompare(
+          draw.genre, 'fr-FR', { sensitivity: 'base' }
+        ) === 0);
+      if (balance && balance.enabled === true) {
+        selected.push(...sourceBalance.select(group, draw.count, {
+          seed: `${seed}|genre:${index}:${draw.genre}`,
+          excludedIds,
+        }).selected);
+      } else {
+        selected.push(...partySelection.drawTracks(
+          group, draw.count, `${seed}|genre:${index}:${draw.genre}`
+        ));
+      }
+    }
+    return selected.map(track => track.id);
+  }
   if (balance && balance.enabled === true) {
-    return sourceBalance.select(eligible, balance.count, {
+    return sourceBalance.select(eligible, selection.count || balance.count, {
       seed: settings.sourceSeed || 'songless',
       excludedIds: Array.isArray(balance.excludedIds) ? balance.excludedIds.slice(0,500).map(String) : [],
     }).selected.map(track => track.id);
   }
-  return validIds.filter(id => allowed.has(id));
+  const selected = partySelection.drawTracks(
+    eligible, selection.count, settings.sourceSeed || 'songless'
+  );
+  return selected.map(track => track.id);
 }
 
 async function partyTrackData(trackId) {
@@ -842,14 +885,19 @@ app.post('/api/party/create', async (req, res) => {
     const filteredTrackIds = await partyTrackIdsAfterBlacklist(
       requestedTrackIds,
       partyMode,
-      mergedSettings
+      mergedSettings,
+      req.body.selectionFilters
     );
+    for (let index = filteredTrackIds.length - 1; index > 0; index--) {
+      const other = crypto.randomInt(index + 1);
+      [filteredTrackIds[index], filteredTrackIds[other]] = [filteredTrackIds[other], filteredTrackIds[index]];
+    }
     if (Array.isArray(requestedTrackIds) && requestedTrackIds.length && filteredTrackIds.length === 0) {
       throw new Error('Aucune chanson exploitable dans cette sélection et ces réglages.');
     }
     const created = partyStore.create({
       mode: req.body.mode,
-      totalRounds: mergedSettings.sourceBalance?.enabled === true && req.body.totalRounds !== 'infinite'
+      totalRounds: req.body.totalRounds !== 'infinite' && filteredTrackIds.length
         ? Math.min(Number(req.body.totalRounds) || 10, filteredTrackIds.length) : req.body.totalRounds,
       seed: req.body.seed,
       settings: mergedSettings,
@@ -949,6 +997,10 @@ app.post('/api/party/:code/join', (req, res) => {
   try {
     let profile = profileById(req.body && req.body.profileId);
     if (!profile) return res.status(400).json({ error: 'Profil introuvable.' });
+    const inviteToken = String(req.body && req.body.inviteToken || '');
+    if (inviteToken && !partyStore.isInvited(req.params.code, inviteToken)) {
+      return res.status(403).json({ error: 'Ce lien ne correspond pas à ce code de partie.' });
+    }
     const joined = partyStore.join(req.params.code, profile);
     if (!joined) return res.status(404).json({ error: 'Code de partie introuvable.' });
     res.json({
@@ -961,16 +1013,16 @@ app.post('/api/party/:code/join', (req, res) => {
 });
 
 /** QR code d'invitation d'un salon, visible uniquement par l'hote local. */
-app.get('/api/party/:code/qr.svg', async (req, res) => {
+app.post('/api/party/:code/qr.svg', async (req, res) => {
   const party = partyStore.get(req.params.code);
   if (!party) return res.status(404).json({ error: 'Partie introuvable.' });
 
-  const state = partyStore.publicState(party, null, req.query.hostToken);
+  const state = partyStore.publicState(party, null, req.body.hostToken);
   if (!estLocal(req) || !state.isHost) {
     return res.status(403).json({ error: 'QR code reserve a l\'ordinateur hote.' });
   }
 
-  const kind = req.query.kind === 'internet' ? 'internet' : 'lan';
+  const kind = req.body.kind === 'internet' ? 'internet' : 'lan';
   const base = kind === 'internet' ? PUBLIC_URL : urlLan();
   const inviteUrl = partyInviteUrl(base, party);
   if (!inviteUrl) {
@@ -998,27 +1050,27 @@ app.get('/api/party/:code', (req, res) => {
   res.set('Cache-Control', 'no-store');
   res.json(partyStore.publicState(
     party,
-    req.query.playerToken,
-    req.query.hostToken,
-    req.query.accessToken || req.get('X-Songless-Access')
+    req.get('X-Songless-Player') || req.query.playerToken,
+    req.get('X-Songless-Host') || req.query.hostToken,
+    req.get('X-Songless-Access') || req.query.accessToken
   ));
 });
 
 /** QR d'un rôle temporaire, régénéré uniquement pour l'hôte local. */
-app.get('/api/party/:code/access-qr.svg', async (req, res) => {
+app.post('/api/party/:code/access-qr.svg', async (req, res) => {
   const party = partyStore.get(req.params.code);
   if (!party || !estLocal(req)) {
     return res.status(403).json({ error: 'QR code réservé à l’hôte local.' });
   }
-  const state = partyStore.publicState(party, null, req.query.hostToken);
-  const role = partyStore.accessRole(party, req.query.accessToken);
-  if (!state.isHost || !['tv', 'remote_admin'].includes(role) || role !== req.query.role) {
+  const state = partyStore.publicState(party, null, req.body.hostToken);
+  const role = partyStore.accessRole(party, req.body.accessToken);
+  if (!state.isHost || !['tv', 'remote_admin'].includes(role) || role !== req.body.role) {
     return res.status(403).json({ error: 'Accès temporaire invalide ou expiré.' });
   }
   const base = PUBLIC_URL || urlLan();
   const accessUrl = partyAccessUrl(base, party, {
     role,
-    accessToken: req.query.accessToken,
+    accessToken: req.body.accessToken,
   });
   if (!accessUrl) return res.status(404).json({ error: 'Adresse réseau indisponible.' });
   try {
@@ -1036,9 +1088,11 @@ app.get('/api/party/:code/access-qr.svg', async (req, res) => {
 app.get('/api/party/:code/audio', (req, res) => {
   try {
     const party = partyStore.get(req.params.code);
-    const player = party && partyStore.findPlayer(party, req.query.playerToken);
-    const accessRole = party && partyStore.accessRole(party, req.query.accessToken);
-    if (!party || (!player && accessRole !== 'tv' && accessRole !== 'remote_admin')) {
+    const player = party && partyStore.findPlayer(party, req.get('X-Songless-Player'));
+    const accessRole = party && partyStore.accessRole(party, req.get('X-Songless-Access'));
+    const allowedPlayer = player && (party.mode !== 'auction'
+      || party.auction && party.auction.activeProfileId === player.profileId);
+    if (!party || (!allowedPlayer && accessRole !== 'tv' && accessRole !== 'remote_admin')) {
       return res.status(403).json({ error: 'Accès audio réservé aux joueurs de cette partie.' });
     }
     if (Number(req.query.round) !== party.round || !party.currentTrackId) {
@@ -1457,7 +1511,13 @@ app.post('/api/upload', (req, res) => {
     const archive = estArchive(nom);
 
     try {
-      const scanResult = await antivirus.scan(req.file.path);
+      const skipAntivirus = req.body && req.body.skipAntivirus === 'true';
+      if (skipAntivirus && (!estLocal(req) || req.songlessRemote)) {
+        throw new Error('Le mode sans analyse est réservé à un import local sur le PC hôte.');
+      }
+      const scanResult = skipAntivirus
+        ? { clean: false, engine: 'Analyse Songless ignorée à la demande de l’hôte' }
+        : await antivirus.scan(req.file.path);
       let rapport;
       if (archive) {
         rapport = await importer.importerArchive(req.file.path);
@@ -1477,7 +1537,8 @@ app.post('/api/upload', (req, res) => {
 
       res.json({
         success: true,
-        antivirus: `${scanResult.engine} : fichier sain`,
+        antivirus: scanResult.clean
+          ? `${scanResult.engine} : fichier sain` : scanResult.engine,
         archive,
         file: nom,
         ajoutes: rapport.ajoutes.map(item => ({
@@ -2247,7 +2308,7 @@ app.listen(PORT, HOTE, async () => {
   console.log(`👉 http://localhost:${PORT}`);
   console.log(`📁 Dossier musiques : ${MUSIC_DIR}`);
   if (!INSTANCE_SECRET_PROVIDED) {
-    console.log(`🔑 Administration : http://localhost:${PORT}/admin-bootstrap?token=${instanceAuth.bootstrapToken}`);
+    console.log('Administration locale prête via le lanceur Songless.');
   }
 
   if (!LAN) {

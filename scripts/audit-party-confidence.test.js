@@ -18,6 +18,7 @@ function party() {
   const player = partyStore.join(created.party.code, {
     id: 'p1', nom: 'Joueur test', emoji: '🎧', multiplayer: {},
   }).player;
+  player.host = true;
   partyStore.command(created.party, created.hostToken, 'start-round', {
     round: 1, trackId: 'track-1',
     answer: { title: 'Bonne réponse', artist: 'Artiste', mode: 'titre' },

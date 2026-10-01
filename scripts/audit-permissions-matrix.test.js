@@ -82,7 +82,7 @@ async function main() {
     });
     assert.strictEqual(created.status, 201, created.text);
     const inviteUrl = new URL(created.body.inviteUrls.internet);
-    const inviteToken = inviteUrl.searchParams.get('invite');
+    const inviteToken = new URLSearchParams(inviteUrl.hash.slice(1)).get('invite');
     assert.ok(inviteToken);
     const invitedHeaders = { 'X-Songless-Invite': inviteToken };
     const partyHeader = { 'X-Songless-Party': created.body.code };
@@ -104,7 +104,7 @@ async function main() {
     assert.strictEqual(newProfile.status, 201, newProfile.text);
     const joined = await request(REMOTE, `/api/party/${created.body.code}/join`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...invitedHeaders },
+      headers: { 'Content-Type': 'application/json', ...invitedHeaders, ...partyHeader },
       body: JSON.stringify({ profileId: newProfile.body.id }),
     });
     assert.strictEqual(joined.status, 200, joined.text);
@@ -121,7 +121,7 @@ async function main() {
     const suggestions = await request(
       REMOTE,
       `/api/party/${created.body.code}/suggestions?playerToken=${encodeURIComponent(joined.body.playerToken)}&q=test`,
-      { headers: invitedHeaders }
+      { headers: { ...invitedHeaders, ...partyHeader } }
     );
     assert.strictEqual(suggestions.status, 200, suggestions.text);
     assert.deepStrictEqual(suggestions.body.suggestions, []);
@@ -155,7 +155,8 @@ async function main() {
     assert.strictEqual(tvState.body.viewerRole, 'tv');
     const tvAudio = await request(
       REMOTE,
-      `/api/party/${created.body.code}/audio?round=1&accessToken=${encodeURIComponent(tvToken)}`
+      `/api/party/${created.body.code}/audio?round=1`,
+      { headers: { 'X-Songless-Access': tvToken } }
     );
     assert.strictEqual(tvAudio.status, 409);
     const tvCommand = await request(REMOTE, `/api/party/${created.body.code}/command`, {
@@ -232,8 +233,8 @@ async function main() {
       ['POST', '/api/party/create'],
       ['POST', `/api/party/${created.body.code}/access`],
       ['DELETE', `/api/party/${created.body.code}/access/fake`],
-      ['GET', `/api/party/${created.body.code}/qr.svg`],
-      ['GET', `/api/party/${created.body.code}/access-qr.svg`],
+      ['POST', `/api/party/${created.body.code}/qr.svg`],
+      ['POST', `/api/party/${created.body.code}/access-qr.svg`],
     ];
     for (const [method, route] of denied) {
       const result = await request(REMOTE, route, {

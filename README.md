@@ -74,6 +74,10 @@ lui-même.
 | Titres source préservés, noms connus proposés en alias | `tools/enrich.js` + `lib/overrides.json` |
 | Années de sortie | `tools/years.js` |
 | Tri et filtre par genre | barre du haut de l'onglet **Jouer** |
+| Filtres de soirée par genre, sous-genre, artiste, langue et année, avec pioche aléatoire par genre | **Modes** → options de partie |
+| Vote à 70 % pour passer au palier ou à la manche, avec clôture des abstentions | partie multijoueur → téléphones |
+| Commandes hôte pour débloquer, exclure temporairement, bannir et donner un indice | partie multijoueur → outils de l'hôte |
+| Lecture/pause synchronisée et relecture automatique des extraits | commandes de l'hôte, Enchères comprise |
 | Filtre par décennie | même panneau, sous les genres |
 | Seed aléatoire par partie | barre du haut de l'onglet **Jouer** |
 | Deviner le titre, l'artiste ou l'année | **Jouer** → bouton « Options » |
@@ -81,6 +85,7 @@ lui-même.
 | Durée des six essais réglable | **Jouer** → bouton « Options » → Paliers |
 | Profils de joueur (statistiques séparées) | bouton en haut à droite |
 | Parties de 5, 10, 20 ou 50 morceaux | onglet **Modes** |
+| Ordre des morceaux remélangé pour chaque nouvelle partie | création d'une soirée multijoueur |
 | Entraînement intelligent sur les morceaux à revoir | onglet **Modes** |
 | Collections et défis rejouables | onglet **Modes** |
 | Soirée multijoueur : Classique, Buzzer, Battle Royale ou Duel | onglet **Modes** |
@@ -92,6 +97,7 @@ lui-même.
 | Télécommande Kahoot sur téléphone | `Songless (telephone).bat` + bouton 📱 |
 | Comparaison des doublons | onglet **Bibliothèque** → « Comparer les doublons » |
 | Diagnostic de la bibliothèque | onglet **Bibliothèque** → « État de la bibliothèque » |
+| Révision guidée des artistes et genres incertains | onglet **Bibliothèque** → « Révision musicale » |
 | Contrôle avant soirée | onglet **Bibliothèque** → « Diagnostic avant soirée » |
 | Exclusions temporaires par morceau, artiste, genre ou période | onglet **Bibliothèque** → « Blacklist temporaire » |
 
@@ -122,6 +128,17 @@ deux manches remporte la partie ; une manche où les deux joueurs trouvent ou
 échouent ensemble ne donne aucun point et est rejouée.
 
 En ligne de commande : `node server.js --lan`.
+
+Les jetons d'invitation et d'accès sont placés dans le fragment privé du lien
+(`#invite=…` ou `#access=…`) ; les sondages les transmettent dans des
+en-têtes. En Enchères, seul le joueur actif entend son extrait. Les extraits se
+rejouent automatiquement dans les modes multijoueurs pendant la manche ; l'hôte
+peut mettre en pause ou reprendre la lecture depuis ses commandes.
+
+Pour un import local de fichiers de confiance, la case **Importer local sans
+analyse Songless** permet de contourner l'analyse de l'application pour cet
+import uniquement. Elle ne désactive pas les protections du système. Les imports
+distants et l'import natif de dossiers Android restent analysés.
 
 ### Héberger directement depuis Android
 

@@ -11,7 +11,7 @@ const catalog = registry.publicCatalog();
 
 assert.deepStrictEqual(
   modes.map(mode => mode.id),
-  ['classic', 'buzzer', 'royale', 'duel', 'confidence', 'cooperation', 'intruder', 'auction', 'joker', 'missions']
+  ['classic', 'buzzer', 'royale', 'duel', 'confidence', 'cooperation', 'intruder', 'auction']
 );
 assert.strictEqual(new Set(modes.map(mode => mode.id)).size, modes.length);
 assert.deepStrictEqual(

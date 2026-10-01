@@ -151,6 +151,7 @@ const downloadLog = document.getElementById('download-log');
 const toolsState = document.getElementById('tools-state');
 const libraryGenreFilter = document.getElementById('library-genre-filter');
 const libraryGenreDetailFilter = document.getElementById('library-genre-detail-filter');
+const libraryLanguageFilter = document.getElementById('library-language-filter');
 const libraryYearFilter = document.getElementById('library-year-filter');
 const libraryFavoriteFilter = document.getElementById('library-favorite-filter');
 const libraryValidationFilter = document.getElementById('library-validation-filter');
@@ -1104,7 +1105,9 @@ function togglePlayback() {
   if (!currentTrack) return;
   if (window.songlessExpansions && window.songlessExpansions.blocksManualPlayback
       && window.songlessExpansions.blocksManualPlayback()) {
-    showToast('Une seule écoute par manche multijoueur.', 'warn');
+    if (!window.songlessExpansions.toggleHostPartyPlayback()) {
+      showToast('Seul l’hôte peut contrôler la lecture de la partie.', 'warn');
+    }
     return;
   }
   if (isPlaying) pauseAudio();
@@ -2176,11 +2179,12 @@ function renderLibraryList() {
       ? '<span class="track-flag" title="Titre à renommer en nom connu">⚠</span>' : '';
     const original = track.originalTitle
       ? `<span class="track-item-original">${escapeHtml(track.originalTitle)}</span>` : '';
-    const details = [track.genreDetail, track.year].filter(Boolean)
+    const details = [track.genreDetail, track.language, track.year].filter(Boolean)
       .map(value => escapeHtml(value)).join(' · ');
 
     item.setAttribute('data-genre', track.genre || 'Autre');
     item.setAttribute('data-genre-detail', track.genreDetail || '');
+    item.setAttribute('data-language', track.language || '');
     item.setAttribute('data-year', track.year || '');
     item.setAttribute('data-favorite', track.favorite ? '1' : '0');
     item.setAttribute('data-review', track.needsReview ? '1' : '0');
@@ -2846,6 +2850,7 @@ function filterLibraryDisplay() {
   const query = librarySearch.value.trim().toLowerCase();
   const genre = libraryGenreFilter ? libraryGenreFilter.value : '';
   const genreDetail = libraryGenreDetailFilter ? libraryGenreDetailFilter.value : '';
+  const language = libraryLanguageFilter ? libraryLanguageFilter.value : '';
   const yearFilter = libraryYearFilter ? libraryYearFilter.value : '';
   const favoriteFilter = libraryFavoriteFilter ? libraryFavoriteFilter.value : '';
   const validationFilter = libraryValidationFilter ? libraryValidationFilter.value : '';
@@ -2857,13 +2862,16 @@ function filterLibraryDisplay() {
     const artist = item.getAttribute('data-artist');
     const itemGenre = item.getAttribute('data-genre') || 'Autre';
     const itemGenreDetail = item.getAttribute('data-genre-detail') || '';
+    const itemLanguage = item.getAttribute('data-language') || '';
     const itemYear = Number(item.getAttribute('data-year')) || null;
     const itemFavorite = item.getAttribute('data-favorite') === '1';
 
     const matchesText = title.includes(query) || artist.includes(query)
-      || itemGenreDetail.toLowerCase().includes(query);
+      || itemGenreDetail.toLowerCase().includes(query)
+      || itemLanguage.toLowerCase().includes(query);
     const matchesGenre = !genre || itemGenre === genre;
     const matchesGenreDetail = !genreDetail || itemGenreDetail === genreDetail;
+    const matchesLanguage = !language || itemLanguage === language;
     const matchesYear = !yearFilter
       || (yearFilter === 'missing' && !itemYear)
       || (yearFilter.startsWith('decade:') && itemYear
@@ -2896,7 +2904,7 @@ function filterLibraryDisplay() {
       || (validationFilter === 'missing'
         && item.getAttribute('data-metadata-missing') === '1');
 
-    const visible = matchesText && matchesGenre && matchesGenreDetail
+    const visible = matchesText && matchesGenre && matchesGenreDetail && matchesLanguage
       && matchesYear && matchesFavorite && matchesReview && matchesValidation;
     item.classList.toggle('hidden', !visible);
     if (visible) visibles++;
@@ -2904,7 +2912,7 @@ function filterLibraryDisplay() {
 
   // Le compteur du titre suit ce qui est réellement affiché : sinon « Musiques
   // installées (1564) » au-dessus de 12 lignes filtrées prête à confusion.
-  const filtreActif = query || genre || genreDetail || yearFilter
+  const filtreActif = query || genre || genreDetail || language || yearFilter
     || favoriteFilter || validationFilter || filtreARenommer;
   tracksCountSpan.innerText = filtreActif ? `${visibles} / ${tracks.length}` : tracks.length;
 }
@@ -2993,6 +3001,7 @@ function handleFilesUpload(files) {
   const formData = new FormData();
   formData.append('audio', file);
   formData.append('sourceLabel', window.songlessSources?.label() || '');
+  formData.append('skipAntivirus', document.getElementById('import-no-scan')?.checked ? 'true' : 'false');
 
   // Afficher la barre de progression
   uploadProgressContainer.classList.remove('hidden');
@@ -3025,6 +3034,8 @@ function handleFilesUpload(files) {
   };
 
   xhr.onload = () => {
+    const noScan = document.getElementById('import-no-scan');
+    if (noScan) noScan.checked = false;
     uploadProgressBar.classList.remove('indetermine');
     uploadProgressContainer.classList.add('hidden');
     if (xhr.status === 200) {
@@ -3041,6 +3052,8 @@ function handleFilesUpload(files) {
   };
 
   xhr.onerror = () => {
+    const noScan = document.getElementById('import-no-scan');
+    if (noScan) noScan.checked = false;
     uploadProgressBar.classList.remove('indetermine');
     uploadProgressContainer.classList.add('hidden');
     showToast("Erreur réseau lors de l'envoi.", 'error');
@@ -3063,7 +3076,8 @@ function afficherRapportImport(rapport) {
 
   const lignes = [];
   if (rapport.antivirus) {
-    lignes.push(`<div class="report-line ok">🛡 ${escapeHtml(rapport.antivirus)}</div>`);
+    const skipped = /ignorée à la demande/i.test(rapport.antivirus);
+    lignes.push(`<div class="report-line ${skipped ? 'warn' : 'ok'}">🛡 ${escapeHtml(rapport.antivirus)}</div>`);
   }
   lignes.push(`<div class="report-head">${ajoutes.length} ajouté${ajoutes.length > 1 ? 's' : ''}`
     + (rapproches.length ? ` · ${rapproches.length} rapprochement${rapproches.length > 1 ? 's' : ''} conservé${rapproches.length > 1 ? 's' : ''}` : '')
@@ -3171,6 +3185,7 @@ function chargerProfils() {
 
   profils = data.liste;
   profilActif = profils.find(p => p.id === data.actif) || profils[0];
+  if (window.songlessTrophies) window.songlessTrophies.setProfile(profilActif.id);
   sauverProfils();
 }
 
@@ -3199,6 +3214,7 @@ function changerProfil(id) {
   if (!cible || cible === profilActif) return;
 
   profilActif = cible;
+  if (window.songlessTrophies) window.songlessTrophies.setProfile(cible.id);
   sauverProfils();
   majBoutonProfil();
 
@@ -3393,7 +3409,8 @@ function supprimerProfil(id) {
 
   // On efface aussi ce qui lui appartient, sinon les clés s'accumulent sans
   // que rien ne les rattache plus à personne.
-  for (const base of ['songless_stats', 'songless_historique']) {
+  for (const base of ['songless_stats', 'songless_historique',
+    'songless_unlocked_trophies_v1', 'songless_trophy_progress_v2']) {
     try { localStorage.removeItem(`${base}:${id}`); } catch (_) {}
   }
   try { localStorage.removeItem(`songless_reglages:${id}`); } catch (_) {}
@@ -3402,6 +3419,7 @@ function supprimerProfil(id) {
   profils = profils.filter(p => p.id !== id);
   if (etaitActif) {
     profilActif = profils[0];
+    if (window.songlessTrophies) window.songlessTrophies.setProfile(profilActif.id);
     chargerReglages();
     appliquerReglages({ relancer: true });
     updateStatsDisplay();
@@ -4865,6 +4883,14 @@ function renderLibraryMetadataFilters() {
       + details.map(detail => `<option value="${escapeHtml(detail)}">${escapeHtml(detail)}</option>`).join('');
     libraryGenreDetailFilter.value = details.includes(keep) ? keep : '';
   }
+  if (libraryLanguageFilter) {
+    const keep = libraryLanguageFilter.value;
+    const languages = [...new Set(tracks.map(track => track.language).filter(Boolean))]
+      .sort((a, b) => a.localeCompare(b, 'fr'));
+    libraryLanguageFilter.innerHTML = '<option value="">Toutes les langues</option>'
+      + languages.map(value => `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`).join('');
+    libraryLanguageFilter.value = languages.includes(keep) ? keep : '';
+  }
 
   const bulkGenre = document.getElementById('bulk-genre');
   if (bulkGenre) {
@@ -4924,7 +4950,7 @@ function initDownloadEvents() {
   if (libraryGenreFilter) {
     libraryGenreFilter.addEventListener('change', filterLibraryDisplay);
   }
-  [libraryGenreDetailFilter, libraryYearFilter, libraryFavoriteFilter,
+  [libraryGenreDetailFilter, libraryLanguageFilter, libraryYearFilter, libraryFavoriteFilter,
     libraryValidationFilter]
     .filter(Boolean)
     .forEach(select => select.addEventListener('change', filterLibraryDisplay));

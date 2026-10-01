@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#111211">
+  <title>Révision musicale · Songless</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="vendor/fonts.css">
+  <link rel="stylesheet" href="metadata-review.css">
+</head>
+<body>
+  <div class="review-shell">
+    <header class="review-topbar">
+      <a class="review-brand" href="/" aria-label="Retour à Songless">
+        <span class="brand-glyph" aria-hidden="true">S</span>
+        <span>SONGLESS <small>ARCHIVES SONORES</small></span>
+      </a>
+      <a class="return-link" href="/">Retour au jeu <span aria-hidden="true">↗</span></a>
+    </header>
+
+    <main>
+      <section class="review-intro">
+        <div>
+          <p class="eyebrow"><span class="live-dot"></span> Bibliothèque locale · atelier de classement</p>
+          <h1>Donner un nom<br><em>au bon son.</em></h1>
+          <p class="intro-copy">Écoute, vérifie l’artiste, le style et la langue chantée, puis enregistre. Chaque validation corrige uniquement la fiche locale de ce morceau.</p>
+        </div>
+        <div class="review-count-block" aria-live="polite">
+          <span class="count-label">À reprendre</span>
+          <strong id="review-total">—</strong>
+          <span class="count-caption">fiches encore incertaines</span>
+        </div>
+      </section>
+
+      <section class="review-controls" aria-label="Filtres de révision">
+        <label class="filter-field">
+          <span>Afficher</span>
+          <select id="review-filter">
+            <option value="all">Artiste ou genre à vérifier</option>
+            <option value="artist">Artiste à vérifier</option>
+            <option value="genre">Genre à vérifier</option>
+            <option value="both">Artiste et genre à vérifier</option>
+            <option value="language">Langue à renseigner</option>
+          </select>
+        </label>
+        <label class="search-field">
+          <span>Retrouver un morceau</span>
+          <input id="review-search" type="search" placeholder="Titre ou artiste…" autocomplete="off">
+        </label>
+        <p class="local-note"><span aria-hidden="true">◉</span> Aucune donnée ne part vers un service externe. Les corrections restent dans Songless.</p>
+      </section>
+
+      <section class="review-layout" aria-label="Révision des morceaux">
+        <article class="focus-card" id="focus-card" aria-live="polite">
+          <div class="focus-topline">
+            <span class="tape-label">FICHE <b id="review-position">— / —</b></span>
+            <span class="unsaved-indicator"><i></i> MODIFIABLE</span>
+          </div>
+
+          <div class="track-artwork" id="track-artwork">
+            <span class="artwork-orbit orbit-one"></span>
+            <span class="artwork-orbit orbit-two"></span>
+            <img id="review-cover" alt="" src="default-cover.svg">
+            <span class="artwork-index" id="artwork-index">001</span>
+          </div>
+
+          <div class="track-heading">
+            <div class="track-title-wrap">
+              <p class="eyebrow">EN ÉCOUTE</p>
+              <h2 id="review-title">Chargement de la bibliothèque…</h2>
+              <p class="current-artist" id="current-artist"></p>
+            </div>
+            <div class="issue-tags" id="issue-tags"></div>
+          </div>
+
+          <audio id="review-audio" controls preload="none"></audio>
+
+          <form id="review-form" class="metadata-form" autocomplete="off">
+            <label class="metadata-field">
+              <span><b>01</b> Artiste <small id="artist-state">À confirmer</small></span>
+              <input id="artist-input" name="artist" maxlength="160" placeholder="Nom de l’artiste">
+            </label>
+            <label class="metadata-field">
+              <span><b>02</b> Genre <small id="genre-state">À confirmer</small></span>
+              <input id="genre-input" name="genre" maxlength="80" list="known-genres" placeholder="Ex. Phonk, jazz, rap…">
+              <datalist id="known-genres"></datalist>
+            </label>
+            <label class="metadata-field">
+              <span><b>03</b> Sous-genre <small>facultatif</small></span>
+              <input id="genre-detail-input" name="genreDetail" maxlength="80" list="known-subgenres" placeholder="Ex. drift phonk, city pop…">
+              <datalist id="known-subgenres">
+                <option value="Drift phonk"></option><option value="Brazilian phonk"></option>
+                <option value="Memphis phonk"></option><option value="City pop"></option>
+                <option value="J-rock"></option><option value="Vocaloid"></option>
+                <option value="Hyperpop"></option><option value="Boom bap"></option>
+                <option value="Drill"></option><option value="Trap"></option>
+                <option value="Synthwave"></option><option value="Lo-fi"></option>
+              </datalist>
+            </label>
+            <label class="metadata-field">
+              <span><b>04</b> Langue chantée <small>facultatif · saisie libre</small></span>
+              <input id="language-input" name="language" maxlength="80" list="known-languages" placeholder="Ex. japonais, anglais, français…">
+              <datalist id="known-languages">
+                <option value="Allemand"></option><option value="Anglais"></option>
+                <option value="Arabe"></option><option value="Espagnol"></option>
+                <option value="Français"></option><option value="Italien"></option>
+                <option value="Japonais"></option><option value="Coréen"></option>
+                <option value="Mandarin"></option><option value="Portugais"></option>
+                <option value="Russe"></option><option value="Instrumental"></option>
+                <option value="Multilingue"></option>
+              </datalist>
+            </label>
+            <div class="form-footnote">Le genre décrit le style ; la langue indique les paroles. Les deux champs sont indépendants et la langue accepte toute valeur.</div>
+            <div class="review-actions">
+              <button class="secondary-action" id="previous-button" type="button" aria-label="Morceau précédent">←</button>
+              <button class="skip-action" id="skip-button" type="button">Passer sans modifier</button>
+              <button class="save-action" id="save-button" type="submit">Enregistrer <span>+ suivant</span><b aria-hidden="true">↗</b></button>
+            </div>
+            <p class="save-status" id="save-status" role="status" aria-live="polite"></p>
+          </form>
+        </article>
+
+        <aside class="queue-panel">
+          <div class="queue-heading">
+            <div><p class="eyebrow">FILE DE TRAVAIL</p><h2>À vérifier</h2></div>
+            <span class="queue-badge" id="queue-total">—</span>
+          </div>
+          <div class="queue-progress" aria-hidden="true"><span id="queue-progress-fill"></span></div>
+          <div class="queue-list" id="queue-list" role="listbox" aria-label="Morceaux à vérifier"></div>
+          <div class="queue-footer"><span class="queue-led"></span><span id="queue-footer-text">Lecture des fiches…</span></div>
+        </aside>
+      </section>
+
+      <div class="review-empty hidden" id="review-empty" role="status">
+        <span class="empty-seal">✓</span>
+        <p class="eyebrow">FILE TERMINÉE</p>
+        <h2>Tout est classé.</h2>
+        <p>Il n’y a plus de fiche à reprendre avec ce filtre.</p>
+        <button class="secondary-action" id="reload-button" type="button">Actualiser la bibliothèque</button>
+      </div>
+
+      <footer class="review-footer"><span>SONGLESS · OUTIL LOCAL DE MÉTADONNÉES</span><span>Les morceaux restent sur l’appareil hôte.</span></footer>
+    </main>
+  </div>
+  <script src="metadata-review.js"></script>
+</body>
+</html>

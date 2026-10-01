@@ -385,6 +385,16 @@ test('les champs autonomes du PC possèdent un nom accessible explicite', () => 
   }
 });
 
+test('les commandes hôte affichent lecture/pause et les modes autorisent les relectures', () => {
+  const index = read('index.html');
+  const controller = read('controller.js');
+  const expansions = read('expansions.js');
+  assert.ok((index.match(/data-party-playback/g) || []).length >= 2);
+  assert.match(expansions, /partyCommand\('toggle-playback'\)/);
+  assert.match(expansions, /function scheduleHostPartyLoop/);
+  assert.doesNotMatch(controller, /singleListenModes|Une seule écoute par manche/);
+});
+
 test('les interfaces hors TV reprennent la charte visuelle du Songless original', () => {
   const controllerHtml = read('controller.html');
   const controllerCss = read('controller.css');

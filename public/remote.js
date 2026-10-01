@@ -2,8 +2,15 @@
 
 (() => {
   const params = new URLSearchParams(location.search);
+  const fragment = new URLSearchParams(location.hash.replace(/^#/, ''));
   const code = String(params.get('party') || '').toUpperCase();
-  const accessToken = String(params.get('access') || '');
+  const accessToken = String(fragment.get('access') || params.get('access') || '');
+  if (params.has('access') || fragment.has('access')) {
+    const cleanUrl = new URL(location.href);
+    cleanUrl.searchParams.delete('access');
+    cleanUrl.hash = '';
+    history.replaceState(null, '', `${cleanUrl.pathname}${cleanUrl.search}`);
+  }
   const byId = id => document.getElementById(id);
   let state = null;
   let busy = false;
@@ -87,7 +94,9 @@
       return;
     }
     try {
-      const next = await api(`/api/party/${encodeURIComponent(code)}?accessToken=${encodeURIComponent(accessToken)}`);
+      const next = await api(`/api/party/${encodeURIComponent(code)}`, {
+        headers: { 'X-Songless-Access': accessToken },
+      });
       if (next.viewerRole !== 'remote_admin') throw new Error('Ce lien n’est pas une télécommande administrateur.');
       render(next);
     } catch (error) {

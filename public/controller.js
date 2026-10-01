@@ -4,9 +4,10 @@
   const PAIR_KEY = 'songless_pair';
   const PARTY_KEY = 'songless_controller_party';
   const params = new URLSearchParams(location.search);
+  const fragment = new URLSearchParams(location.hash.replace(/^#/, ''));
   let pair = params.get('pair') || readText(PAIR_KEY);
   let invitedCode = params.get('party') || readSession('songless_invited_party');
-  let invite = params.get('invite') || readSession('songless_invite');
+  let invite = fragment.get('invite') || params.get('invite') || readSession('songless_invite');
   let profiles = [];
   let canEditProfiles = false;
   let pendingProfile = null;
@@ -23,6 +24,7 @@
   let audioUnlocked = false;
   let audioRoundKey = '';
   let audioPlaybackSignature = '';
+  let audioObjectUrl = '';
   let audioStartTimer = null;
   let audioStopTimer = null;
   let reverseAudioContext = null;
@@ -42,13 +44,15 @@
   if (pair) {
     writeText(PAIR_KEY, pair);
   }
-  if (params.get('party') && params.get('invite')) {
+  if (params.get('party') && invite) {
     writeSession('songless_invited_party', invitedCode);
     writeSession('songless_invite', invite);
   }
-  if (params.has('pair')) {
+  if (params.has('pair') || params.has('invite') || fragment.has('invite')) {
     const cleanUrl = new URL(location.href);
     cleanUrl.searchParams.delete('pair');
+    cleanUrl.searchParams.delete('invite');
+    cleanUrl.hash = '';
     history.replaceState(null, '', `${cleanUrl.pathname}${cleanUrl.search}${cleanUrl.hash}`);
   }
 
@@ -78,7 +82,10 @@
   async function api(url, options = {}) {
     const headers = new Headers(options.headers || {});
     if (pair) headers.set('X-Songless-Pair', pair);
-    if (invite && invitedCode) {
+    const invitedPath = /^\/api\/controller\/profiles(?:\/|$)/.test(url)
+      || /^\/api\/party\/[^/]+\/join(?:\?|$)/.test(url)
+      || /^\/api\/(?:upload|download)(?:\?|$)/.test(url);
+    if (invite && invitedCode && invitedPath) {
       headers.set('X-Songless-Invite', invite);
       headers.set('X-Songless-Party', invitedCode);
     }
@@ -343,7 +350,10 @@
     try {
       const result = await api(`/api/party/${encodeURIComponent(code)}/join`, {
         method: 'POST',
-        body: JSON.stringify({ profileId: profile.id }),
+        body: JSON.stringify({
+          profileId: profile.id,
+          inviteToken: code === String(invitedCode || '').toUpperCase() ? invite || '' : '',
+        }),
       });
       party = { code, playerToken: result.playerToken, profileId: profile.id };
       writeJson(PARTY_KEY, party);
@@ -366,8 +376,9 @@
   async function pollParty() {
     if (!party) return;
     try {
-      const query = new URLSearchParams({ playerToken: party.playerToken });
-      receiveState(await api(`/api/party/${encodeURIComponent(party.code)}?${query}`));
+      receiveState(await api(`/api/party/${encodeURIComponent(party.code)}`, {
+        headers: { 'X-Songless-Player': party.playerToken },
+      }));
       const playlistId = state && state.settings && state.settings.playlistId;
       if (playlistId && Date.now() - playlistPolledAt > 1000) {
         playlistPolledAt = Date.now();
@@ -524,11 +535,7 @@
   }
 
   function partyAudioUrl(current) {
-    const query = new URLSearchParams({
-      playerToken: party.playerToken,
-      round: String(current.round),
-    });
-    return `/api/party/${encodeURIComponent(party.code)}/audio?${query}`;
+    return `/api/party/${encodeURIComponent(party.code)}/audio?round=${encodeURIComponent(String(current.round))}`;
   }
 
   function stopPartyAudio(message = '') {
@@ -566,11 +573,15 @@
 
     const key = `${current.code}:${current.round}`;
     const playback = current.playback;
-    const signature = `${key}:${current.status}:${Number(playback.startedAt) || 0}:${Number(playback.pausedAt) || 0}:${Number(playback.duration) || 0}:${(current.buzzer || {}).solvedByProfileId || ''}`;
+    const auctionActive = current.auction && current.auction.activeProfileId || '';
+    const signature = `${key}:${current.status}:${Number(playback.startedAt) || 0}:${Number(playback.pausedAt) || 0}:${Number(playback.duration) || 0}:${(current.buzzer || {}).solvedByProfileId || ''}:${auctionActive}`;
     if (!force && audioPlaybackSignature === signature) return;
-    const newRound = audioRoundKey !== key;
     audioRoundKey = key;
     audioPlaybackSignature = signature;
+    if (current.mode === 'auction' && auctionActive !== current.viewerProfileId) {
+      stopPartyAudio('🔨 Seul le joueur actif entend cet extrait.');
+      return;
+    }
     stopPartyAudio(playback.pausedAt
       ? '⏸️ Musique en pause pendant la réponse…'
       : current.status === 'reveal'
@@ -584,17 +595,32 @@
     const elapsedMusic = () => Math.max(0,
       (estimatedServerNow() - Number(playback.startedAt)) / 1000 * Number(playback.speed || 1));
     const delay = Math.max(0, Number(playback.startedAt) - serverAtReceipt);
-    const url = partyAudioUrl(current);
+    let url = partyAudioUrl(current);
+    if (partyAudio.dataset.round !== key) {
+      fetch(url, { headers: { 'X-Songless-Player': party.playerToken || '' } })
+        .then(response => {
+          if (!response.ok) throw new Error('Lecture du salon refusée.');
+          return response.blob();
+        })
+        .then(blob => {
+          if (audioRoundKey !== key || audioPlaybackSignature !== signature) return;
+          if (audioObjectUrl) URL.revokeObjectURL(audioObjectUrl);
+          audioObjectUrl = URL.createObjectURL(blob);
+          partyAudio.src = audioObjectUrl;
+          partyAudio.dataset.round = key;
+          partyAudio.load();
+          syncPartyAudio(state, true);
+        })
+        .catch(() => stopPartyAudio('🔇 Impossible de charger le son synchronisé.'));
+      return;
+    }
+    url = audioObjectUrl || partyAudio.src;
 
     if (playback.direction === 'inverse') {
       prepareReversePartyAudio(url, playback, elapsedMusic, delay, key, receivedAt, signature);
       return;
     }
 
-    if (newRound || !partyAudio.src.includes(`/api/party/${encodeURIComponent(party.code)}/audio`)) {
-      partyAudio.src = url;
-      partyAudio.load();
-    }
     partyAudio.playbackRate = Number(playback.speed) || 1;
     partyAudio.preservesPitch = false;
     const start = (isFirstPlay = true) => {
@@ -1188,7 +1214,7 @@
         const inp = byId('answer-input');
         if (inp) {
           if (previousVal && !inp.value) inp.value = previousVal;
-          if (hadFocus || document.activeElement !== inp) inp.focus();
+          if (hadFocus && document.activeElement !== inp) inp.focus();
           try { if (previousVal) inp.setSelectionRange(selStart, selEnd); } catch (_) {}
         }
         return;
@@ -1217,9 +1243,9 @@
     const attemptIndex = Number(me.currentAttempt) || 0;
     const currentDur = paliers[attemptIndex] !== undefined ? paliers[attemptIndex] : paliers[0];
     const nextDur = paliers[attemptIndex + 1];
-    const skipLabel = nextDur !== undefined
+    const skipLabel = me.host && nextDur !== undefined
       ? `Passer (+${(nextDur - currentDur).toFixed(1).replace('.0', '')}s)`
-      : 'Dernier essai !';
+      : '';
     const attemptsList = Array.isArray(me.attempts) && me.attempts.length
       ? `<div class="attempts-history">${me.attempts.map(att => `<span class="attempt-badge ${att.type}">${att.type === 'skipped' ? '↷ Passé' : `❌ ${escapeHtml(att.text || 'Raté')}`}</span>`).join('')}</div>`
       : '';
@@ -1232,7 +1258,7 @@
     const inp = byId('answer-input');
     if (inp) {
       if (previousVal && !inp.value) inp.value = previousVal;
-      if (hadFocus || document.activeElement !== inp) inp.focus();
+      if (hadFocus && document.activeElement !== inp) inp.focus();
       try { if (previousVal) inp.setSelectionRange(selStart, selEnd); } catch (_) {}
     }
   }
@@ -1264,12 +1290,12 @@
     const threshold = Number(votes.threshold) || 1;
     let buttonsHtml = '';
 
-    if (['classic', 'confidence', 'cooperation', 'joker', 'missions'].includes(state.mode)
+    if (['classic', 'confidence', 'cooperation', 'royale', 'duel', 'joker', 'missions'].includes(state.mode)
         && votes.nextStep && votes.nextStep.nextDuration) {
       buttonsHtml += `
         <button type="button" class="vote-btn${votes.nextStep.voted ? ' voted' : ''}"
                 id="vote-step-btn">
-          ⏭ Débloquer palier suivant (${votes.nextStep.nextDuration}s) · ${Number(votes.nextStep.count) || 0}/${threshold}
+          ⏭ Débloquer palier suivant (${votes.nextStep.nextDuration}s) · ${Number(votes.nextStep.count) || 0}/${threshold} (70 %)
         </button>
       `;
     }
@@ -1278,12 +1304,15 @@
       buttonsHtml += `
         <button type="button" class="vote-btn${votes.skip.voted ? ' voted' : ''}"
                 id="vote-skip-btn"${votes.skip.passed ? ' disabled' : ''}>
-          ⏭ Passer la manche entière · ${Number(votes.skip.count) || 0}/${threshold}
+          ⏭ Voter pour passer la manche · ${Number(votes.skip.count) || 0}/${threshold} (70 %)
         </button>
       `;
     }
 
     if (buttonsHtml) {
+      const result = votes.skip && votes.skip.result;
+      if (result === 'nul') buttonsHtml += '<small class="vote-result">Vote nul : abstentions ou votes insuffisants.</small>';
+      else if (result === 'passe') buttonsHtml += '<small class="vote-result">Vote accepté : la manche va être révélée.</small>';
       zone.innerHTML = buttonsHtml;
       zone.classList.remove('hidden');
     } else {
@@ -1981,6 +2010,9 @@
     actionSignature = '';
     audioRoundKey = '';
     audioPlaybackSignature = '';
+    if (audioObjectUrl) URL.revokeObjectURL(audioObjectUrl);
+    audioObjectUrl = '';
+    delete partyAudio.dataset.round;
     reverseBuffer = null;
     reverseBufferKey = '';
     reverseBufferPromise = null;

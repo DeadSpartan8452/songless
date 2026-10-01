@@ -1059,3 +1059,40 @@ body.lecture-seule #refresh-library-btn {
     grid-template-columns: repeat(2, 1fr);
   }
 }
+
+/* Accès au petit atelier local de correction artiste/genre. */
+.metadata-review-launch {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 16px;
+  padding: 11px 15px 11px 11px;
+  border: 1px solid rgba(214, 243, 106, .35);
+  border-radius: 12px;
+  background: linear-gradient(110deg, rgba(214, 243, 106, .09), rgba(168, 85, 247, .07));
+  color: var(--text);
+  text-decoration: none;
+  transition: border-color .18s ease, transform .18s ease, background .18s ease;
+}
+.metadata-review-launch:hover {
+  transform: translateY(-2px);
+  border-color: #d6f36a;
+  background: rgba(214, 243, 106, .12);
+}
+.metadata-review-launch-mark {
+  display: grid;
+  width: 31px;
+  height: 31px;
+  place-items: center;
+  border-radius: 9px;
+  background: #d6f36a;
+  color: #171b12;
+  font-size: 17px;
+  font-weight: 800;
+}
+.metadata-review-launch strong,
+.metadata-review-launch small { display: block; }
+.metadata-review-launch strong { font-size: 12px; }
+.metadata-review-launch small { margin-top: 3px; color: var(--text-muted); font-size: 10px; }
+.import-no-scan-option { display: flex; align-items: center; gap: 8px; margin-top: 12px; color: var(--text-primary, #332b26); font-size: .9rem; }
+.import-security-note { display: block; margin-top: 5px; color: var(--text-secondary, #6f655d); font-size: .8rem; }

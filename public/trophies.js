@@ -3,13 +3,22 @@
 (function () {
   const STORAGE_UNLOCKED = 'songless_unlocked_trophies_v1';
   const STORAGE_PROGRESS = 'songless_trophy_progress_v2';
-  let unlockedTrophies = new Set(readUnlocked());
-  let trophyProgress = readProgress();
+  let currentProfileId = 'p1';
+  let unlockedTrophies = new Set();
+  let trophyProgress = emptyProgress();
   let currentFilter = 'all';
+
+  function scopedKey(base, profileId = currentProfileId) {
+    return `${base}:${String(profileId || 'p1')}`;
+  }
+
+  function emptyProgress() {
+    return { values: {}, distinct: {}, seen: [] };
+  }
 
   function readUnlocked() {
     try {
-      const data = JSON.parse(localStorage.getItem(STORAGE_UNLOCKED) || '[]');
+      const data = JSON.parse(localStorage.getItem(scopedKey(STORAGE_UNLOCKED)) || '[]');
       return Array.isArray(data) ? data : [];
     } catch (_) {
       return [];
@@ -18,26 +27,26 @@
 
   function saveUnlocked() {
     try {
-      localStorage.setItem(STORAGE_UNLOCKED, JSON.stringify([...unlockedTrophies]));
+      localStorage.setItem(scopedKey(STORAGE_UNLOCKED), JSON.stringify([...unlockedTrophies]));
     } catch (_) {}
   }
 
   function readProgress() {
     try {
-      const value = JSON.parse(localStorage.getItem(STORAGE_PROGRESS) || '{}');
+      const value = JSON.parse(localStorage.getItem(scopedKey(STORAGE_PROGRESS)) || '{}');
       return {
         values: value && typeof value.values === 'object' ? value.values : {},
         distinct: value && typeof value.distinct === 'object' ? value.distinct : {},
         seen: Array.isArray(value && value.seen) ? value.seen.slice(-1000) : [],
       };
     } catch (_) {
-      return { values: {}, distinct: {}, seen: [] };
+      return emptyProgress();
     }
   }
 
   function saveProgress() {
     try {
-      localStorage.setItem(STORAGE_PROGRESS, JSON.stringify(trophyProgress));
+      localStorage.setItem(scopedKey(STORAGE_PROGRESS), JSON.stringify(trophyProgress));
     } catch (_) {}
   }
 
@@ -172,6 +181,26 @@
     badges.forEach(b => {
       b.innerText = `${unlockedTrophies.size}/${total}`;
     });
+  }
+
+  function setProfile(profileId) {
+    const nextId = String(profileId || 'p1');
+    try {
+      // Les anciennes clés globales sont reprises une seule fois par p1.
+      for (const base of [STORAGE_UNLOCKED, STORAGE_PROGRESS]) {
+        const legacy = localStorage.getItem(base);
+        const firstProfileKey = scopedKey(base, 'p1');
+        if (legacy && !localStorage.getItem(firstProfileKey)) {
+          localStorage.setItem(firstProfileKey, legacy);
+          localStorage.removeItem(base);
+        }
+      }
+    } catch (_) {}
+    currentProfileId = nextId;
+    unlockedTrophies = new Set(readUnlocked());
+    trophyProgress = readProgress();
+    syncTrophyCountBadge();
+    renderGallery();
   }
 
   function escapeHtml(str) {
@@ -418,6 +447,7 @@
   document.addEventListener('DOMContentLoaded', bindEvents);
 
   window.songlessTrophies = {
+    setProfile,
     unlock,
     record,
     evaluateRound,
