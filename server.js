@@ -2123,7 +2123,7 @@ app.post('/api/download', async (req, res) => {
  * morceaux, il y en a toujours un de bloqué ou supprimé.
  */
 app.post('/api/download/playlist', async (req, res) => {
-  const { url, genre, limite } = req.body || {};
+  const { url, genre } = req.body || {};
 
   if (!url || !String(url).trim()) {
     return res.status(400).json({ error: 'Colle l\'adresse d\'une playlist.' });
@@ -2143,7 +2143,7 @@ app.post('/api/download/playlist', async (req, res) => {
 
   try {
     const { titre, entrees, tronquee } = await downloader.listPlaylist(String(url).trim(), {
-      limite: Number(limite) || 100,
+      noLimit: true,
       onLog: (message) => send('progress', { message }),
     });
 

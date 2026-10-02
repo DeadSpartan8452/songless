@@ -218,6 +218,7 @@ async function main() {
       ['GET', '/api/playlists'],
       ['GET', '/api/playlists/cleanup-candidates'],
       ['POST', '/api/playlists'],
+      ['POST', '/api/playlists/from-library'],
       ['PUT', '/api/playlists/fake'],
       ['DELETE', '/api/playlists/fake'],
       ['POST', '/api/playlists/fake/duplicate'],

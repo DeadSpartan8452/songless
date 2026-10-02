@@ -395,6 +395,21 @@ test('les commandes hôte affichent lecture/pause et les modes autorisent les re
   assert.doesNotMatch(controller, /singleListenModes|Une seule écoute par manche/);
 });
 
+test('playlist bulk filtering and full-library creation controls are wired', () => {
+  const index = read('index.html');
+  const ui = read('playlists-ui.js');
+  const routes = read('../lib/playlist-routes.js');
+  for (const id of ['playlist-create-library-btn', 'playlist-track-category-filter',
+    'playlist-remove-filtered', 'playlist-exclude-solatorobo',
+    'playlist-exclude-feel-furry', 'playlist-exclude-nightcore']) {
+    assert.match(index, new RegExp(`id=["']${id}["']`));
+  }
+  assert.match(ui, /\/api\/playlists\/from-library/);
+  assert.match(ui, /function removeFilteredTracks/);
+  assert.match(routes, /app\.post\('\/api\/playlists\/from-library'/);
+  assert.match(routes, /playlistTools\.exclusionsAllow/);
+});
+
 test('les interfaces hors TV reprennent la charte visuelle du Songless original', () => {
   const controllerHtml = read('controller.html');
   const controllerCss = read('controller.css');

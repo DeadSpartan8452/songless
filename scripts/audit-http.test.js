@@ -147,7 +147,7 @@ async function main() {
     assert.strictEqual(modes.status, 200);
     assert.deepStrictEqual(
       modes.body.modes.map(mode => mode.id),
-      ['classic', 'buzzer', 'royale', 'duel', 'confidence', 'cooperation', 'intruder', 'auction', 'joker', 'missions']
+      ['classic', 'buzzer', 'royale', 'duel', 'confidence', 'cooperation', 'intruder', 'auction']
     );
     assert.strictEqual(modes.body.modes.every(mode => (
       mode.surfaces.includes('tv') && mode.surfaces.includes('controller')
@@ -157,7 +157,7 @@ async function main() {
 
     const catalog = await request(LOCAL, '/api/modes');
     assert.strictEqual(catalog.status, 200);
-    assert.strictEqual(catalog.body.modes.filter(mode => mode.kind === 'party').length, 10);
+    assert.strictEqual(catalog.body.modes.filter(mode => mode.kind === 'party').length, 8);
     assert.deepStrictEqual(
       catalog.body.modes.filter(mode => mode.kind === 'local').map(mode => mode.id),
       ['solo_limited', 'solo_infinite', 'solo_duel', 'solo_royale', 'training', 'collections', 'challenges'],
@@ -217,19 +217,33 @@ async function main() {
     assert.strictEqual(remoteAdminAccess.body.urls.internet.includes(create.body.hostToken), false);
     ok('le PC génère des accès TV et télécommande séparés');
 
-    const tvQrRoute = `/api/party/${encodeURIComponent(create.body.code)}/access-qr.svg`
-      + `?hostToken=${encodeURIComponent(create.body.hostToken)}`
-      + `&accessToken=${encodeURIComponent(tvAccess.body.accessToken)}`
-      + '&role=tv';
-    const tvQr = await request(LOCAL, tvQrRoute);
+    const tvQrRoute = `/api/party/${encodeURIComponent(create.body.code)}/access-qr.svg`;
+    const qrBody = {
+      hostToken: create.body.hostToken,
+      accessToken: tvAccess.body.accessToken,
+      role: 'tv',
+    };
+    const tvQr = await request(LOCAL, tvQrRoute, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(qrBody),
+    });
     assert.strictEqual(tvQr.status, 200);
     assert.match(tvQr.response.headers.get('content-type') || '', /image\/svg\+xml/);
     assert.match(tvQr.text, /<svg/);
 
-    const wrongRoleQr = await request(LOCAL, tvQrRoute.replace('&role=tv', '&role=remote_admin'));
+    const wrongRoleQr = await request(LOCAL, tvQrRoute, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...qrBody, role: 'remote_admin' }),
+    });
     assert.strictEqual(wrongRoleQr.status, 403);
 
-    const remoteTvQr = await request(REMOTE, tvQrRoute);
+    const remoteTvQr = await request(REMOTE, tvQrRoute, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(qrBody),
+    });
     assert.strictEqual(remoteTvQr.status, 403);
     ok('les QR de rôle exigent le bon accès et restent réservés à l’hôte local');
 
@@ -244,7 +258,7 @@ async function main() {
 
     const inviteUrl = new URL(create.body.inviteUrls.internet);
     const code = create.body.code;
-    const invite = inviteUrl.searchParams.get('invite');
+    const invite = new URLSearchParams(inviteUrl.hash.slice(1)).get('invite');
     const invitedHeaders = {
       'Content-Type': 'application/json',
       'X-Songless-Party': code,
@@ -310,7 +324,11 @@ async function main() {
       `/api/party/${encodeURIComponent(code)}?accessToken=${encodeURIComponent(tvAccess.body.accessToken)}`
     );
     assert.strictEqual(revokedTvState.status, 403);
-    const revokedTvQr = await request(LOCAL, tvQrRoute);
+    const revokedTvQr = await request(LOCAL, tvQrRoute, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(qrBody),
+    });
     assert.strictEqual(revokedTvQr.status, 403);
     ok('un accès TV révoqué cesse immédiatement de fonctionner');
 
@@ -355,8 +373,12 @@ async function main() {
 
     const remoteQr = await request(
       REMOTE,
-      `/api/party/${encodeURIComponent(code)}/qr.svg?hostToken=${encodeURIComponent(create.body.hostToken)}`,
-      { headers: invitedHeaders }
+      `/api/party/${encodeURIComponent(code)}/qr.svg`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...invitedHeaders },
+        body: JSON.stringify({ hostToken: create.body.hostToken }),
+      }
     );
     assert.strictEqual(remoteQr.status, 403);
     ok('le QR hôte reste inaccessible à distance');
@@ -364,7 +386,7 @@ async function main() {
     const join = await request(REMOTE, `/api/party/${encodeURIComponent(code)}/join`, {
       method: 'POST',
       headers: invitedHeaders,
-      body: JSON.stringify({ profileId: 'audit_guest' }),
+      body: JSON.stringify({ profileId: 'audit_guest', inviteToken: invite }),
     });
     assert.strictEqual(join.status, 200);
     assert.ok(join.body.playerToken);
@@ -386,7 +408,7 @@ async function main() {
     const reconnect = await request(REMOTE, `/api/party/${encodeURIComponent(code)}/join`, {
       method: 'POST',
       headers: invitedHeaders,
-      body: JSON.stringify({ profileId: 'audit_guest' }),
+      body: JSON.stringify({ profileId: 'audit_guest', inviteToken: invite }),
     });
     assert.strictEqual(reconnect.status, 200);
     assert.strictEqual(reconnect.body.playerToken, join.body.playerToken);

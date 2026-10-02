@@ -5191,7 +5191,6 @@ async function lancerImportPlaylist() {
         url,
         sourceLabel: window.songlessSources?.label() || '',
         genre: document.getElementById('playlist-genre').value || null,
-        limite: Number(document.getElementById('playlist-limit').value) || 50,
       }),
     });
 
@@ -5236,9 +5235,6 @@ function traiterEvenementPlaylist(bloc) {
 
   if (nom[1] === 'list') {
     journalPlaylist(`« ${data.titre || 'playlist'} » : ${data.total} titres à traiter.`);
-    if (data.tronquee) {
-      journalPlaylist('La playlist est plus longue que le plafond demandé : seuls les premiers titres sont pris.', 'warn');
-    }
     majProgressionPlaylist(0, data.total);
     return;
   }

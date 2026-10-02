@@ -168,8 +168,11 @@ async function main() {
     assert.ok(p95 < 750, `Poll p95 trop lent : ${Math.round(p95)} ms`);
 
     const audio = await Promise.all(playerTokens.slice(0, 8).map(playerToken => request(
-      `/api/party/${created.body.code}/audio?round=1&playerToken=${encodeURIComponent(playerToken)}`,
-      { headers: { Range: 'bytes=0-65535' } }
+      `/api/party/${created.body.code}/audio?round=1`,
+      { headers: {
+        Range: 'bytes=0-65535',
+        'X-Songless-Player': playerToken,
+      } }
     )));
     assert.strictEqual(audio.every(result => result.status === 206), true);
     assert.strictEqual(audio.every(result => result.response.headers.get('content-range')), true);

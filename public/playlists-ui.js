@@ -18,6 +18,17 @@
   const availableTracks = () => typeof tracks !== 'undefined' && Array.isArray(tracks) ? tracks : [];
   const selectedTracks = () => typeof playlist !== 'undefined' && Array.isArray(playlist) ? playlist : availableTracks();
   const trackById = id => availableTracks().find(track => String(track.id) === String(id));
+  const normalizedText = value => String(value || '').normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('fr-FR');
+  function hasPlaylistTag(track, tag) {
+    const haystack = normalizedText([track && track.title, track && track.artist,
+      track && track.genre, track && track.genreDetail,
+      ...(Array.isArray(track && track.tags) ? track.tags : [])].join(' '));
+    if (tag === 'solatorobo') return haystack.includes('solatorobo');
+    if (tag === 'feel-furry') return haystack.includes('feel furry') || haystack.includes('furry');
+    if (tag === 'nightcore') return haystack.includes('nightcore');
+    return false;
+  }
 
   function statusLabel(status) {
     return ({ draft: 'Brouillon', collecting: 'Collecte ouverte', locked: 'Verrouillée', archived: 'Archivée' })[status] || status;
@@ -160,6 +171,10 @@
     byId('playlist-edit-fair').checked = item.settings ? item.settings.fairOrder !== false : true;
     byId('playlist-edit-artists').checked = item.settings ? item.settings.avoidSameArtist !== false : true;
     byId('playlist-edit-explicit').checked = Boolean(item.settings && item.settings.explicitFilter);
+    const excluded = item.settings && item.settings.excludedTags || [];
+    byId('playlist-exclude-solatorobo').checked = excluded.includes('solatorobo');
+    byId('playlist-exclude-feel-furry').checked = excluded.includes('feel-furry');
+    byId('playlist-exclude-nightcore').checked = excluded.includes('nightcore');
     renderEditorTracks(item);
     renderActivity(item);
     const summary = item.summary || {};
@@ -184,10 +199,12 @@
   function renderEditorTracks(item) {
     const zone = byId('playlist-track-list');
     const query = String(byId('playlist-track-filter').value || '').toLocaleLowerCase('fr-FR');
+    const category = byId('playlist-track-category-filter').value;
     const rows = (item.trackIds || []).map((trackId, index) => {
       const track = trackById(trackId);
       const label = track ? `${track.title || ''} ${track.artist || ''}` : 'morceau indisponible';
       if (query && !label.toLocaleLowerCase('fr-FR').includes(query)) return '';
+      if (category && !hasPlaylistTag(track, category)) return '';
       const credits = (item.contributions || []).filter(entry => entry.trackId === trackId);
       return `<div class="playlist-track-row ${track ? '' : 'missing'}" data-track-id="${escapeHtml(trackId)}">
         <span class="playlist-track-index">${index + 1}</span>
@@ -244,6 +261,11 @@
             fairOrder: byId('playlist-edit-fair').checked,
             avoidSameArtist: byId('playlist-edit-artists').checked,
             explicitFilter: byId('playlist-edit-explicit').checked,
+            excludedTags: [
+              byId('playlist-exclude-solatorobo').checked ? 'solatorobo' : '',
+              byId('playlist-exclude-feel-furry').checked ? 'feel-furry' : '',
+              byId('playlist-exclude-nightcore').checked ? 'nightcore' : '',
+            ].filter(Boolean),
           },
         }),
       });
@@ -456,8 +478,46 @@
     } catch (error) { notify(error.message, 'error'); }
   }
 
+  async function createFromLibrary() {
+    const input = byId('collection-name');
+    const nom = String(input && input.value || '').trim() || 'Toute la bibliothèque';
+    try {
+      const result = await api('/api/playlists/from-library', {
+        method: 'POST', body: JSON.stringify({ nom }),
+      });
+      if (input) input.value = '';
+      await refresh();
+      openEditor(result.playlist.id);
+      notify(`${result.included} morceaux ajoutés à la playlist.`, 'ok');
+    } catch (error) { notify(error.message, 'error'); }
+  }
+
+  async function removeFilteredTracks() {
+    const item = items.find(entry => entry.id === editingId);
+    if (!item) return;
+    const query = String(byId('playlist-track-filter').value || '').trim().toLocaleLowerCase('fr-FR');
+    const category = byId('playlist-track-category-filter').value;
+    if (!query && !category) return notify('Choisis un thème ou saisis un filtre avant le retrait en lot.', 'warn');
+    const ids = item.trackIds.filter(trackId => {
+      const track = trackById(trackId);
+      const label = track ? `${track.title || ''} ${track.artist || ''}` : '';
+      return (!query || label.toLocaleLowerCase('fr-FR').includes(query))
+        && (!category || hasPlaylistTag(track, category));
+    });
+    if (!ids.length) return notify('Aucun morceau ne correspond au filtre.', 'warn');
+    if (!confirm(`Retirer ${ids.length} morceau(x) de cette playlist ?`)) return;
+    try {
+      for (const trackId of ids) {
+        await api(`/api/playlists/${encodeURIComponent(item.id)}/tracks/${encodeURIComponent(trackId)}`, { method: 'DELETE' });
+      }
+      await refresh();
+      notify(`${ids.length} morceau(x) retiré(s) de la playlist.`, 'ok');
+    } catch (error) { notify(error.message, 'error'); }
+  }
+
   function bindEvents() {
     byId('playlist-create-empty-btn').addEventListener('click', () => createPlaylist([], true));
+    byId('playlist-create-library-btn').addEventListener('click', createFromLibrary);
     byId('playlist-refresh-btn').addEventListener('click', refresh);
     byId('playlist-cleanup-btn').addEventListener('click', showCleanupCandidates);
     byId('playlist-filter').addEventListener('input', render);
@@ -474,6 +534,11 @@
       const item = items.find(entry => entry.id === editingId);
       if (item) renderEditorTracks(item);
     });
+    byId('playlist-track-category-filter').addEventListener('change', () => {
+      const item = items.find(entry => entry.id === editingId);
+      if (item) renderEditorTracks(item);
+    });
+    byId('playlist-remove-filtered').addEventListener('click', removeFilteredTracks);
     byId('playlist-import-btn').addEventListener('click', () => byId('playlist-import-file').click());
     byId('playlist-import-file').addEventListener('change', event => {
       const file = event.target.files && event.target.files[0];

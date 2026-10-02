@@ -661,16 +661,13 @@ node tools/retitle.js "fichier.mp3" --title "Addict" --artist "" --original ""
 ## 6. Importer une playlist entière
 
 Onglet **Bibliothèque** → « Importer une playlist ». Colle l'adresse d'une
-playlist YouTube, choisis éventuellement un genre imposé et un plafond de
-titres, puis lance : chaque morceau passe par exactement le même chemin qu'un
-ajout à l'unité (titre lisible, genre, alias, écartement des doublons).
+playlist YouTube, choisis éventuellement un genre imposé, puis lance : tous ses
+titres sont parcourus sans plafond et passent par exactement le même chemin
+qu'un ajout à l'unité (titre lisible, genre, alias, écartement des doublons).
 
 Le journal rend compte titre par titre, et un morceau bloqué ou supprimé
 n'interrompt pas les suivants — sur cinquante titres, il y en a toujours un qui
 coince. Fermer l'onglet arrête l'import en cours.
-
-Le plafond par défaut est de 50 titres, réglable jusqu'à 500. Si la playlist est
-plus longue que le plafond, le journal le dit au lieu de tronquer en silence.
 
 **Spotify et Deezer ne sont pas lisibles** par yt-dlp : leurs liens ne
 fonctionneront pas.

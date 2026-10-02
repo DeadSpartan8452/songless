@@ -1027,3 +1027,23 @@ bibliothèques `libnode.so` en compatibilité ; l’essai POCO reste à faire. L
 paquet Linux a été reconstruit et relu, mais n’a pas été démarré sur Linux réel.
 Les archives courantes ont été sauvegardées et leurs empreintes revérifiées dans
 `Codex\Songless-Source-Backup-20260930\release-packages-quota-20260930`.
+
+## Capacité et filtres playlists — 1er octobre 2026
+
+La capacité totale d'une playlist n'est plus limitée aux 5 000 identifiants
+historiques : le stockage et la création hôte depuis toute la bibliothèque
+conservent tous les morceaux distincts disponibles. L'import JSON et le
+complément aléatoire gardent leurs limites par opération ; elles ne plafonnent
+pas une playlist construite progressivement. Le quota collaboratif, les
+contributions et les garde-fous des requêtes restent distincts.
+
+L'éditeur sait filtrer puis retirer les morceaux identifiés comme Solatorobo,
+Feel Furry/furry ou Nightcore. Chaque thème dispose aussi d'une exclusion
+persistante, appliquée aux recherches de propositions, au remplissage et au
+lancement d'une partie. Le vocabulaire canonique gagne dix genres et des
+suggestions de sous-genres ; la saisie de sous-genre reste libre.
+
+Les doublons d'identifiant restent normalisés et le comparateur de doublons
+musicaux demeure réversible : aucune variante n'est supprimée automatiquement.
+Les tests playlists couvrent une bibliothèque fictive de 5 002 morceaux, les
+exclusions en remplissage et lancement, l'interface et les permissions hôte.

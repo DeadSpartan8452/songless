@@ -25,8 +25,8 @@
     "test:cooperation": "node scripts/audit-party-cooperation.test.js",
     "test:intruder": "node scripts/audit-party-intruder.test.js",
     "test:auction": "node scripts/audit-party-auction.test.js",
-    "test:joker": "node scripts/audit-party-joker.test.js",
-    "test:missions": "node scripts/audit-party-missions.test.js",
+    "test:joker": "node scripts/audit-retired-party-modes.test.js joker",
+    "test:missions": "node scripts/audit-retired-party-modes.test.js missions",
     "test:handicap": "node scripts/audit-party-handicap.test.js",
     "test:trophies": "node scripts/audit-trophies.test.js",
     "test:titles": "node scripts/audit-party-titles.test.js",
@@ -63,7 +63,7 @@
     "test:permissions-matrix": "node scripts/audit-permissions-matrix.test.js",
     "test:load": "node scripts/audit-load.test.js",
     "test:sources": "node scripts/audit-source-balance.test.js",
-    "test:playlists": "node scripts/audit-playlists.test.js"
+    "test:playlists": "node scripts/audit-playlists.test.js && node scripts/audit-playlist-routes.test.js && node scripts/audit-unbounded-playlist-download.test.js"
   },
   "dependencies": {
     "adm-zip": "^0.6.1",

@@ -5,6 +5,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const playlists = require('../lib/playlists');
+const titles = require('../lib/titles');
 
 let passed = 0;
 function test(name, fn) {
@@ -143,6 +144,32 @@ test('persistance et rétrocompatibilité du stockage', () => {
   assert.equal(saved.quotaPerPlayer, 10);
   assert.equal(saved.contributions[0].profileId, 'p1');
   fs.rmSync(root, { recursive: true, force: true });
+});
+
+test('playlist exclusions match configured metadata tags only', () => {
+  const settings = playlists.cleanSettings({ excludedTags: ['solatorobo', 'nightcore', 'bogus'] });
+  assert.deepEqual(settings.excludedTags, ['solatorobo', 'nightcore']);
+  assert.equal(playlists.exclusionsAllow(settings, { title: 'Solatorobo OST' }), false);
+  assert.equal(playlists.exclusionsAllow(settings, { title: 'Nightcore edit' }), false);
+  assert.equal(playlists.exclusionsAllow(settings, { genreDetail: 'Indie rock' }), true);
+  assert.equal(playlists.exclusionsAllow({ excludedTags: ['feel-furry'] },
+    { tags: ['Feel Furry'] }), false);
+});
+
+test('playlist storage accepts more than the former track ceiling', () => {
+  const trackIds = Array.from({ length: 5001 }, (_, index) => `track-${index}`);
+  const item = playlists.cleanPlaylist({ trackIds });
+  assert.equal(item.trackIds.length, trackIds.length);
+  assert.equal(item.trackIds[5000], 'track-5000');
+});
+
+test('the canonical genre list includes the added genres and specific hints', () => {
+  for (const genre of ['Disco', 'Shoegaze', 'Chiptune', 'Vaporwave', 'City Pop',
+    'UK Garage', 'Breakbeat', 'Future Bass', 'Musique du monde', 'A cappella']) {
+    assert.ok(titles.GENRES.includes(genre), `${genre} is present`);
+  }
+  assert.equal(titles.guessGenre(['city pop']), 'City Pop');
+  assert.equal(titles.guessGenre(['chiptune']), 'Chiptune');
 });
 
 test('unlimited main quota keeps independent reserve cap', () => {

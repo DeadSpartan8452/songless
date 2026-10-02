@@ -547,6 +547,7 @@
                 <input id="collection-name" maxlength="60" aria-label="Nom de la collection"
                        placeholder="Ex. Soirée famille">
                 <button class="cta-btn" id="collection-create-btn">Créer avec la sélection</button>
+                <button class="ghost-btn accent" id="playlist-create-library-btn" type="button">Créer avec toute la bibliothèque</button>
                 <button class="ghost-btn accent" id="playlist-create-empty-btn" type="button">Créer vide</button>
                 <button class="ghost-btn" id="playlist-import-btn" type="button">Importer</button>
                 <input class="hidden" id="playlist-import-file" type="file" accept="application/json,.json">
@@ -874,8 +875,7 @@
               <select id="playlist-genre" aria-label="Genre imposé">
                 <option value="">Genre : auto</option>
               </select>
-              <input type="number" id="playlist-limit" min="1" max="500" value="50"
-                     title="Nombre maximum de titres" aria-label="Nombre maximum de titres">
+              <span class="playlist-unbounded-note">Playlist entière · sans plafond</span>
               <button class="cta-btn" id="playlist-btn">
                 <i data-lucide="download"></i> Importer
               </button>
@@ -1304,7 +1304,7 @@
       </div>
 
       <label for="edit-genre-detail">Sous-genre précis <span class="label-hint">facultatif</span></label>
-      <input type="text" id="edit-genre-detail" maxlength="80" placeholder="Synthwave, city pop…">
+      <input type="text" id="edit-genre-detail" maxlength="80" list="genre-detail-suggestions" placeholder="Synthwave, city pop…">
 
       <div class="edit-classification-grid">
         <div>
@@ -1364,7 +1364,7 @@
       <select id="bulk-genre"></select>
 
       <label for="bulk-genre-detail">Sous-genre précis <span class="label-hint">facultatif</span></label>
-      <input type="text" id="bulk-genre-detail" maxlength="80" placeholder="Synthwave, city pop…">
+      <input type="text" id="bulk-genre-detail" maxlength="80" list="genre-detail-suggestions" placeholder="Synthwave, city pop…">
 
       <p class="bulk-preview-note">Source : saisie manuelle · confiance élevée</p>
       <div class="bulk-preview-list hidden" id="bulk-preview-list" aria-live="polite"></div>
@@ -1643,6 +1643,9 @@
             <label><input id="playlist-edit-fair" type="checkbox"> Alterner les contributeurs</label>
             <label><input id="playlist-edit-artists" type="checkbox"> Éviter le même artiste à la suite</label>
             <label><input id="playlist-edit-explicit" type="checkbox"> Filtre explicite</label>
+            <label><input id="playlist-exclude-solatorobo" type="checkbox"> Exclure Solatorobo</label>
+            <label><input id="playlist-exclude-feel-furry" type="checkbox"> Exclure Feel Furry / furry</label>
+            <label><input id="playlist-exclude-nightcore" type="checkbox"> Exclure Nightcore</label>
           </div>
           <div class="modal-actions">
             <button class="cta-btn" id="playlist-edit-save" type="button">Enregistrer</button>
@@ -1653,6 +1656,13 @@
         <section class="playlist-editor-tracks">
           <div class="playlist-track-toolbar">
             <input id="playlist-track-filter" type="search" placeholder="Filtrer les morceaux" aria-label="Filtrer les morceaux de la playlist">
+            <select id="playlist-track-category-filter" aria-label="Filtrer par thème de morceaux">
+              <option value="">Tous les thèmes</option>
+              <option value="solatorobo">Solatorobo</option>
+              <option value="feel-furry">Feel Furry / furry</option>
+              <option value="nightcore">Nightcore</option>
+            </select>
+            <button class="danger-btn-text" id="playlist-remove-filtered" type="button">Retirer les morceaux filtrés</button>
             <button class="ghost-btn" id="playlist-add-selection" type="button">Ajouter la sélection actuelle</button>
           </div>
           <div id="playlist-track-list" class="playlist-track-list"></div>
@@ -1667,6 +1677,17 @@
 
   <!-- Notification Toast -->
   <div id="toast" class="toast hidden">Message de notification</div>
+
+  <datalist id="genre-detail-suggestions">
+    <option value="City pop"></option><option value="Chiptune"></option>
+    <option value="Disco house"></option><option value="Dream pop"></option>
+    <option value="Drift phonk"></option><option value="Eurodance"></option>
+    <option value="Future bass"></option><option value="Hardstyle"></option>
+    <option value="J-rock"></option><option value="Liquid drum and bass"></option>
+    <option value="Metalcore"></option><option value="Nu-disco"></option>
+    <option value="Post-rock"></option><option value="Shoegaze"></option>
+    <option value="Synth-pop"></option><option value="Vaporwave"></option>
+  </datalist>
 
   <!-- Script Principal -->
   <script src="platform.js"></script>
