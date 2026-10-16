@@ -4,7 +4,9 @@
 })(typeof globalThis !== 'undefined' ? globalThis : this, function () {
   'use strict';
   const clean = value => String(value || '').trim().slice(0, 100);
-  const key = value => clean(value).normalize('NFKC').toLocaleLowerCase('fr');
+  const key = value => clean(value).normalize('NFKC').normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('fr')
+    .replace(/\s+/g, ' ').trim();
   function source(label, playlistId = '') {
     const name = clean(label);
     if (!name && !playlistId) return {id: 'legacy', label: 'Origine non renseignée', kind: 'legacy'};
@@ -14,7 +16,9 @@
   function sourceOf(track) {
     const item = track && track.importSource;
     if (!item || !clean(item.id) || !clean(item.label)) return source('');
-    return {id: String(item.id).slice(0, 120), label: clean(item.label), kind: clean(item.kind)};
+    if (item.kind === 'label') return source(item.label);
+    return {id: String(item.id).slice(0, 120), label: clean(item.label), kind: clean(item.kind),
+      ...(item.profileId ? {profileId: String(item.profileId).slice(0, 64)} : {})};
   }
   function random(seed) {
     let h = 2166136261;
@@ -47,7 +51,7 @@
     return [...groups.values()].sort((a, b) => a.id.localeCompare(b.id));
   }
   function select(tracks, count, options = {}) {
-    const requested = Math.min(500, Math.max(1, Math.floor(Number(count) || 30)));
+    const requested = Math.min(20000, Math.max(1, Math.floor(Number(count) || 30)));
     const rng = random(options.seed || 'songless');
     const groups = group(tracks, options.excludedIds || []).map(bucket => ({...bucket,
       items: shuffle(bucket.items.slice().sort((a,b) => String(a.id).localeCompare(String(b.id))), rng), selected: 0}));

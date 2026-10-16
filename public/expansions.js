@@ -401,8 +401,7 @@
   function startPlaylist(trackIds, name = 'Playlist') {
     const ids = [...new Set((trackIds || []).map(String))];
     if (!ids.length) return showToast('Cette playlist ne contient aucun morceau prêt.', 'warn');
-    const format = byId('format-rounds').value;
-    if (startLimited(format === '0' ? 'infinite' : Number(format), 'collection', ids)) {
+    if (startLimited(ids.length, 'collection', ids)) {
       showToast(`Playlist « ${name} » lancée.`, 'ok');
     }
   }
@@ -720,7 +719,7 @@
     { key: 'language', label: 'Langue', empty: 'Toutes les langues', trusted: isPartyLanguageTrusted },
     { key: 'year', label: 'Année', empty: 'Toutes les années', trusted: isPartyYearTrusted },
   ];
-  const PARTY_DRAW_COUNTS = [5, 10, 15, 20, 25, 30, 35, 40, 50, 60, 70, 80, 90, 100, 125, 150, 175, 200];
+  const PARTY_DRAW_COUNTS = [5, 10, 15, 20, 25, 30, 35, 40, 50, 60, 70, 80, 90, 100, 125, 150, 175, 200, 250, 300, 400, 500, 750, 1000, 1500, 2000];
 
   function isPartyGenreTrusted(track) {
     if (typeof genreFiable === 'function') return genreFiable(track);

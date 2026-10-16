@@ -13,6 +13,9 @@ let checks=0;const ok=name=>{checks++;console.log('OK '+name);};
   for(let i=2;i<=6;i+=2)assert.equal(order.slice(0,i).filter(x=>x===order[0]).length,i/2);
  }
  ok('100 tirages : une playlist de 1 000 titres ne domine pas une source de trois titres');
+ assert.equal(B.select(tracks,1725,{seed:'1725'}).selected.length,1003);
+ assert.equal(B.select(tracks,20000,{seed:'all'}).requested,20000);
+ ok('le tirage de bibliothèque dépasse 500 et signale les morceaux réellement manquants');
  assert.deepEqual(B.select(tracks,9,{seed:'fixed'}).sources.map(s=>s.count),[6,3]);
  assert.deepEqual(B.select(tracks,9,{seed:'fixed'}),B.select(tracks.slice().reverse(),9,{seed:'fixed'}));
  assert.notDeepEqual(B.select(tracks,9,{seed:'other'}).selected,B.select(tracks,9,{seed:'fixed'}).selected);

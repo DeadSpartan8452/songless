@@ -4,8 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Songless 🐾 Blind Test Local</title>
-  <!-- Icône d'onglet. Sans ça, le navigateur réclame /favicon.ico et se prend un 404. -->
+  <!-- Icônes SVG modernes et ICO de secours pour navigateurs plus anciens. -->
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="alternate icon" href="favicon.ico" sizes="32x32">
   <!-- DM Sans, servie en local (public/vendor/fonts/). Plus aucun appel à
        fonts.googleapis.com : le jeu tourne entièrement hors ligne.
        Playfair Display était chargée ici sans être utilisée nulle part dans le
@@ -499,6 +500,11 @@
                   <option value="10" selected>Normale · 10 morceaux</option>
                   <option value="20">20 morceaux</option>
                   <option value="50">Marathon · 50 morceaux</option>
+                  <option value="100">100 morceaux</option>
+                  <option value="250">250 morceaux</option>
+                  <option value="500">500 morceaux</option>
+                  <option value="1000">1 000 morceaux</option>
+                  <option value="2000">2 000 morceaux</option>
                   <option value="0">Sans fin</option>
                 </select>
                 <button class="cta-btn" id="format-start-btn">Commencer</button>
@@ -535,6 +541,11 @@
                 <button class="ghost-btn accent training-btn" data-rounds="10">10 morceaux</button>
                 <button class="ghost-btn training-btn" data-rounds="20">20 morceaux</button>
                 <button class="ghost-btn training-btn" data-rounds="50">50 morceaux</button>
+                <button class="ghost-btn training-btn" data-rounds="100">100 morceaux</button>
+                <button class="ghost-btn training-btn" data-rounds="250">250 morceaux</button>
+                <button class="ghost-btn training-btn" data-rounds="500">500 morceaux</button>
+                <button class="ghost-btn training-btn" data-rounds="1000">1 000 morceaux</button>
+                <button class="ghost-btn training-btn" data-rounds="2000">2 000 morceaux</button>
                 <button class="ghost-btn training-btn" data-rounds="infinite">Sans fin</button>
               </div>
               <div class="mode-status" id="training-status"></div>
@@ -609,6 +620,12 @@
                     <option value="5">5 manches</option>
                     <option value="10" selected>10 manches</option>
                     <option value="20">20 manches</option>
+                    <option value="50">50 manches</option>
+                    <option value="100">100 manches</option>
+                    <option value="250">250 manches</option>
+                    <option value="500">500 manches</option>
+                    <option value="1000">1 000 manches</option>
+                    <option value="2000">2 000 manches</option>
                     <option value="infinite">Infini · jusqu’à l’arrêt</option>
                   </select>
                   <button class="cta-btn" id="party-create-btn">Créer la partie</button>
@@ -792,8 +809,10 @@
             </div>
           </div>
 
-          <label class="source-origin" for="import-source-label">Source des ajouts classiques (facultatif)
-            <input id="import-source-label" type="text" maxlength="100" placeholder="Même nom = même source dans le tirage">
+          <label class="source-origin" for="import-source-label">Profil propriétaire des ajouts
+            <select id="import-source-label" required aria-label="Profil propriétaire des imports">
+              <option value="">Choisir un profil…</option>
+            </select>
           </label>
 
           <!-- Téléchargement automatique -->
@@ -830,8 +849,8 @@
             <p class="download-hint">Choisis le total et colle plusieurs playlists YouTube ou YouTube Music. Chaque source reçoit autant de place que possible. Les titres déjà présents sont évités.</p>
             <label for="source-import-lines">Playlists — une par ligne</label>
             <textarea id="source-import-lines" spellcheck="false" placeholder="Nom de la personne | https://www.youtube.com/playlist?list=…&#10;Autre source | https://www.youtube.com/playlist?list=…"></textarea>
-            <p class="download-hint">Le nom avant « | » est facultatif. Utilise le même nom pour regrouper les playlists d’une personne. De 2 à 20 playlists ; jusqu’à 5 000 titres examinés par playlist. Spotify et Deezer ne sont pas encore pris en charge.</p>
-            <div class="source-fields"><label for="source-import-count">Nombre de nouvelles chansons<input id="source-import-count" type="number" min="1" max="500" value="30"></label></div>
+            <p class="download-hint">Indique avant « | » le nom exact d’un profil Songless propriétaire. Plusieurs playlists peuvent appartenir au même profil. De 2 à 20 playlists ; jusqu’à 5 000 titres examinés par playlist. Spotify et Deezer ne sont pas encore pris en charge.</p>
+            <div class="source-fields"><label for="source-import-count">Nombre de nouvelles chansons<input id="source-import-count" type="number" min="1" max="20000" value="30"></label></div>
             <div class="source-actions">
               <button class="ghost-btn" id="source-import-preview-btn" type="button">Prévisualiser le tirage</button>
               <button class="cta-btn" id="source-import-start" type="button" disabled>Télécharger ce mélange</button>
@@ -845,7 +864,7 @@
             <h3>Tirage équilibré dans la bibliothèque</h3>
             <p class="download-hint">Une grosse playlist ne prend plus toute la place. Le tirage alterne les sources et choisit leurs chansons au hasard, après les filtres et la blacklist. Les défis enregistrés gardent leur sélection d’origine.</p>
             <label class="source-toggle"><input type="checkbox" id="source-balance-enabled">Équilibrer les sources en solo et en multijoueur</label>
-            <div class="source-fields"><label for="source-library-count">Nombre de chansons dans la sélection<input type="number" id="source-library-count" min="1" max="500" value="30"></label></div>
+            <div class="source-fields"><label for="source-library-count">Nombre de chansons dans la sélection<input type="number" id="source-library-count" min="1" max="20000" value="30"></label></div>
             <fieldset><legend>Sources à inclure</legend><div id="source-library-list" class="source-checkboxes"></div></fieldset>
             <div id="source-library-summary" class="source-summary" role="status"></div>
             <button class="ghost-btn" id="source-library-reroll" type="button">Nouveau tirage et nouvelle partie solo</button>
@@ -1096,6 +1115,9 @@
                 </select>
                 <select id="library-genre-detail-filter" aria-label="Filtrer par sous-genre">
                   <option value="">Tous les sous-genres</option>
+                </select>
+                <select id="library-artist-filter" aria-label="Filtrer par artiste">
+                  <option value="">Tous les artistes</option>
                 </select>
                 <select id="library-language-filter" aria-label="Filtrer par langue chantée">
                   <option value="">Toutes les langues</option>
@@ -1584,6 +1606,9 @@
         <section class="playlist-editor-settings">
           <label>Nom<input id="playlist-edit-name" maxlength="60"></label>
           <label>Description<textarea id="playlist-edit-description" maxlength="280" rows="3"></textarea></label>
+          <label>Profil propriétaire
+            <select id="playlist-edit-owner"><option value="">Sans propriétaire</option></select>
+          </label>
           <div class="playlist-editor-pair">
             <label>Type
               <select id="playlist-edit-collaborative">
@@ -1602,8 +1627,8 @@
             </label>
           </div>
           <div class="playlist-editor-pair">
-            <label id="playlist-custom-quota-wrap" class="hidden">Quota personnalisé (1 à 500)
-              <input id="playlist-edit-custom-quota" type="number" min="1" max="500" step="1" value="30">
+            <label id="playlist-custom-quota-wrap" class="hidden">Quota personnalisé (1 à 20 000)
+              <input id="playlist-edit-custom-quota" type="number" min="1" max="20000" step="1" value="30">
             </label>
             <label>Réserves par joueur (0 à 10)
               <input id="playlist-edit-reserves" type="number" min="0" max="10" step="1" value="2">
@@ -1642,10 +1667,12 @@
             <label><input id="playlist-edit-hide" type="checkbox"> Choix secrets pendant la collecte</label>
             <label><input id="playlist-edit-fair" type="checkbox"> Alterner les contributeurs</label>
             <label><input id="playlist-edit-artists" type="checkbox"> Éviter le même artiste à la suite</label>
+            <label><input id="playlist-edit-similar" type="checkbox" checked> Éviter les chansons aux titres trop proches</label>
             <label><input id="playlist-edit-explicit" type="checkbox"> Filtre explicite</label>
             <label><input id="playlist-exclude-solatorobo" type="checkbox"> Exclure Solatorobo</label>
             <label><input id="playlist-exclude-feel-furry" type="checkbox"> Exclure Feel Furry / furry</label>
             <label><input id="playlist-exclude-nightcore" type="checkbox"> Exclure Nightcore</label>
+            <label><input id="playlist-exclude-variants" type="checkbox"> Exclure parodies, reprises, remix, mashups et versions accélérées / ralenties</label>
           </div>
           <div class="modal-actions">
             <button class="cta-btn" id="playlist-edit-save" type="button">Enregistrer</button>

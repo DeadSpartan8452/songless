@@ -91,6 +91,35 @@ test('les playlists synchronisent les anciens défis sans écraser leurs contrib
   assert.match(expansions, /saveLists\(\{ saveChallenges: false \}\)/);
 });
 
+test('Jouer une playlist Songless lance tous ses morceaux', () => {
+  const expansions = read('expansions.js');
+  assert.match(expansions,
+    /function startPlaylist\(trackIds,[\s\S]*?startLimited\(ids\.length,\s*'collection',\s*ids\)/);
+});
+
+test('les commandes Bluetooth relancent le lecteur avec ses limites de lecture', () => {
+  const app = read('app.js');
+  assert.match(app, /mediaSession\.setActionHandler\('play',[\s\S]*?playAudio\(\)/);
+  assert.match(app, /mediaSession\.setActionHandler\('pause',\s*pauseAudio\)/);
+});
+
+test('les parcours de sélection acceptent les bibliothèques de plus de 500 titres', () => {
+  const app = read('index.html');
+  const expansions = read('expansions.js');
+  const party = fs.readFileSync(path.join(__dirname, '..', 'lib', 'party.js'), 'utf8');
+  assert.match(app, /max="20000"/);
+  assert.match(expansions, /startLimited\(ids\.length,\s*'collection',\s*ids\)/);
+  assert.match(party, /MAX_PARTY_TRACK_IDS/);
+});
+
+test('les playlists existantes peuvent recevoir un propriétaire depuis leur éditeur', () => {
+  const index = read('index.html');
+  const ui = read('playlists-ui.js');
+  assert.match(index, /id="playlist-edit-owner"/);
+  assert.match(ui, /ownerProfileId:\s*byId\('playlist-edit-owner'\)\.value/);
+  assert.match(ui, /ownerProfileName:\s*ownerProfiles\.find/);
+});
+
 test('un contrôleur ne sonde la playlist que si la partie en utilise une', () => {
   const controller = read('controller.js');
   assert.match(controller, /state\s*&&\s*state\.settings\s*&&\s*state\.settings\.playlistId/);
@@ -196,12 +225,14 @@ test('les filtres de bibliothèque couvrent genre précis, année et favoris san
   for (const id of [
     'library-genre-filter',
     'library-genre-detail-filter',
+    'library-artist-filter',
     'library-year-filter',
     'library-favorite-filter',
   ]) {
     assert.match(index, new RegExp(`id=["']${id}["']`));
   }
   assert.match(app, /data-genre-detail/);
+  assert.match(app, /matchesArtist/);
   assert.match(app, /data-year/);
   assert.match(app, /data-favorite/);
   assert.doesNotMatch(app, /filterLibraryDisplay[\s\S]*?patch\.title/);
@@ -231,6 +262,7 @@ test('la file de métadonnées sépare les priorités et chaque champ à corrige
 test('toutes les interfaces utilisent le favicon local sans le confondre avec une pochette', () => {
   for (const page of PAGES) {
     assert.match(read(page), /<link\s+rel=["']icon["']\s+href=["']favicon\.svg["']/i);
+    assert.match(read(page), /href=["']favicon\.ico["']/i);
   }
   assert.doesNotMatch(read('app.js'), /favicon\.svg[^\n]*(?:cover|pochette)/i);
 });

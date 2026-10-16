@@ -490,3 +490,58 @@ signature v2 RSA 4096 bits est valide et son audit natif 16 Kio conserve deux
 Le manifeste Windows déclare `personalDataIncluded=false`. Aucun test logiciel
 du projet n’a été lancé ; les contrôles effectués portent sur les archives,
 leurs empreintes et la signature APK. Aucun push ni publication.
+
+## Reprise de l’audit correctif — 16 octobre 2026
+
+- Les imports audio, ZIP, dossiers Android, téléchargements et playlists YouTube
+  exigent un profil Songless valide côté serveur avant d’installer ou de
+  télécharger les morceaux. Les imports ZIP, dossiers et playlists créent une
+  playlist Songless attribuée à ce profil ; les compilations et playlists
+  YouTube affichent la playlist créée dans leur journal. L’origine est conservée
+  pour le tirage équilibré. Les imports équilibrés vérifient le profil indiqué avant
+  chaque lien, rapprochent les noms sans tenir compte des accents et de la casse,
+  puis regroupent plusieurs playlists d’un même profil.
+- Un lancement depuis une playlist Songless utilise désormais tous ses morceaux,
+  au lieu de reprendre le réglage global de 10 manches. Les sélections solo et
+  multijoueur acceptent jusqu’à 20 000 manches, avec des choix visibles jusqu’à
+  2 000 et un tirage qui accepte toute quantité entière dans la limite serveur.
+- Les sons dont la durée connue est inférieure à cinq secondes sont écartés du
+  jeu et du complément de playlist. Le filtre Nightcore consulte aussi le nom
+  source et les métadonnées de variante.
+- Le tri de titres issu de fichiers longs conserve le nom source complet pour
+  l’analyse même si le nom matériel est raccourci. L’inversion automatique
+  artiste/titre est devenue prudente lorsqu’un même nom apparaît des deux côtés.
+  L’exclusion d’un fichier déjà traité tient compte de la casse et Unicode.
+- Aucun morceau, profil ni donnée locale n’a été supprimé, remplacé ou copié.
+  La bibliothèque existante n’a pas été réattribuée aux profils.
+- Les playlists générées par les nouveaux imports sont triées par propriétaire
+  dans l’interface et affichent le nom du profil. Les anciennes playlists sans
+  propriétaire restent sans attribution automatique.
+- Le bouton « Jouer » d’une playlist utilise `ids.length` pour lancer tous ses
+  morceaux. Les commandes Play/Pause exposées par Media Session sont désormais
+  reliées à `playAudio()` et `pauseAudio()` : une commande de casque ou
+  d’enceinte qui pilote le navigateur repasse donc par les limites d’extrait de
+  Songless. Les tests logiciels vérifient ce raccordement, mais pas une enceinte
+  physique ni un lecteur qui diffuserait indépendamment du navigateur.
+- Les plafonds de sélection de partie, de tirage équilibré, de complément et de
+  quota personnalisé sont portés à 20 000. Les choix rapides comprennent 1 000
+  et 2 000 ; les playlists de 1 725 titres sont couvertes par un test synthétique.
+- Les playlists peuvent aussi espacer les titres dont les mots se recouvrent
+  fortement sur les trois morceaux précédents. Cette option est distincte du
+  réglage d’artiste et peut être désactivée dans l’éditeur de playlist.
+- Les pages disposent maintenant d’un favicon ICO 32 × 32 en secours du SVG.
+  L’ICO a été ouvert avec System.Drawing et sa taille a été contrôlée.
+- L’heuristique de tri ZIP n’inverse plus les titres quand le nom candidat
+  apparaît de façon répétée des deux côtés du séparateur ; le cas d’un artiste
+  répétitif à droite reste inversé. Le test utilise des noms fictifs.
+- Les propositions sélectionnées comparent les identifiants de morceaux sous
+  forme de chaînes. Les rapprochements de doublons testent aussi des noms longs
+  et une casse Unicode différente. Les durées connues sous cinq secondes sont
+  toujours écartées des manches.
+- Vérification du 16 octobre : `npm.cmd test` termine avec le code 0 ; les
+  contrôles ciblés sources, playlists, UI, parties, doublons et identité passent.
+  Aucune bibliothèque musicale réelle n’a été parcourue ou modifiée. Les
+  les anciennes playlists peuvent maintenant recevoir leur propriétaire depuis
+  leur éditeur ; aucune attribution automatique n’est faite sans preuve fiable.
+  Le test matériel Bluetooth et le reclassement d’un ZIP réel restent à faire
+  avec un appareil et une archive de démonstration. Aucun push ni publication.

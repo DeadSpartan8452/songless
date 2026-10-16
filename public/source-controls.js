@@ -3,14 +3,26 @@
   const B=window.SonglessSourceBalance;
   const $=id=>document.getElementById(id);
   let candidateTracks=[],importToken='',assignToken='',lastResult=null;
+  let ownerProfiles=[];
   let config={enabled:false,count:30,excludedIds:[]};
   try{const old=JSON.parse(localStorage.getItem('songless-source-balance')||'null');
-    if(old)config={enabled:old.enabled===true,count:Math.max(1,Math.min(500,Number(old.count)||30)),
+    if(old)config={enabled:old.enabled===true,count:Math.max(1,Math.min(20000,Number(old.count)||30)),
       excludedIds:Array.isArray(old.excludedIds)?old.excludedIds.map(String).slice(0,500):[]};
   }catch(_){}
   function persist(){try{localStorage.setItem('songless-source-balance',JSON.stringify(config));}catch(_){}}
   function textLine(parent,text,tag='p'){const item=document.createElement(tag);item.textContent=text;parent.appendChild(item);return item;}
   function allowed(){return !window.songlessExpansions || window.songlessExpansions.sourceBalanceAllowed();}
+  async function refreshOwnerProfiles(){
+    const select=$('import-source-label');if(!select)return;
+    try{
+      const response=await fetch('/api/player/state',{cache:'no-store'});
+      if(!response.ok)throw new Error('Profils indisponibles');
+      const state=await response.json();ownerProfiles=Array.isArray(state.profiles)?state.profiles:[];
+      select.replaceChildren(new Option('Choisir un profil…',''));
+      for(const profile of ownerProfiles)select.add(new Option(profile.nom,profile.id));
+      select.value='';
+    }catch(_){ownerProfiles=[];}
+  }
   function settings(){return {...config,enabled:config.enabled && allowed(),excludedIds:[...config.excludedIds]};}
   function render(){
     const zone=$('source-library-list');if(!zone)return;
@@ -56,9 +68,11 @@
   }
   function init(){
     if(!$('source-library-card'))return;
+    refreshOwnerProfiles();
+    $('profile-btn')?.addEventListener('click',refreshOwnerProfiles);
     $('source-balance-enabled').checked=config.enabled;$('source-library-count').value=config.count;
     for(const id of ['source-balance-enabled','source-library-count'])$(id).addEventListener('change',()=>{
-      config.enabled=$('source-balance-enabled').checked;config.count=Math.max(1,Math.min(500,Math.floor(Number($('source-library-count').value)||30)));
+      config.enabled=$('source-balance-enabled').checked;config.count=Math.max(1,Math.min(20000,Math.floor(Number($('source-library-count').value)||30)));
       $('source-library-count').value=config.count;persist();rebuildPlaylist({keepCurrent:true});
     });
     $('source-library-reroll').addEventListener('click',()=>{
@@ -94,6 +108,8 @@
             if(event[1]==='done'){
               log('Terminé : '+data.added+' / '+data.requested+' ajoutés, '+data.duplicates+' doublons, '+data.errors+' échecs.');
               for(const source of data.sources)log(source.label+' : '+source.added+' ajouté(s).');
+              for(const item of data.playlists||[])log('Playlist Songless créée pour '+item.ownerProfileName+' : '+item.nom+'.');
+              if(data.playlistWarning)log('Playlist Songless non créée : '+data.playlistWarning);
               if(data.missing)log('Il manque '+data.missing+' chanson(s) : les candidats disponibles ont été épuisés ou la limite de tentatives atteinte.');
               showToast(data.added+' chanson(s) ajoutée(s).','ok');
             }
@@ -120,6 +136,8 @@
     render();
   }
   window.songlessSources={apply,settings,candidates:()=>config.enabled && allowed()?[...candidateTracks]:[...playlist],render,
-    label:()=>($('import-source-label')?.value||'').trim()};
+    label:()=>ownerProfiles.find(profile=>profile.id===$('import-source-label')?.value)?.nom||'',
+    ownerId:()=>ownerProfiles.find(profile=>profile.id===$('import-source-label')?.value)?.id||'',
+    hasOwner:()=>Boolean(ownerProfiles.find(profile=>profile.id===$('import-source-label')?.value))};
   document.addEventListener('DOMContentLoaded',init);
 })();

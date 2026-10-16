@@ -151,6 +151,7 @@ const downloadLog = document.getElementById('download-log');
 const toolsState = document.getElementById('tools-state');
 const libraryGenreFilter = document.getElementById('library-genre-filter');
 const libraryGenreDetailFilter = document.getElementById('library-genre-detail-filter');
+const libraryArtistFilter = document.getElementById('library-artist-filter');
 const libraryLanguageFilter = document.getElementById('library-language-filter');
 const libraryYearFilter = document.getElementById('library-year-filter');
 const libraryFavoriteFilter = document.getElementById('library-favorite-filter');
@@ -895,6 +896,23 @@ async function jouerAlEnvers(syncPlayback = null) {
   sourceTampon.start(0, depart, longueur);
   drawActiveWaveform();
 }
+
+// Les commandes Play/Pause d'un casque ou d'une enceinte Bluetooth passent
+// par Media Session. Les relier au lecteur Songless conserve le minuteur
+// d'extrait au lieu d'appeler audio.play() directement.
+function connecterCommandesMedia() {
+  if (!navigator.mediaSession || typeof navigator.mediaSession.setActionHandler !== 'function') return;
+  try {
+    navigator.mediaSession.setActionHandler('play', () => {
+      if (currentTrack) playAudio();
+    });
+    navigator.mediaSession.setActionHandler('pause', pauseAudio);
+    navigator.mediaSession.setActionHandler('stop', pauseAudio);
+  } catch (error) {
+    console.warn('Commandes Bluetooth indisponibles :', error && error.message);
+  }
+}
+connecterCommandesMedia();
 
 function pauseAudio() {
   isPlaying = false;
@@ -1752,7 +1770,7 @@ function submitTrackGuess(track) {
   pauseAudio();
   setAutocompleteOpen(false); // S'assurer que le dropdown disparait et ne repop pas
   
-  const isMatch = (track.id === currentTrack.id);
+  const isMatch = String(track.id) === String(currentTrack.id);
   const guessText = `${track.artist} - ${track.title}`;
   
   if (isMatch) {
@@ -2850,6 +2868,7 @@ function filterLibraryDisplay() {
   const query = librarySearch.value.trim().toLowerCase();
   const genre = libraryGenreFilter ? libraryGenreFilter.value : '';
   const genreDetail = libraryGenreDetailFilter ? libraryGenreDetailFilter.value : '';
+  const artistFilter = libraryArtistFilter ? libraryArtistFilter.value : '';
   const language = libraryLanguageFilter ? libraryLanguageFilter.value : '';
   const yearFilter = libraryYearFilter ? libraryYearFilter.value : '';
   const favoriteFilter = libraryFavoriteFilter ? libraryFavoriteFilter.value : '';
@@ -2871,6 +2890,7 @@ function filterLibraryDisplay() {
       || itemLanguage.toLowerCase().includes(query);
     const matchesGenre = !genre || itemGenre === genre;
     const matchesGenreDetail = !genreDetail || itemGenreDetail === genreDetail;
+    const matchesArtist = !artistFilter || artist === artistFilter.toLocaleLowerCase('fr-FR');
     const matchesLanguage = !language || itemLanguage === language;
     const matchesYear = !yearFilter
       || (yearFilter === 'missing' && !itemYear)
@@ -2904,7 +2924,7 @@ function filterLibraryDisplay() {
       || (validationFilter === 'missing'
         && item.getAttribute('data-metadata-missing') === '1');
 
-    const visible = matchesText && matchesGenre && matchesGenreDetail && matchesLanguage
+    const visible = matchesText && matchesGenre && matchesGenreDetail && matchesArtist && matchesLanguage
       && matchesYear && matchesFavorite && matchesReview && matchesValidation;
     item.classList.toggle('hidden', !visible);
     if (visible) visibles++;
@@ -2912,7 +2932,7 @@ function filterLibraryDisplay() {
 
   // Le compteur du titre suit ce qui est réellement affiché : sinon « Musiques
   // installées (1564) » au-dessus de 12 lignes filtrées prête à confusion.
-  const filtreActif = query || genre || genreDetail || language || yearFilter
+  const filtreActif = query || genre || genreDetail || artistFilter || language || yearFilter
     || favoriteFilter || validationFilter || filtreARenommer;
   tracksCountSpan.innerText = filtreActif ? `${visibles} / ${tracks.length}` : tracks.length;
 }
@@ -2997,10 +3017,14 @@ function majCompteurARenommer() {
 function handleFilesUpload(files) {
   const file = files[0];
   if (!file) return;
+  if (window.songlessSources && !window.songlessSources.hasOwner()) {
+    showToast('Choisis le profil propriétaire avant l’import.', 'warn'); return;
+  }
 
   const formData = new FormData();
   formData.append('audio', file);
   formData.append('sourceLabel', window.songlessSources?.label() || '');
+  formData.append('sourceProfileId', window.songlessSources?.ownerId() || '');
   formData.append('skipAntivirus', document.getElementById('import-no-scan')?.checked ? 'true' : 'false');
 
   // Afficher la barre de progression
@@ -3109,6 +3133,10 @@ function afficherRapportImport(rapport) {
       + `⚠ ${rapport.genresIncomplets} morceaux sans genre : lance <code>node tools/enrich.js</code> pour les compléter</div>`);
   }
 
+  if (rapport.playlist) {
+    lignes.push(`<div class="report-line ok">Playlist Songless créée pour ${escapeHtml(rapport.playlist.ownerProfileName)} : ${escapeHtml(rapport.playlist.nom)}</div>`);
+  }
+  if (rapport.playlistWarning) lignes.push(`<div class="report-line warn">Playlist Songless non créée : ${escapeHtml(rapport.playlistWarning)}</div>`);
   zone.innerHTML = lignes.join('');
   zone.classList.remove('hidden');
 
@@ -4377,6 +4405,8 @@ function rebuildPlaylist({ keepCurrent = true } = {}) {
   const genreFilterActive = activeGenres.size > 0 && activeGenres.size < allGenres.length;
 
   playlist = shuffled.filter(t => {
+    // Les sons d'interface de quelques secondes ne constituent pas une manche.
+    if (Number(t.duration) > 0 && Number(t.duration) < 5) return false;
     if (isTrackBlacklisted(t)) return false;
     if (genreFilterActive
       && (!genreFiable(t) || !activeGenres.has(t.genre || 'Autre'))) return false;
@@ -4627,6 +4657,12 @@ function initMobileFolderPicker() {
       setMobileFolderState(result.error || 'Dossier Android invalide.', 'error');
       return;
     }
+    if (window.songlessSources && !window.songlessSources.hasOwner()) {
+      button.disabled = false;
+      button.textContent = 'Choisir un dossier musical';
+      setMobileFolderState('Choisissez le profil propriétaire avant l’import.', 'error');
+      return;
+    }
 
     const count = Number(result.files) || 0;
     button.textContent = 'Analyse en cours…';
@@ -4638,7 +4674,8 @@ function initMobileFolderPicker() {
       const response = await fetch('/api/android/import-folder', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({batchId: result.batchId, sourceLabel: window.songlessSources?.label() || ''}),
+        body: JSON.stringify({batchId: result.batchId, sourceLabel: window.songlessSources?.label() || '',
+          sourceProfileId: window.songlessSources?.ownerId() || ''}),
       });
       const rapport = await response.json();
       if (!response.ok) throw new Error(rapport.error || 'Import du dossier impossible.');
@@ -4883,6 +4920,22 @@ function renderLibraryMetadataFilters() {
       + details.map(detail => `<option value="${escapeHtml(detail)}">${escapeHtml(detail)}</option>`).join('');
     libraryGenreDetailFilter.value = details.includes(keep) ? keep : '';
   }
+  if (libraryArtistFilter) {
+    const keep = libraryArtistFilter.value;
+    const artistNames = new Map();
+    tracks.forEach(track => {
+      const name = String(track.artist || '').trim();
+      if (name && !/^artiste inconnu(?:e)?$/i.test(name)) {
+        const key = name.toLocaleLowerCase('fr-FR');
+        if (!artistNames.has(key)) artistNames.set(key, name);
+      }
+    });
+    const artists = [...artistNames.entries()]
+      .sort((a, b) => a[1].localeCompare(b[1], 'fr', { sensitivity: 'base' }));
+    libraryArtistFilter.innerHTML = '<option value="">Tous les artistes</option>'
+      + artists.map(([key, name]) => `<option value="${escapeHtml(key)}">${escapeHtml(name)}</option>`).join('');
+    libraryArtistFilter.value = artists.some(([key]) => key === keep) ? keep : '';
+  }
   if (libraryLanguageFilter) {
     const keep = libraryLanguageFilter.value;
     const languages = [...new Set(tracks.map(track => track.language).filter(Boolean))]
@@ -4950,7 +5003,7 @@ function initDownloadEvents() {
   if (libraryGenreFilter) {
     libraryGenreFilter.addEventListener('change', filterLibraryDisplay);
   }
-  [libraryGenreDetailFilter, libraryLanguageFilter, libraryYearFilter, libraryFavoriteFilter,
+  [libraryGenreDetailFilter, libraryArtistFilter, libraryLanguageFilter, libraryYearFilter, libraryFavoriteFilter,
     libraryValidationFilter]
     .filter(Boolean)
     .forEach(select => select.addEventListener('change', filterLibraryDisplay));
@@ -5016,6 +5069,9 @@ function logDownload(message, type = '') {
 }
 
 async function startDownload() {
+  if (window.songlessSources && !window.songlessSources.hasOwner()) {
+    showToast('Choisis le profil propriétaire avant le téléchargement.', 'warn'); return;
+  }
   const query = downloadQuery.value.trim();
   if (!query) {
     showToast('Indique un titre de musique ou une URL.', 'warn');
@@ -5035,6 +5091,7 @@ async function startDownload() {
       body: JSON.stringify({
         query,
         sourceLabel: window.songlessSources?.label() || '',
+        sourceProfileId: window.songlessSources?.ownerId() || '',
         genre: downloadGenre.value || null,
       }),
     });
@@ -5103,6 +5160,8 @@ function handleDownloadEvent(block) {
       const added = (data.ajoutes || []).length;
       const duplicates = (data.doublons || []).length;
       const errors = (data.erreurs || []).length;
+      if (data.playlist) logDownload(`Playlist Songless créée pour ${data.playlist.ownerProfileName} : ${data.playlist.nom}.`, 'ok');
+      if (data.playlistWarning) logDownload(`Playlist Songless non créée : ${data.playlistWarning}`, 'warn');
       logDownload(`Terminé : ${added} ajouté${added > 1 ? 's' : ''}, ${duplicates} déjà présent${duplicates > 1 ? 's' : ''}, ${errors} en échec.`, added ? 'ok' : '');
       showToast(added ? `${added} morceau${added > 1 ? 'x' : ''} ajouté${added > 1 ? 's' : ''}.` : 'Aucun nouveau morceau ajouté.', added ? 'ok' : 'info');
       downloadQuery.value = '';
@@ -5168,6 +5227,9 @@ function majProgressionPlaylist(fait, total) {
 
 async function lancerImportPlaylist() {
   if (importEnCours) return;
+  if (window.songlessSources && !window.songlessSources.hasOwner()) {
+    showToast('Choisis le profil propriétaire avant l’import de playlist.', 'warn'); return;
+  }
 
   const url = document.getElementById('playlist-url').value.trim();
   if (!url) {
@@ -5190,6 +5252,7 @@ async function lancerImportPlaylist() {
       body: JSON.stringify({
         url,
         sourceLabel: window.songlessSources?.label() || '',
+        sourceProfileId: window.songlessSources?.ownerId() || '',
         genre: document.getElementById('playlist-genre').value || null,
       }),
     });
@@ -5263,6 +5326,8 @@ function traiterEvenementPlaylist(bloc) {
     const e = (data.erreurs || []).length;
     journalPlaylist(`Terminé : ${a} ajouté${a > 1 ? 's' : ''}, ${d} déjà présent${d > 1 ? 's' : ''}, ${e} en échec.`,
       a ? 'ok' : '');
+    if(data.playlist)journalPlaylist(`Playlist Songless créée pour ${data.playlist.ownerProfileName} : ${data.playlist.nom}.`,'ok');
+    if(data.playlistWarning)journalPlaylist(`Playlist Songless non créée : ${data.playlistWarning}`,'ko');
     showToast(a ? `${a} morceau${a > 1 ? 'x' : ''} ajouté${a > 1 ? 's' : ''}.` : 'Rien de nouveau dans cette playlist.',
       a ? 'ok' : 'info');
     loadLibrary();

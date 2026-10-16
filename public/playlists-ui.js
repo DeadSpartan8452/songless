@@ -6,6 +6,7 @@
   let hostParty = null;
   let partyRefreshTimer = null;
   let cleanupReport = null;
+  let ownerProfiles = [];
 
   const byId = id => document.getElementById(id);
   const escapeHtml = value => String(value || '').replace(/[&<>"']/g, char => ({
@@ -27,6 +28,7 @@
     if (tag === 'solatorobo') return haystack.includes('solatorobo');
     if (tag === 'feel-furry') return haystack.includes('feel furry') || haystack.includes('furry');
     if (tag === 'nightcore') return haystack.includes('nightcore');
+    if (tag === 'variants') return /\b(parody|parodie|spoof|cover|reprise|karaoke|karaoké|remix|mashup|bootleg|sped\s*up|speed\s*up|slowed|pitch\s*up|pitch\s*down|8d|bass\s*boosted)\b/i.test(haystack);
     return false;
   }
 
@@ -52,14 +54,28 @@
     }
   }
 
+  async function loadOwnerProfiles() {
+    try {
+      const state = await api('/api/player/state');
+      ownerProfiles = Array.isArray(state.profiles) ? state.profiles : [];
+      const select = byId('playlist-edit-owner');
+      const selected = select.value;
+      select.replaceChildren(new Option('Sans propriétaire', ''));
+      for (const profile of ownerProfiles) select.add(new Option(profile.nom, profile.id));
+      if (ownerProfiles.some(profile => profile.id === selected)) select.value = selected;
+    } catch (_) { ownerProfiles = []; }
+  }
+
   function filteredItems() {
     const query = String(byId('playlist-filter') && byId('playlist-filter').value || '').trim().toLocaleLowerCase('fr-FR');
     const status = byId('playlist-status-filter') && byId('playlist-status-filter').value || 'active';
     return items.filter(item => {
       if (status === 'active' && item.status === 'archived') return false;
       if (status === 'archived' && item.status !== 'archived') return false;
-      return !query || `${item.nom} ${item.description || ''}`.toLocaleLowerCase('fr-FR').includes(query);
-    });
+      return !query || `${item.nom} ${item.description || ''} ${item.ownerProfileName || ''}`.toLocaleLowerCase('fr-FR').includes(query);
+    }).sort((a, b) => String(a.ownerProfileName || 'Sans propriétaire').localeCompare(
+      String(b.ownerProfileName || 'Sans propriétaire'), 'fr-FR', { sensitivity: 'base' }
+    ) || String(a.nom || '').localeCompare(String(b.nom || ''), 'fr-FR', { sensitivity: 'base' }));
   }
 
   function render() {
@@ -94,6 +110,7 @@
           <div class="playlist-card-meta">
             <span class="playlist-pill ${summary.ready ? 'ready' : 'warn'}">${Number(summary.playable) || 0}/${Number(summary.total) || 0} prêts</span>
             <span class="playlist-pill">${escapeHtml(statusLabel(item.status))}</span>
+            ${item.ownerProfileName ? `<span class="playlist-pill">À ${escapeHtml(item.ownerProfileName)}</span>` : ''}
             ${item.collaborative ? `<span class="playlist-pill">${people} contributeur${people > 1 ? 's' : ''}</span>` : ''}
             ${item.collaborative ? `<span class="playlist-pill">${item.quotaPerPlayer ? item.quotaPerPlayer + ' par joueur' : 'Quota illimité'} · ${item.reservePerPlayer || 0} réserve(s)</span>` : ''}
             <span class="playlist-pill">≈ ${estimate} min</span>
@@ -153,6 +170,7 @@
   }
 
   function fillEditor(item) {
+    byId('playlist-edit-owner').value = item.ownerProfileId || '';
     byId('playlist-editor-title').textContent = `Modifier « ${item.nom} »`;
     byId('playlist-edit-name').value = item.nom || '';
     byId('playlist-edit-description').value = item.description || '';
@@ -170,11 +188,13 @@
     byId('playlist-edit-hide').checked = item.settings ? item.settings.hideOthers !== false : true;
     byId('playlist-edit-fair').checked = item.settings ? item.settings.fairOrder !== false : true;
     byId('playlist-edit-artists').checked = item.settings ? item.settings.avoidSameArtist !== false : true;
+    byId('playlist-edit-similar').checked = item.settings ? item.settings.avoidSimilarTracks !== false : true;
     byId('playlist-edit-explicit').checked = Boolean(item.settings && item.settings.explicitFilter);
     const excluded = item.settings && item.settings.excludedTags || [];
     byId('playlist-exclude-solatorobo').checked = excluded.includes('solatorobo');
     byId('playlist-exclude-feel-furry').checked = excluded.includes('feel-furry');
     byId('playlist-exclude-nightcore').checked = excluded.includes('nightcore');
+    byId('playlist-exclude-variants').checked = excluded.includes('variants');
     renderEditorTracks(item);
     renderActivity(item);
     const summary = item.summary || {};
@@ -183,9 +203,10 @@
       · soirée estimée à ${Number(summary.estimatedPartyMinutes) || 1} min.`;
   }
 
-  function openEditor(id, show = true) {
+  async function openEditor(id, show = true) {
     const item = items.find(entry => entry.id === id);
     if (!item) return;
+    await loadOwnerProfiles();
     editingId = id;
     fillEditor(item);
     if (show) byId('playlist-editor-modal').classList.remove('hidden');
@@ -239,7 +260,7 @@
       ? new Date(Date.now() + timerMinutes * 60_000).toISOString() : null;
     const selectedQuota = byId('playlist-edit-quota').value;
     const quota = selectedQuota === 'custom'
-      ? Math.min(500, Math.max(1, Math.floor(Number(byId('playlist-edit-custom-quota').value) || 1)))
+      ? Math.min(20000, Math.max(1, Math.floor(Number(byId('playlist-edit-custom-quota').value) || 1)))
       : Number(selectedQuota) || 0;
     const reserves = Math.min(10, Math.max(0, Math.floor(Number(byId('playlist-edit-reserves').value) || 0)));
     try {
@@ -248,6 +269,8 @@
         body: JSON.stringify({
           nom: byId('playlist-edit-name').value,
           description: byId('playlist-edit-description').value,
+          ownerProfileId: byId('playlist-edit-owner').value,
+          ownerProfileName: ownerProfiles.find(profile => profile.id === byId('playlist-edit-owner').value)?.nom || '',
           collaborative: byId('playlist-edit-collaborative').value === 'true',
           quotaPerPlayer: quota,
           reservePerPlayer: reserves,
@@ -260,11 +283,13 @@
             hideOthers: byId('playlist-edit-hide').checked,
             fairOrder: byId('playlist-edit-fair').checked,
             avoidSameArtist: byId('playlist-edit-artists').checked,
+            avoidSimilarTracks: byId('playlist-edit-similar').checked,
             explicitFilter: byId('playlist-edit-explicit').checked,
             excludedTags: [
               byId('playlist-exclude-solatorobo').checked ? 'solatorobo' : '',
               byId('playlist-exclude-feel-furry').checked ? 'feel-furry' : '',
               byId('playlist-exclude-nightcore').checked ? 'nightcore' : '',
+              byId('playlist-exclude-variants').checked ? 'variants' : '',
             ].filter(Boolean),
           },
         }),
@@ -307,7 +332,7 @@
 
   async function fillPlaylist() {
     if (!editingId) return;
-    const count = Math.min(500, Math.max(1, Number(prompt('Combien de morceaux ajouter ?', '10')) || 10));
+    const count = Math.min(20000, Math.max(1, Number(prompt('Combien de morceaux ajouter ?', '10')) || 10));
     try {
       const result = await api(`/api/playlists/${encodeURIComponent(editingId)}/fill`, {
         method: 'POST', body: JSON.stringify({ count }),

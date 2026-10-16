@@ -58,6 +58,15 @@ test('un mode inconnu revient au mode classique', () => {
   assert.strictEqual(ctx.party.mode, 'classic');
 });
 
+test('les salons acceptent plus de 500 manches lorsque la playlist le permet', () => {
+  const created = partyStore.create({ mode: 'classic', totalRounds: 1725, seed: 'large-test' });
+  const ids = Array.from({ length: 1725 }, (_, index) => `synthetic-${index}`);
+  partyStore.setTrackIds(created.party, created.hostToken, ids);
+  assert.strictEqual(created.party.totalRounds, 1725);
+  assert.strictEqual(created.party.trackIds.length, 1725);
+  partyStore.remove(created.party.code);
+});
+
 test('le mode Intrus refuse les contraintes mystère sans effet', () => {
   const ctx = makeParty('intruder', { mystery: true });
   assert.strictEqual(ctx.party.settings.mystery, false);

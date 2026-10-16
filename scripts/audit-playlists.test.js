@@ -27,7 +27,7 @@ test('migration transparente des anciennes collections', () => {
 test('quotas limités aux valeurs prévues', () => {
   assert.equal(base({ quotaPerPlayer: 20 }).quotaPerPlayer, 20);
   assert.equal(base({ quotaPerPlayer: 17 }).quotaPerPlayer, 17);
-  assert.equal(base({ quotaPerPlayer: 900 }).quotaPerPlayer, 500);
+  assert.equal(base({ quotaPerPlayer: 900 }).quotaPerPlayer, 900);
 });
 test('quota principal imposé côté moteur', () => {
   const item = base();
@@ -80,6 +80,18 @@ test('artistes consécutifs évités quand possible', () => {
   playlists.addTrack(item, { trackId: 'b2', profileId: 'b', profileName: 'B' });
   const map = new Map([['a1', { artist: 'Même' }], ['b1', { artist: 'Même' }],
     ['b2', { artist: 'Autre' }]]);
+  assert.deepEqual(playlists.fairOrder(item, map), ['a1', 'b2', 'b1']);
+});
+test('titres trop proches écartés de trois morceaux quand un autre choix existe', () => {
+  const item = base({ trackIds: [] });
+  for (const [trackId, profileId] of [['a1', 'a'], ['b1', 'b'], ['b2', 'b']]) {
+    playlists.addTrack(item, { trackId, profileId, profileName: profileId });
+  }
+  const map = new Map([
+    ['a1', { title: 'Silver Sky' }],
+    ['b1', { title: 'Silver Sky Remix' }],
+    ['b2', { title: 'Autumn Road' }],
+  ]);
   assert.deepEqual(playlists.fairOrder(item, map), ['a1', 'b2', 'b1']);
 });
 test('équilibre supplémentaire entre équipes', () => {
@@ -137,6 +149,8 @@ test('persistance et rétrocompatibilité du stockage', () => {
   assert.equal(store.allPlaylists()[0].status, 'draft');
   const created = store.createPlaylist({ nom: 'Participative', collaborative: true,
     quotaPerPlayer: 10, status: 'collecting' });
+  store.updatePlaylist(created.id, { ownerProfileId: 'p1', ownerProfileName: 'Player 1' });
+  assert.equal(store.playlistById(created.id).ownerProfileName, 'Player 1');
   store.addPlaylistTrack(created.id,
     { trackId: 't2', profileId: 'p1', profileName: 'Joueur 1' }, { host: false });
   const saved = JSON.parse(fs.readFileSync(process.env.SONGLESS_DATA_FILE, 'utf8'))
@@ -147,11 +161,17 @@ test('persistance et rétrocompatibilité du stockage', () => {
 });
 
 test('playlist exclusions match configured metadata tags only', () => {
-  const settings = playlists.cleanSettings({ excludedTags: ['solatorobo', 'nightcore', 'bogus'] });
-  assert.deepEqual(settings.excludedTags, ['solatorobo', 'nightcore']);
+  const settings = playlists.cleanSettings({ excludedTags: ['solatorobo', 'nightcore', 'variants', 'bogus'] });
+  assert.deepEqual(settings.excludedTags, ['solatorobo', 'nightcore', 'variants']);
   assert.equal(playlists.exclusionsAllow(settings, { title: 'Solatorobo OST' }), false);
   assert.equal(playlists.exclusionsAllow(settings, { title: 'Nightcore edit' }), false);
+  assert.equal(playlists.exclusionsAllow(settings, { originalTitle: 'NIGHT-CORE version' }), false);
+  assert.equal(playlists.exclusionsAllow(settings, { fileName: 'OST-Solatorobo-file.mp3' }), false);
   assert.equal(playlists.exclusionsAllow(settings, { genreDetail: 'Indie rock' }), true);
+  const variantFilter = { excludedTags: ['variants'] };
+  assert.equal(playlists.exclusionsAllow(variantFilter, { title: 'A parody song' }), false);
+  assert.equal(playlists.exclusionsAllow(variantFilter, { title: 'A cover version' }), false);
+  assert.equal(playlists.exclusionsAllow(variantFilter, { title: 'Original song' }), true);
   assert.equal(playlists.exclusionsAllow({ excludedTags: ['feel-furry'] },
     { tags: ['Feel Furry'] }), false);
 });

@@ -21,6 +21,12 @@ test('deux fiches ordinaires identiques restent détectables', () => {
   );
 });
 
+test('les noms de fichiers longs et la casse Unicode ne changent pas la signature', () => {
+  const first = sig('Même chanson', 'Artiste', 180, `${'A'.repeat(140)}-Morceau.MP3`);
+  const second = sig('Même chanson', 'Artiste', 181, `${'a'.repeat(140)}-Morceau.mp3`);
+  assert.strictEqual(dupes.memeMorceau(first, second), true);
+});
+
 for (const variant of [
   'Parodie', 'Remix', 'Sped Up', 'Slowed + Reverb', 'Live',
   'Acoustic', 'Instrumental', 'Karaoke', 'Remastered', 'Cover', 'Nightcore',

@@ -642,7 +642,8 @@ async function partyTrackIdsAfterBlacklist(values, mode, settings = {}, selectio
   const validIds = validPartyTrackIds(values);
   const built = await tracksFromIds(validIds);
   const selection = partySelection.normalizeSelection(selectionInput);
-  const selectionEligible = partySelection.filterTracks(built, selection);
+  const selectionEligible = partySelection.filterTracks(built, selection)
+    .filter(track => !Number(track.duration) || Number(track.duration) >= 5);
   const answer = String(settings.answer || 'titre');
   const theme = String(settings.theme || 'all');
   const allowed = new Set(blacklist.evaluate(
@@ -1511,6 +1512,7 @@ app.post('/api/upload', (req, res) => {
     const archive = estArchive(nom);
 
     try {
+      const ownerSource = importOrigin(req);
       const skipAntivirus = req.body && req.body.skipAntivirus === 'true';
       if (skipAntivirus && (!estLocal(req) || req.songlessRemote)) {
         throw new Error('Le mode sans analyse est réservé à un import local sur le PC hôte.');
@@ -1528,7 +1530,7 @@ app.post('/api/upload', (req, res) => {
         });
       }
 
-      tagImportedFiles(rapport, importOrigin(req, archive ? 'Archive importée' : 'Fichiers importés'));
+      const importedPlaylist=tagImportedFiles(rapport, ownerSource, archive ? 'ZIP importé' : '');
 
       // L'archive n'a plus d'utilité une fois son contenu extrait.
       if (archive) {
@@ -1537,6 +1539,8 @@ app.post('/api/upload', (req, res) => {
 
       res.json({
         success: true,
+        playlist: importedPlaylist,
+        playlistWarning: rapport.playlistWarning || '',
         antivirus: scanResult.clean
           ? `${scanResult.engine} : fichier sain` : scanResult.engine,
         archive,
@@ -1577,6 +1581,7 @@ app.post('/api/android/import-folder', async (req, res) => {
   }
 
   try {
+    const ownerSource = importOrigin(req);
     const files = fs.readdirSync(batch)
       .filter(name => importer.AUDIO_EXT.includes(path.extname(name).toLowerCase()))
       .map(name => path.join(batch, name));
@@ -1594,9 +1599,11 @@ app.post('/api/android/import-folder', async (req, res) => {
     const rapport = await importer.trier(installation.ecrits, {
       nomsOrigine: installation.nomsOrigine,
     });
-    tagImportedFiles(rapport, importOrigin(req, 'Dossier Android'));
+    const importedPlaylist=tagImportedFiles(rapport, ownerSource, 'Dossier importé');
     res.json({
       success: true,
+      playlist: importedPlaylist,
+      playlistWarning: rapport.playlistWarning || '',
       antivirus: `${scanResult.engine} : dossier sain`,
       ajoutes: rapport.ajoutes,
       doublons: rapport.doublons,
@@ -1956,7 +1963,7 @@ app.post('/api/download/approvals/:id', (req, res) => {
  * Route: Télécharger un titre et l'ajouter à la bibliothèque.
  * Réponse en flux (Server-Sent Events) pour suivre la progression en direct.
  */
-require('./lib/source-routes')(app, {store, downloader, allBuiltTracks,
+require('./lib/source-routes')(app, {store, playerStore, downloader, allBuiltTracks,
   validPartyTrackIds, resoudreMorceau, ouvrirFlux});
 registerPlaylistRoutes(app, {
   playerStore,
@@ -1967,13 +1974,33 @@ registerPlaylistRoutes(app, {
   isHostRequest: estLocal,
 });
 
-function importOrigin(req, defaultLabel = 'Ajouts libres') {
-  return sourceBalance.source(String(req.body && req.body.sourceLabel || '').trim()
-    || (req.songlessRemote ? 'Ajouts des joueurs' : defaultLabel));
+function importOrigin(req) {
+  const profileId = String(req.body && req.body.sourceProfileId || '').trim();
+  if (!profileId) throw new Error('Choisis le profil Songless propriétaire avant l’import.');
+  const profile = playerStore.publicState().profiles.find(item => item.id === profileId);
+  if (!profile) throw new Error('Le profil propriétaire choisi n’existe plus. Choisis à nouveau la personne.');
+  return {id: `profile:${profile.id}`, label: profile.nom, kind: 'profile', profileId: profile.id};
 }
-function tagImportedFiles(rapport, origin) {
+function createOwnedImportPlaylist(origin, trackIds, kind) {
+  const ids=[...new Set((trackIds||[]).filter(Boolean).map(String))];
+  if(!origin || !origin.profileId || !ids.length)return null;
+  const now=new Date();
+  const stamp=`${now.toLocaleDateString('fr-FR')} ${now.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}`;
+  const item=playerStore.createPlaylist({
+    nom:`${origin.label} · ${kind} · ${stamp}`,
+    description:`${ids.length} morceau(s) importé(s). Profil propriétaire : ${origin.label}.`,
+    ownerProfileId:origin.profileId,ownerProfileName:origin.label,trackIds:ids,status:'draft',
+  });
+  return {id:item.id,nom:item.nom,ownerProfileName:origin.label,count:ids.length};
+}
+
+function tagImportedFiles(rapport, origin, playlistKind = '') {
   const patches = Object.fromEntries((rapport.ajoutes || []).map(item => [item.fichier, {importSource:origin}]));
   if (Object.keys(patches).length) store.setMany(patches);
+  if(!playlistKind)return null;
+  const ids=(rapport.ajoutes||[]).map(item=>Buffer.from(item.fichier).toString('base64url'));
+  try{return createOwnedImportPlaylist(origin,ids,playlistKind);}
+  catch(error){rapport.playlistWarning=error.message;return null;}
 }
 
 app.post('/api/download', async (req, res) => {
@@ -2006,6 +2033,7 @@ app.post('/api/download', async (req, res) => {
   const send = ouvrirFlux(res);
 
   try {
+    const ownerSource = importOrigin(req);
     const value = String(query).trim();
     const isUrl = /^https?:\/\//i.test(value);
     const chapterLimit = COMPILATION_HARD_LIMIT;
@@ -2061,7 +2089,7 @@ app.post('/api/download', async (req, res) => {
         });
         try {
           const entry = await downloader.downloadTrack(item.query, {
-            importSource: importOrigin(req, media.title),
+            importSource: ownerSource,
             genre: genre || null,
             onLog: (message) => send('progress', {
               message,
@@ -2086,16 +2114,21 @@ app.post('/api/download', async (req, res) => {
         }
       }
 
+      let importedPlaylist=null,playlistWarning='';
+      try{importedPlaylist=createOwnedImportPlaylist(ownerSource,bilan.ajoutes.map(item=>item.id),'Compilation téléchargée');}
+      catch(error){playlistWarning=error.message;}
       send('done', {
         ...bilan,
         compilation: true,
         tronquee: wasTruncated,
+        playlist:importedPlaylist,
+        playlistWarning,
       });
       return;
     }
 
     const entry = await downloader.downloadTrack(String(query).trim(), {
-      importSource: importOrigin(req),
+      importSource: ownerSource,
       genre: genre || null,
       artist: artist || null,
       force: !!force,
@@ -2142,13 +2175,13 @@ app.post('/api/download/playlist', async (req, res) => {
   res.on('close', () => { abandonne = true; });
 
   try {
+    const ownerSource = importOrigin(req);
     const { titre, entrees, tronquee } = await downloader.listPlaylist(String(url).trim(), {
       noLimit: true,
       onLog: (message) => send('progress', { message }),
     });
 
     send('list', { titre, total: entrees.length, tronquee });
-
     const bilan = { ajoutes: [], doublons: [], erreurs: [] };
 
     for (let i = 0; i < entrees.length; i++) {
@@ -2158,8 +2191,7 @@ app.post('/api/download/playlist', async (req, res) => {
 
       try {
         const entry = await downloader.downloadTrack(item.url, {
-          importSource: req.body.sourceLabel ? importOrigin(req)
-            : sourceBalance.source(titre || 'Playlist YouTube', new URL(String(url)).searchParams.get('list') || ''),
+          importSource: ownerSource,
           genre: genre || null,
           onLog: (message) => send('progress', { message, index: i + 1 }),
         });
@@ -2178,7 +2210,13 @@ app.post('/api/download/playlist', async (req, res) => {
       }
     }
 
-    send('done', { ...bilan, interrompu: abandonne, tronquee });
+    let importedPlaylist=null,playlistWarning='';
+    if(ownerSource){
+      try{importedPlaylist=createOwnedImportPlaylist(ownerSource,bilan.ajoutes.map(item=>item.id),'Playlist YouTube');}
+      catch(error){playlistWarning=error.message;}
+    }
+    send('done', { ...bilan, interrompu: abandonne, tronquee,
+      playlist:importedPlaylist,playlistWarning });
   } catch (error) {
     console.error('Erreur import playlist:', error.message);
     send('error', { error: error.message });
