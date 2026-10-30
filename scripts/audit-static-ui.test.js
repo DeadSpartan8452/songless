@@ -106,10 +106,19 @@ test('les commandes Bluetooth relancent le lecteur avec ses limites de lecture',
 test('les parcours de sélection acceptent les bibliothèques de plus de 500 titres', () => {
   const app = read('index.html');
   const expansions = read('expansions.js');
+  const sourceControls = read('source-controls.js');
   const party = fs.readFileSync(path.join(__dirname, '..', 'lib', 'party.js'), 'utf8');
   assert.match(app, /max="20000"/);
   assert.match(expansions, /startLimited\(ids\.length,\s*'collection',\s*ids\)/);
   assert.match(party, /MAX_PARTY_TRACK_IDS/);
+  assert.match(sourceControls, /config=\{enabled:true,count:20000/);
+  assert.match(sourceControls, /old\.schema>=2\?[\s\S]*?:20000/);
+});
+
+test('le lecteur audio demande le chemin Web Audio à faible latence', () => {
+  const app = read('app.js');
+  assert.match(app, /audio\.preload\s*=\s*'auto'/);
+  assert.match(app, /new AudioContextClass\(\{\s*latencyHint:\s*'interactive'\s*\}\)/);
 });
 
 test('les playlists existantes peuvent recevoir un propriétaire depuis leur éditeur', () => {
@@ -261,8 +270,8 @@ test('la file de métadonnées sépare les priorités et chaque champ à corrige
 
 test('toutes les interfaces utilisent le favicon local sans le confondre avec une pochette', () => {
   for (const page of PAGES) {
-    assert.match(read(page), /<link\s+rel=["']icon["']\s+href=["']favicon\.svg["']/i);
-    assert.match(read(page), /href=["']favicon\.ico["']/i);
+    assert.match(read(page), /<link\s+rel=["']icon["']\s+href=["']favicon\.svg\?v=\d+["']/i);
+    assert.match(read(page), /href=["']favicon\.ico\?v=\d+["']/i);
   }
   assert.doesNotMatch(read('app.js'), /favicon\.svg[^\n]*(?:cover|pochette)/i);
 });

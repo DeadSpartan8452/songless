@@ -4,12 +4,15 @@
   const $=id=>document.getElementById(id);
   let candidateTracks=[],importToken='',assignToken='',lastResult=null;
   let ownerProfiles=[];
-  let config={enabled:false,count:30,excludedIds:[]};
+  // Par défaut, l'équilibrage réordonne toute la bibliothèque. Le plafond
+  // historique à 500 morceaux ne doit pas tronquer une partie complète.
+  let config={enabled:true,count:20000,excludedIds:[],schema:2};
   try{const old=JSON.parse(localStorage.getItem('songless-source-balance')||'null');
-    if(old)config={enabled:old.enabled===true,count:Math.max(1,Math.min(20000,Number(old.count)||30)),
-      excludedIds:Array.isArray(old.excludedIds)?old.excludedIds.map(String).slice(0,500):[]};
+    if(old)config={enabled:old.schema>=2?old.enabled===true:true,
+      count:old.schema>=2?Math.max(1,Math.min(20000,Number(old.count)||20000)):20000,
+      excludedIds:Array.isArray(old.excludedIds)?old.excludedIds.map(String).slice(0,500):[],schema:2};
   }catch(_){}
-  function persist(){try{localStorage.setItem('songless-source-balance',JSON.stringify(config));}catch(_){}}
+  function persist(){try{config.schema=2;localStorage.setItem('songless-source-balance',JSON.stringify(config));}catch(_){}}
   function textLine(parent,text,tag='p'){const item=document.createElement(tag);item.textContent=text;parent.appendChild(item);return item;}
   function allowed(){return !window.songlessExpansions || window.songlessExpansions.sourceBalanceAllowed();}
   async function refreshOwnerProfiles(){

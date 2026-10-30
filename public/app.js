@@ -75,6 +75,10 @@ let reglages = reglagesParDefaut();
 
 // Lecteur Audio
 let audio = new Audio();
+// Le lecteur est aussi utilisé avec des enceintes Bluetooth. Demander le
+// chemin Web Audio le plus réactif disponible, plutôt que la valeur par défaut
+// qui peut privilégier l'économie d'énergie sur certains navigateurs.
+audio.preload = 'auto';
 let isPlaying = false;
 let playTimeout = null;
 let progressInterval = null;
@@ -398,7 +402,7 @@ function initWebAudio() {
   
   try {
     const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-    audioContext = new AudioContextClass();
+    audioContext = new AudioContextClass({ latencyHint: 'interactive' });
     analyser = audioContext.createAnalyser();
     analyser.fftSize = 256;
     

@@ -170,6 +170,8 @@ test('playlist exclusions match configured metadata tags only', () => {
   assert.equal(playlists.exclusionsAllow(settings, { genreDetail: 'Indie rock' }), true);
   const variantFilter = { excludedTags: ['variants'] };
   assert.equal(playlists.exclusionsAllow(variantFilter, { title: 'A parody song' }), false);
+  assert.equal(playlists.exclusionsAllow(variantFilter, { fileName: 'Minecraft Parodie - Song.mp3' }), false);
+  assert.equal(playlists.exclusionsAllow(variantFilter, { title: 'Song sung by an alternate performer' }), false);
   assert.equal(playlists.exclusionsAllow(variantFilter, { title: 'A cover version' }), false);
   assert.equal(playlists.exclusionsAllow(variantFilter, { title: 'Original song' }), true);
   assert.equal(playlists.exclusionsAllow({ excludedTags: ['feel-furry'] },

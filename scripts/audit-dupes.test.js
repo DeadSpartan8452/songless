@@ -1,6 +1,12 @@
 'use strict';
 
 const assert = require('assert');
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
+const musicDir = fs.mkdtempSync(path.join(os.tmpdir(), 'songless-dupes-'));
+process.env.SONGLESS_MUSIC_DIR = musicDir;
+process.on('exit', () => fs.rmSync(musicDir, { recursive: true, force: true }));
 const dupes = require('../lib/dupes');
 
 let passed = 0;
@@ -28,7 +34,7 @@ test('les noms de fichiers longs et la casse Unicode ne changent pas la signatur
 });
 
 for (const variant of [
-  'Parodie', 'Remix', 'Sped Up', 'Slowed + Reverb', 'Live',
+  'Parodie', 'Remix', 'Sped Up', 'Slowed + Reverb', 'Sung by', 'Live',
   'Acoustic', 'Instrumental', 'Karaoke', 'Remastered', 'Cover', 'Nightcore',
 ]) {
   test(`la version « ${variant} » reste un morceau distinct`, () => {
@@ -43,6 +49,16 @@ test('deux artistes différents avec le même titre ne sont pas fusionnés', () 
     dupes.memeMorceau(sig('Hello', 'Artiste A'), sig('Hello', 'Artiste B')),
     false
   );
+});
+
+test('les copies suffixées (1)/(2) identiques en octets sont détectées', () => {
+  const firstName = 'Artiste - Chanson.mp3';
+  const copyName = 'Artiste - Chanson (1).mp3';
+  fs.writeFileSync(path.join(musicDir, firstName), Buffer.from('audio test identique'));
+  fs.writeFileSync(path.join(musicDir, copyName), Buffer.from('audio test identique'));
+  const first = sig('Chanson', 'Artiste', 180, firstName);
+  const copy = sig('Chanson (1)', 'Artiste', 180, copyName);
+  assert.strictEqual(dupes.memeMorceau(first, copy), true);
 });
 
 test('un nom de fichier suffit à protéger une variante mal étiquetée', () => {
