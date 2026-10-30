@@ -23,9 +23,10 @@
     .replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('fr-FR');
   function hasPlaylistTag(track, tag) {
     const haystack = normalizedText([track && track.title, track && track.originalTitle,
-      track && track.version, track && track.variant, track && track.fileName,
-      track && track.filename, track && track.artist, track && track.genre,
-      track && track.genreDetail,
+      track && track.sourceTitle, track && track.version, track && track.variant,
+      track && track.fileName, track && track.filename, track && track.file,
+      track && track.album, track && track.artist, track && track.genre,
+      track && track.genreDetail, track && track.theme,
       ...(Array.isArray(track && track.tags) ? track.tags : [])].join(' '))
       .replace(/[^a-z0-9]+/g, ' ').trim();
     if (tag === 'solatorobo') return haystack.includes('solatorobo');

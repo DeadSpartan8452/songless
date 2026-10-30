@@ -167,6 +167,7 @@ test('playlist exclusions match configured metadata tags only', () => {
   assert.equal(playlists.exclusionsAllow(settings, { title: 'Nightcore edit' }), false);
   assert.equal(playlists.exclusionsAllow(settings, { originalTitle: 'NIGHT-CORE version' }), false);
   assert.equal(playlists.exclusionsAllow(settings, { fileName: 'OST-Solatorobo-file.mp3' }), false);
+  assert.equal(playlists.exclusionsAllow(settings, { filename: 'OST-Solatorobo-file.mp3' }), false);
   assert.equal(playlists.exclusionsAllow(settings, { genreDetail: 'Indie rock' }), true);
   const variantFilter = { excludedTags: ['variants'] };
   assert.equal(playlists.exclusionsAllow(variantFilter, { title: 'A parody song' }), false);

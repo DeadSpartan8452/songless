@@ -402,7 +402,9 @@ function initWebAudio() {
   
   try {
     const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-    audioContext = new AudioContextClass({ latencyHint: 'interactive' });
+    // Valeur cible basse pour les sorties audio externes. Le navigateur peut
+    // l'ignorer, et une liaison Bluetooth ajoute son propre délai matériel.
+    audioContext = new AudioContextClass({ latencyHint: 0.01 });
     analyser = audioContext.createAnalyser();
     analyser.fftSize = 256;
     

@@ -118,7 +118,7 @@ test('les parcours de sélection acceptent les bibliothèques de plus de 500 tit
 test('le lecteur audio demande le chemin Web Audio à faible latence', () => {
   const app = read('app.js');
   assert.match(app, /audio\.preload\s*=\s*'auto'/);
-  assert.match(app, /new AudioContextClass\(\{\s*latencyHint:\s*'interactive'\s*\}\)/);
+  assert.match(app, /new AudioContextClass\(\{\s*latencyHint:\s*0\.01\s*\}\)/);
 });
 
 test('les playlists existantes peuvent recevoir un propriétaire depuis leur éditeur', () => {
@@ -270,8 +270,8 @@ test('la file de métadonnées sépare les priorités et chaque champ à corrige
 
 test('toutes les interfaces utilisent le favicon local sans le confondre avec une pochette', () => {
   for (const page of PAGES) {
-    assert.match(read(page), /<link\s+rel=["']icon["']\s+href=["']favicon\.svg\?v=\d+["']/i);
-    assert.match(read(page), /href=["']favicon\.ico\?v=\d+["']/i);
+    assert.match(read(page), /<link\s+rel=["']icon["']\s+href=["']\/favicon\.svg\?v=\d+["'][^>]*type=["']image\/svg\+xml["']/i);
+    assert.match(read(page), /rel=["']alternate icon["']\s+href=["']\/favicon\.ico\?v=\d+["']\s+type=["']image\/x-icon["']/i);
   }
   assert.doesNotMatch(read('app.js'), /favicon\.svg[^\n]*(?:cover|pochette)/i);
 });
