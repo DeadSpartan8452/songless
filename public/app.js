@@ -217,6 +217,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Configuration des écouteurs de jeu
   initGameEvents();
+  initAudioSyncControl();
 
   // Filtre par genre, téléchargement, édition des fiches
   initSessionEvents();
@@ -421,6 +422,27 @@ function initWebAudio() {
   }
 }
 
+function audioSyncTrimValue() {
+  try { return window.localStorage.getItem('songless-audio-sync-trim-ms') || '0'; }
+  catch (_) { return '0'; }
+}
+
+function initAudioSyncControl() {
+  const slider = document.getElementById('audio-sync-trim');
+  const value = document.getElementById('audio-sync-trim-value');
+  if (!slider || !value) return;
+  slider.value = audioSyncTrimValue();
+  value.value = `${slider.value} ms`;
+  value.textContent = value.value;
+  slider.addEventListener('input', () => {
+    const milliseconds = String(Math.max(0, Math.min(250, Number(slider.value) || 0)));
+    try { window.localStorage.setItem('songless-audio-sync-trim-ms', milliseconds); }
+    catch (_) { /* le réglage reste disponible pour cette page */ }
+    value.value = `${milliseconds} ms`;
+    value.textContent = value.value;
+  });
+}
+
 function drawIdleWaveform() {
   if (isPlaying) return; // Ne pas dessiner au repos si la musique tourne
   
@@ -554,12 +576,18 @@ function playAudio(syncPlayback = null) {
   audio.mozPreservesPitch = false;
   audio.webkitPreservesPitch = false;
 
+  let syncSourceCorrection = 0;
   if (!isGameFinished) {
     // Une manche normale repart du début. En multijoueur synchronisé, on se
     // replace dans l'unique écoute en retirant les éventuelles pauses buzzer.
     const elapsed = syncPlayback ? Math.max(0, Number(syncPlayback.elapsed) || 0) : 0;
     const offset = syncPlayback ? Number(syncPlayback.offset) || 0 : currentTrackOffset;
-    audio.currentTime = offset + elapsed;
+    if (syncPlayback && window.SonglessAudioSync) {
+      syncSourceCorrection = window.SonglessAudioSync.contentOffsetSeconds(
+        audioContext, audioSyncTrimValue(), vitesse
+      );
+    }
+    audio.currentTime = Math.max(offset, offset + elapsed + syncSourceCorrection);
   } else if (victoryAutoPlay) {
     // Première lecture après révélation : on démarre au point de l'extrait
     audio.currentTime = currentTrackOffset;
@@ -594,7 +622,8 @@ function playAudio(syncPlayback = null) {
         : durations[currentAttempt];
       const initialElapsed = syncPlayback
         ? Math.min(maxPlayDuration, Math.max(0, Number(syncPlayback.elapsed) || 0)) : 0;
-      const remainingDuration = Math.max(0, maxPlayDuration - initialElapsed);
+      const remainingDuration = Math.max(0,
+        maxPlayDuration - initialElapsed - syncSourceCorrection);
       if (remainingDuration <= 0) {
         pauseAudio();
         updatePlayerUI(maxPlayDuration, maxPlayDuration);
@@ -1656,13 +1685,14 @@ function handleAutocomplete() {
   // Filtrer les chansons de manière extrêmement tolérante (accents, apostrophes, espaces, tirets)
   const queryStrip = stripAll(query);
 
-  // On cherche dans le titre, l'artiste, le titre d'origine et tous les alias
+  // On cherche dans le titre traduit, l'artiste, le titre d'origine et les alias
   // (« polish cow » doit trouver le morceau nommé en polonais).
   const seenSuggestionKeys = new Set();
   const matches = tracks.filter(t => {
     if (stripAll(t.title).includes(queryStrip)) return true;
     if (stripAll(t.artist).includes(queryStrip)) return true;
     if (stripAll(`${t.artist} ${t.title}`).includes(queryStrip)) return true;
+    if (t.translatedTitle && stripAll(t.translatedTitle).includes(queryStrip)) return true;
     if (t.originalTitle && stripAll(t.originalTitle).includes(queryStrip)) return true;
     return (t.aliases || []).some(a => stripAll(a).includes(queryStrip));
   }).sort((a, b) => {
@@ -2188,8 +2218,10 @@ function renderLibraryList() {
   tracks.forEach(track => {
     const item = document.createElement('div');
     item.className = 'track-item';
-    item.setAttribute('data-title', track.title.toLowerCase());
-    item.setAttribute('data-artist', track.artist.toLowerCase());
+    item.setAttribute('data-title', normaliserRechercheBibliotheque(track.title));
+    item.setAttribute('data-translated-title', normaliserRechercheBibliotheque(track.translatedTitle));
+    item.setAttribute('data-original-title', normaliserRechercheBibliotheque(track.originalTitle));
+    item.setAttribute('data-artist', normaliserRechercheBibliotheque(track.artist));
     
     // Pochette
     // Pochette manquante côté serveur : on remplace l'image cassée par la note.
@@ -2203,6 +2235,8 @@ function renderLibraryList() {
       ? '<span class="track-flag" title="Titre à renommer en nom connu">⚠</span>' : '';
     const original = track.originalTitle
       ? `<span class="track-item-original">${escapeHtml(track.originalTitle)}</span>` : '';
+    const translated = track.translatedTitle
+      ? `<span class="track-item-original">Traduction : ${escapeHtml(track.translatedTitle)}</span>` : '';
     const details = [track.genreDetail, track.language, track.year].filter(Boolean)
       .map(value => escapeHtml(value)).join(' · ');
 
@@ -2228,7 +2262,7 @@ function renderLibraryList() {
              aria-label="Sélectionner ${escapeHtml(track.title)}">
       <div class="track-item-cover">${coverHtml}</div>
       <div class="track-item-details">
-        <div class="track-item-title">${escapeHtml(track.title)} ${review}</div>
+        <div class="track-item-title">${escapeHtml(track.title)} ${review} ${translated}</div>
         <div class="track-item-artist">${escapeHtml(track.artist)} ${original}</div>
         ${details ? `<div class="track-item-metadata">${details}</div>` : ''}
       </div>
@@ -2870,8 +2904,13 @@ function deleteMultipleTracks(ids) {
     });
 }
 
+function normaliserRechercheBibliotheque(value) {
+  return String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .toLocaleLowerCase('fr-FR').trim();
+}
+
 function filterLibraryDisplay() {
-  const query = librarySearch.value.trim().toLowerCase();
+  const query = normaliserRechercheBibliotheque(librarySearch.value);
   const genre = libraryGenreFilter ? libraryGenreFilter.value : '';
   const genreDetail = libraryGenreDetailFilter ? libraryGenreDetailFilter.value : '';
   const artistFilter = libraryArtistFilter ? libraryArtistFilter.value : '';
@@ -2892,11 +2931,14 @@ function filterLibraryDisplay() {
     const itemFavorite = item.getAttribute('data-favorite') === '1';
 
     const matchesText = title.includes(query) || artist.includes(query)
-      || itemGenreDetail.toLowerCase().includes(query)
-      || itemLanguage.toLowerCase().includes(query);
+      || (item.getAttribute('data-translated-title') || '').includes(query)
+      || (item.getAttribute('data-original-title') || '').includes(query)
+      || normaliserRechercheBibliotheque(itemGenreDetail).includes(query)
+      || normaliserRechercheBibliotheque(itemLanguage).includes(query);
     const matchesGenre = !genre || itemGenre === genre;
     const matchesGenreDetail = !genreDetail || itemGenreDetail === genreDetail;
-    const matchesArtist = !artistFilter || artist === artistFilter.toLocaleLowerCase('fr-FR');
+    const matchesArtist = !artistFilter
+      || artist === normaliserRechercheBibliotheque(artistFilter);
     const matchesLanguage = !language || itemLanguage === language;
     const matchesYear = !yearFilter
       || (yearFilter === 'missing' && !itemYear)
@@ -3036,12 +3078,74 @@ function handleFilesUpload(files) {
   // Afficher la barre de progression
   uploadProgressContainer.classList.remove('hidden');
   uploadProgressBar.style.width = '0%';
-  uploadProgressText.innerText = `Envoi de ${file.name} (0%)`;
+  uploadProgressBar.classList.remove('indetermine');
+  uploadProgressContainer.setAttribute('aria-valuenow', '0');
+  uploadProgressText.innerText = 'Envoi de l’archive sélectionnée (0%)';
 
   const xhr = new XMLHttpRequest();
   xhr.open('POST', '/api/upload', true);
+  const importId = crypto.randomUUID();
+  xhr.setRequestHeader('X-Songless-Import-Id', importId);
   const pair = window.songlessShared && window.songlessShared.pairToken();
   if (pair) xhr.setRequestHeader('X-Songless-Pair', pair);
+
+  let progressTimer = null;
+  let progressRequest = false;
+  const stopProgressPolling = () => {
+    if (progressTimer) clearInterval(progressTimer);
+    progressTimer = null;
+  };
+  const showServerProgress = progress => {
+    if (!progress || !progress.phase) return;
+    const labels = {
+      security: 'Analyse de sécurité',
+      extract: 'Décompression du ZIP',
+      install: 'Enregistrement des fichiers',
+      sort: 'Tri des morceaux',
+      profile: 'Association au profil',
+      complete: 'Import terminé',
+      error: 'Échec de l’import',
+    };
+    const phase = labels[progress.phase] || 'Importation';
+    const current = Number(progress.current);
+    const total = Number(progress.total);
+    const hasCount = Number.isFinite(current) && Number.isFinite(total) && total > 0;
+    uploadProgressBar.classList.toggle('indetermine', !hasCount && !progress.done);
+    if (hasCount) {
+      const percent = Math.max(0, Math.min(100, Number(progress.percent) || 0));
+      uploadProgressBar.style.width = `${percent}%`;
+      uploadProgressContainer.setAttribute('aria-valuenow', String(percent));
+    } else if (progress.done) {
+      const percent = progress.phase === 'complete' ? 100 : 0;
+      uploadProgressBar.style.width = `${percent}%`;
+      uploadProgressContainer.setAttribute('aria-valuenow', String(percent));
+    } else {
+      uploadProgressContainer.removeAttribute('aria-valuenow');
+    }
+    uploadProgressText.innerText = hasCount
+      ? `${phase} : ${current} / ${total} (${Number(progress.percent) || 0}%)`
+      : (progress.label || `${phase} en cours…`);
+  };
+  const pollServerProgress = async () => {
+    if (progressRequest) return;
+    progressRequest = true;
+    try {
+      const response = await fetch('/api/import-progress', {
+        headers: { 'X-Songless-Import-Id': importId },
+        cache: 'no-store',
+      });
+      if (response.ok) showServerProgress(await response.json());
+    } catch (_) {
+      // Le transfert reste affiché si le serveur n'est pas joignable.
+    } finally {
+      progressRequest = false;
+    }
+  };
+  const startProgressPolling = () => {
+    if (progressTimer) return;
+    pollServerProgress();
+    progressTimer = setInterval(pollServerProgress, 450);
+  };
 
   // Suivi de l'upload
   xhr.upload.onprogress = (e) => {
@@ -3051,19 +3155,21 @@ function handleFilesUpload(files) {
     if (percent < 100) {
       uploadProgressBar.classList.remove('indetermine');
       uploadProgressBar.style.width = `${percent}%`;
-      uploadProgressText.innerText = `Envoi ${percent}%`;
+      uploadProgressContainer.setAttribute('aria-valuenow', String(percent));
+      uploadProgressText.innerText = `Envoi de l’archive : ${percent}%`;
       return;
     }
 
-    // L'envoi est fini, mais le serveur travaille encore : lecture des tags,
-    // titres, genres, doublons. Sans ça la barre restait figée sur 100 % et
-    // rien ne disait si ça avançait ou si c'était planté.
+    // Après le transfert, le serveur publie la progression de l'analyse,
+    // l'extraction, du tri et de l'association au profil.
     uploadProgressBar.style.width = '100%';
     uploadProgressBar.classList.add('indetermine');
-    uploadProgressText.innerText = 'Envoi terminé — tri des morceaux en cours…';
+    uploadProgressText.innerText = 'Envoi terminé — préparation de l’import…';
+    startProgressPolling();
   };
 
   xhr.onload = () => {
+    stopProgressPolling();
     const noScan = document.getElementById('import-no-scan');
     if (noScan) noScan.checked = false;
     uploadProgressBar.classList.remove('indetermine');
@@ -3082,11 +3188,18 @@ function handleFilesUpload(files) {
   };
 
   xhr.onerror = () => {
+    stopProgressPolling();
     const noScan = document.getElementById('import-no-scan');
     if (noScan) noScan.checked = false;
     uploadProgressBar.classList.remove('indetermine');
     uploadProgressContainer.classList.add('hidden');
     showToast("Erreur réseau lors de l'envoi.", 'error');
+  };
+
+  xhr.onabort = () => {
+    stopProgressPolling();
+    uploadProgressBar.classList.remove('indetermine');
+    uploadProgressContainer.classList.add('hidden');
   };
 
   xhr.send(formData);
@@ -5622,6 +5735,7 @@ function openEditModal(track) {
   editingTrack = track;
   document.getElementById('edit-file-name').innerText = track.fileName || '';
   document.getElementById('edit-title').value = track.title || '';
+  document.getElementById('edit-translated-title').value = track.translatedTitle || '';
   document.getElementById('edit-artist').value = track.artist || '';
   document.getElementById('edit-aliases').value = Array.isArray(track.aliases)
     ? track.aliases.join(', ') : '';
@@ -5682,6 +5796,7 @@ function initEditModalEvents() {
     if (!editingTrack) return;
     const payload = {
       title: document.getElementById('edit-title').value.trim(),
+      translatedTitle: document.getElementById('edit-translated-title').value.trim(),
       artist: document.getElementById('edit-artist').value.trim(),
       genre: document.getElementById('edit-genre').value,
       genreDetail: document.getElementById('edit-genre-detail').value.trim(),

@@ -7,18 +7,17 @@ const path = require('path');
 const crypto = require('crypto');
 const { spawn } = require('child_process');
 const { performance } = require('perf_hooks');
+const { writeSyntheticWav } = require('./test-audio-fixture');
 
 const BASE = 'http://127.0.0.1:31310';
 const PLAYER_COUNT = 32;
 const POLL_WAVES = 20;
 const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'songless-load-'));
 const dataFile = path.join(tempDir, 'songless-data.json');
-const musicDir = path.join(__dirname, '..', 'musiques');
-const audioFile = fs.readdirSync(musicDir).find(file => (
-  ['.mp3', '.wav', '.ogg', '.m4a', '.mp4', '.aac', '.flac', '.opus']
-    .includes(path.extname(file).toLowerCase())
-));
-if (!audioFile) throw new Error('Aucun morceau disponible pour le test de charge.');
+const musicDir = path.join(tempDir, 'musiques');
+const metadataFile = path.join(tempDir, 'metadata.json');
+const audioFile = writeSyntheticWav(musicDir);
+fs.writeFileSync(metadataFile, JSON.stringify({ tracks: {} }));
 
 const profiles = Array.from({ length: PLAYER_COUNT }, (_, index) => ({
   id: `load_player_${index + 1}`,
@@ -71,6 +70,10 @@ async function main() {
       ...process.env,
       PORT: '31310',
       SONGLESS_DATA_FILE: dataFile,
+      SONGLESS_MUSIC_DIR: musicDir,
+      SONGLESS_METADATA_FILE: metadataFile,
+      SONGLESS_METADATA_BACKUP_DIR: path.join(tempDir, 'metadata-backups'),
+      SONGLESS_CACHE_DIR: path.join(tempDir, 'cache'),
       SONGLESS_INSTANCE_SECRET: instanceSecret,
     },
     stdio: ['ignore', 'pipe', 'pipe'],

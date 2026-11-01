@@ -166,6 +166,9 @@ h2 { margin: 0 0 14px; font-size: 1.05rem; }
   font-size: .82rem;
   font-weight: 800;
 }
+.audio-sync-trim-label { display: block; margin: 8px 0 2px; color: var(--muted, #aaa); font-size: .78rem; }
+.audio-sync-trim { width: min(100%, 260px); accent-color: #a855f7; }
+#controller-audio-sync-trim-value { display: inline-block; min-width: 42px; color: #facc15; }
 #party-audio { display: none; }
 .player-action { display: grid; gap: 12px; margin-top: 22px; }
 .round-votes {

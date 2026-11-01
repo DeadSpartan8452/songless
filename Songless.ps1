@@ -18,21 +18,14 @@ $ErrorActionPreference = 'Stop'
 $dossier = Split-Path -Parent $MyInvocation.MyCommand.Path
 $dossierDonnees = Join-Path $env:LOCALAPPDATA 'Songless-Data'
 $racineHistorique = Join-Path $env:USERPROFILE 'Codex\Songless'
-$dossierHistoriqueMusique = Join-Path $racineHistorique 'musiques'
-$fichierHistoriqueMetadonnees = Join-Path $racineHistorique 'metadata.json'
-if ((Test-Path -LiteralPath $dossierHistoriqueMusique -PathType Container) -and
-    (Test-Path -LiteralPath $fichierHistoriqueMetadonnees -PathType Leaf)) {
-    $racineBibliotheque = $racineHistorique
-} else {
-    $racineBibliotheque = $dossierDonnees
-}
-$dossierMusique = Join-Path $racineBibliotheque 'musiques'
-$fichierMetadonnees = Join-Path $racineBibliotheque 'metadata.json'
-New-Item -ItemType Directory -Force -Path $dossierDonnees | Out-Null
-New-Item -ItemType Directory -Force -Path $dossierMusique | Out-Null
+$bibliotheque = & (Join-Path $dossier 'tools\Resolve-LibraryPath.ps1') `
+    -DataRoot $dossierDonnees -LegacyRoot $racineHistorique
+$racineBibliotheque = $bibliotheque.LibraryRoot
+$dossierMusique = $bibliotheque.MusicDir
+$fichierMetadonnees = $bibliotheque.MetadataFile
 $env:SONGLESS_MUSIC_DIR = $dossierMusique
 $env:SONGLESS_METADATA_FILE = $fichierMetadonnees
-$env:SONGLESS_METADATA_BACKUP_DIR = Join-Path $racineBibliotheque 'metadata-backups'
+$env:SONGLESS_METADATA_BACKUP_DIR = $bibliotheque.MetadataBackupDir
 $env:SONGLESS_DATA_FILE = Join-Path $dossierDonnees 'songless-data.json'
 $env:SONGLESS_BACKUP_DIR = Join-Path $dossierDonnees 'metadata-backups'
 $env:SONGLESS_INSTANCE_KEY_FILE = Join-Path $dossierDonnees 'instance-key.dpapi'

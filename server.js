@@ -13,6 +13,8 @@ const trackMetadata = require('./lib/track-metadata');
 const automaticMetadata = require('./lib/automatic-metadata');
 const downloader = require('./lib/downloader');
 const importer = require('./lib/importer');
+const importProgress = require('./lib/import-progress');
+const profileImport = require('./lib/profile-import');
 const health = require('./lib/health');
 const playerStore = require('./lib/player-store');
 const partyStore = require('./lib/party');
@@ -26,6 +28,7 @@ const antivirus = require('./lib/antivirus');
 const clamavDatabase = require('./lib/clamav-database');
 const blacklist = require('./lib/blacklist');
 const sourceBalance = require('./public/source-balance');
+const audioProvenance = require('./lib/audio-provenance');
 const duplicateComparison = require('./lib/duplicate-comparison');
 const preflight = require('./lib/preflight');
 const instanceAuthModule = require('./lib/instance-auth');
@@ -1247,7 +1250,8 @@ async function readTags(fileName) {
   }
   if (tagCache.has(key)) return tagCache.get(key);
 
-  const info = { title: '', artist: '', duration: 0, hasCover: false };
+  const info = { title: '', artist: '', duration: 0, hasCover: false,
+    importSource: audioProvenance.sourceFromFile(filePath) };
   try {
     const meta = await musicMetadata.parseFile(filePath, { duration: true });
     info.title = meta.common.title || '';
@@ -1274,14 +1278,20 @@ function listAudioFiles() {
 async function buildTrack(fileName, meta) {
   const id = Buffer.from(fileName).toString('base64url');
   const classification = trackMetadata.readClassification(meta);
+  const tags = (!meta || !meta.importSource || !meta.title)
+    ? await readTags(fileName) : null;
+  const importSource = meta && meta.importSource
+    ? sourceBalance.sourceOf(meta)
+    : tags && tags.importSource || sourceBalance.sourceOf(meta);
 
   if (meta && meta.title) {
     const track = {
       id,
       fileName,
-      importSource: sourceBalance.sourceOf(meta),
+      importSource,
       videoId: meta.videoId || null,
       title: meta.title,
+      translatedTitle: meta.translatedTitle || '',
       originalTitle: meta.originalTitle || '',
       artist: meta.artist || '',
       artistSource: meta.artistSource || 'unknown',
@@ -1306,17 +1316,18 @@ async function buildTrack(fileName, meta) {
   }
 
   // Pas encore enrichi : on fait au mieux avec les tags et le nom de fichier.
-  const tags = await readTags(fileName);
+  const fallbackTags = tags || await readTags(fileName);
   const fromName = T.fromFilename(fileName);
-  const title = T.cleanTitle(tags.title) || fromName.title || fileName;
-  const artist = T.cleanTitle(tags.artist) || fromName.artist || 'Artiste inconnu';
+  const title = T.cleanTitle(fallbackTags.title) || fromName.title || fileName;
+  const artist = T.cleanTitle(fallbackTags.artist) || fromName.artist || 'Artiste inconnu';
 
   const track = {
     id,
     fileName,
-    importSource: sourceBalance.sourceOf(meta),
+    importSource,
     videoId: meta?.videoId || null,
     title,
+    translatedTitle: meta?.translatedTitle || '',
     originalTitle: '',
     artist,
     artistSource: 'unknown',
@@ -1329,10 +1340,10 @@ async function buildTrack(fileName, meta) {
     albumSource: meta?.albumSource || 'unknown',
     albumConfidence: meta?.albumConfidence || 'unknown',
     genre: 'Autre',
-    duration: tags.duration,
+    duration: fallbackTags.duration,
     ...classification,
     aliases: T.buildAliases(title, `${artist} ${title}`),
-    hasCover: tags.hasCover,
+    hasCover: fallbackTags.hasCover,
     needsReview: T.detectScript(title) !== 'latin',
     easterEgg: null,
     enriched: false,
@@ -1490,6 +1501,17 @@ app.get('/api/tracks/:id/cover', async (req, res) => {
  * (titre lisible, genre, alias). Les doublons probables sont signalés mais
  * conservés ; parodies, remix et autres variantes ne sont jamais supprimés.
  */
+app.get('/api/import-progress', (req, res) => {
+  if (!estMachineLocale(req)) {
+    return res.status(403).json({ error: 'Progression réservée au PC hôte.' });
+  }
+  const id = req.get('X-Songless-Import-Id');
+  const progress = importProgress.get(id);
+  if (!progress) return res.status(404).json({ error: 'Importation en attente.' });
+  res.set('Cache-Control', 'no-store');
+  res.json(progress);
+});
+
 app.post('/api/upload', (req, res) => {
   const selectedUpload = req.songlessRemote ? remoteUpload : upload;
   selectedUpload.single('audio')(req, res, async (err) => {
@@ -1510,10 +1532,16 @@ app.post('/api/upload', (req, res) => {
 
     const nom = req.file.filename;
     const archive = estArchive(nom);
+    const progressId = req.get('X-Songless-Import-Id');
+    const reportProgress = values => importProgress.update(progressId, values);
 
     try {
       const ownerSource = importOrigin(req);
       const skipAntivirus = req.body && req.body.skipAntivirus === 'true';
+      reportProgress({
+        phase: 'security', current: 0, total: 0,
+        label: 'Analyse de sécurité en cours',
+      });
       if (skipAntivirus && (!estLocal(req) || req.songlessRemote)) {
         throw new Error('Le mode sans analyse est réservé à un import local sur le PC hôte.');
       }
@@ -1522,20 +1550,34 @@ app.post('/api/upload', (req, res) => {
         : await antivirus.scan(req.file.path);
       let rapport;
       if (archive) {
-        rapport = await importer.importerArchive(req.file.path);
+        rapport = await importer.importerArchive(req.file.path, {
+          onProgress: reportProgress,
+        });
       } else {
+        reportProgress({ phase: 'install', current: 0, total: 1, label: 'Installation du fichier audio' });
         const installation = importer.installer([req.file.path], { deplacer: true });
         rapport = await importer.trier(installation.ecrits, {
           nomsOrigine: installation.nomsOrigine,
+          onProgress: reportProgress,
         });
       }
 
-      const importedPlaylist=tagImportedFiles(rapport, ownerSource, archive ? 'ZIP importé' : '');
+      const importedPlaylist=await profileImport.tagImportedFiles(
+        rapport,
+        ownerSource,
+        archive ? 'ZIP importé' : '',
+        { onProgress: reportProgress },
+      );
 
       // L'archive n'a plus d'utilité une fois son contenu extrait.
       if (archive) {
         try { fs.unlinkSync(req.file.path); } catch (_) { /* déjà parti */ }
       }
+
+      reportProgress({
+        phase: 'complete', current: 1, total: 1,
+        label: 'Import terminé', done: true,
+      });
 
       res.json({
         success: true,
@@ -1554,6 +1596,7 @@ app.post('/api/upload', (req, res) => {
         aRevoir: rapport.aRevoir,
       });
     } catch (e) {
+      reportProgress({ phase: 'error', label: e.message, done: true });
       console.error('Erreur import:', e);
       // Un fichier qu'on n'a pas su traiter ne doit pas rester dans musiques/
       try { fs.unlinkSync(req.file.path); } catch (_) { /* déjà parti */ }
@@ -1599,7 +1642,7 @@ app.post('/api/android/import-folder', async (req, res) => {
     const rapport = await importer.trier(installation.ecrits, {
       nomsOrigine: installation.nomsOrigine,
     });
-    const importedPlaylist=tagImportedFiles(rapport, ownerSource, 'Dossier importé');
+    const importedPlaylist=await tagImportedFiles(rapport, ownerSource, 'Dossier importé');
     res.json({
       success: true,
       playlist: importedPlaylist,
@@ -1785,6 +1828,9 @@ app.patch('/api/tracks/:id/meta', (req, res) => {
         patch.originalTitle = current.title;
       }
       patch.title = clean;
+    }
+    if (Object.hasOwn(body, 'translatedTitle')) {
+      patch.translatedTitle = String(body.translatedTitle || '').trim().slice(0, 240);
     }
     if (typeof artist === 'string') {
       patch.artist = artist.trim();
@@ -1981,28 +2027,6 @@ function importOrigin(req) {
   if (!profile) throw new Error('Le profil propriétaire choisi n’existe plus. Choisis à nouveau la personne.');
   return {id: `profile:${profile.id}`, label: profile.nom, kind: 'profile', profileId: profile.id};
 }
-function createOwnedImportPlaylist(origin, trackIds, kind) {
-  const ids=[...new Set((trackIds||[]).filter(Boolean).map(String))];
-  if(!origin || !origin.profileId || !ids.length)return null;
-  const now=new Date();
-  const stamp=`${now.toLocaleDateString('fr-FR')} ${now.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}`;
-  const item=playerStore.createPlaylist({
-    nom:`${origin.label} · ${kind} · ${stamp}`,
-    description:`${ids.length} morceau(s) importé(s). Profil propriétaire : ${origin.label}.`,
-    ownerProfileId:origin.profileId,ownerProfileName:origin.label,trackIds:ids,status:'draft',
-  });
-  return {id:item.id,nom:item.nom,ownerProfileName:origin.label,count:ids.length};
-}
-
-function tagImportedFiles(rapport, origin, playlistKind = '') {
-  const patches = Object.fromEntries((rapport.ajoutes || []).map(item => [item.fichier, {importSource:origin}]));
-  if (Object.keys(patches).length) store.setMany(patches);
-  if(!playlistKind)return null;
-  const ids=(rapport.ajoutes||[]).map(item=>Buffer.from(item.fichier).toString('base64url'));
-  try{return createOwnedImportPlaylist(origin,ids,playlistKind);}
-  catch(error){rapport.playlistWarning=error.message;return null;}
-}
-
 app.post('/api/download', async (req, res) => {
   const { query, genre, artist, force } = req.body || {};
 

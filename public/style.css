@@ -277,6 +277,20 @@ code {
   gap: 20px;
 }
 
+.audio-sync-adjustment {
+  display: grid;
+  grid-template-columns: minmax(140px, 1fr) minmax(110px, 2fr) auto;
+  align-items: center;
+  gap: 10px;
+  width: min(100%, 520px);
+  margin: 8px auto 0;
+  color: var(--muted, #a1a1aa);
+  font-size: .78rem;
+}
+.audio-sync-adjustment input { width: 100%; accent-color: #a855f7; }
+.audio-sync-adjustment output { min-width: 42px; color: #facc15; text-align: right; }
+.audio-sync-adjustment small { grid-column: 1 / -1; }
+
 .time-display {
   font-family: monospace;
   font-weight: 700;
@@ -823,7 +837,17 @@ code {
   background: var(--cta);
   width: 0%;
   border-radius: 3px;
-  transition: width 0.1s ease;
+  transition: width 0.25s ease;
+}
+
+.upload-progress-bar.indetermine {
+  width: 34%;
+  animation: upload-progress-sweep 1.15s ease-in-out infinite alternate;
+}
+
+@keyframes upload-progress-sweep {
+  from { transform: translateX(0); }
+  to { transform: translateX(190%); }
 }
 
 .upload-progress-text {

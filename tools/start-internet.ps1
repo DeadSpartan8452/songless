@@ -191,21 +191,14 @@ if (-not $OwnsInstanceLock) {
 $ProjectRoot = Split-Path -Parent $PSScriptRoot
 $DataRoot = Join-Path $env:LOCALAPPDATA 'Songless-Data'
 $LegacyLibraryRoot = Join-Path $env:USERPROFILE 'Codex\Songless'
-$LegacyMusicDir = Join-Path $LegacyLibraryRoot 'musiques'
-$LegacyMetadataFile = Join-Path $LegacyLibraryRoot 'metadata.json'
-if ((Test-Path -LiteralPath $LegacyMusicDir -PathType Container) -and
-    (Test-Path -LiteralPath $LegacyMetadataFile -PathType Leaf)) {
-  $LibraryRoot = $LegacyLibraryRoot
-} else {
-  $LibraryRoot = $DataRoot
-}
-$LibraryMusicDir = Join-Path $LibraryRoot 'musiques'
-$LibraryMetadataFile = Join-Path $LibraryRoot 'metadata.json'
-New-Item -ItemType Directory -Force -Path $DataRoot | Out-Null
-New-Item -ItemType Directory -Force -Path $LibraryMusicDir | Out-Null
+$Library = & (Join-Path $ProjectRoot 'tools\Resolve-LibraryPath.ps1') `
+  -DataRoot $DataRoot -LegacyRoot $LegacyLibraryRoot
+$LibraryRoot = $Library.LibraryRoot
+$LibraryMusicDir = $Library.MusicDir
+$LibraryMetadataFile = $Library.MetadataFile
 $env:SONGLESS_MUSIC_DIR = $LibraryMusicDir
 $env:SONGLESS_METADATA_FILE = $LibraryMetadataFile
-$env:SONGLESS_METADATA_BACKUP_DIR = Join-Path $LibraryRoot 'metadata-backups'
+$env:SONGLESS_METADATA_BACKUP_DIR = $Library.MetadataBackupDir
 $env:SONGLESS_DATA_FILE = Join-Path $DataRoot 'songless-data.json'
 $env:SONGLESS_BACKUP_DIR = Join-Path $DataRoot 'metadata-backups'
 $env:SONGLESS_INSTANCE_KEY_FILE = Join-Path $DataRoot 'instance-key.dpapi'

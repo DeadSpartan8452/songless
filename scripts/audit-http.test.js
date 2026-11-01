@@ -6,17 +6,17 @@ const os = require('os');
 const path = require('path');
 const { spawn } = require('child_process');
 const crypto = require('crypto');
+const { writeSyntheticWav } = require('./test-audio-fixture');
 
 const LOCAL = 'http://127.0.0.1:31300';
 const REMOTE = 'http://127.0.0.1:31301';
 const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'songless-audit-'));
 const dataFile = path.join(tempDir, 'songless-data.json');
-const musicDir = path.join(__dirname, '..', 'musiques');
-const auditAudioFile = fs.readdirSync(musicDir).find(file => (
-  ['.mp3', '.wav', '.ogg', '.m4a', '.mp4', '.aac', '.flac', '.opus']
-    .includes(path.extname(file).toLowerCase())
-));
-if (!auditAudioFile) throw new Error('Aucun morceau disponible pour le test HTTP.');
+const musicDir = path.join(tempDir, 'musiques');
+const metadataFile = path.join(tempDir, 'metadata.json');
+// Le fixture local remplace tout accès à la bibliothèque privée.
+const auditAudioFile = writeSyntheticWav(musicDir);
+fs.writeFileSync(metadataFile, JSON.stringify({ tracks: {} }));
 const auditTrackId = Buffer.from(auditAudioFile).toString('base64url');
 
 fs.writeFileSync(dataFile, JSON.stringify({
@@ -72,6 +72,10 @@ async function main() {
       SONGLESS_PUBLIC_PORT: '31301',
       SONGLESS_PUBLIC_URL: 'https://songless-audit.invalid',
       SONGLESS_DATA_FILE: dataFile,
+      SONGLESS_MUSIC_DIR: musicDir,
+      SONGLESS_METADATA_FILE: metadataFile,
+      SONGLESS_METADATA_BACKUP_DIR: path.join(tempDir, 'metadata-backups'),
+      SONGLESS_CACHE_DIR: path.join(tempDir, 'cache'),
       SONGLESS_INSTANCE_SECRET: instanceBootstrap,
     },
     stdio: ['ignore', 'pipe', 'pipe'],
@@ -106,6 +110,17 @@ async function main() {
     assert.strictEqual(localContext.body.canEditProfiles, true);
     assert.strictEqual(localContext.body.readOnly, false);
     ok('le port local reconnaît le PC hôte');
+
+    const importId = '12345678-1234-4abc-8abc-1234567890ab';
+    const localImportProgress = await request(LOCAL, '/api/import-progress', {
+      headers: { 'X-Songless-Import-Id': importId },
+    });
+    assert.strictEqual(localImportProgress.status, 404);
+    const remoteImportProgress = await request(REMOTE, '/api/import-progress', {
+      headers: { 'X-Songless-Import-Id': importId },
+    });
+    assert.strictEqual(remoteImportProgress.status, 403);
+    ok('la progression d’import reste privée au PC hôte');
 
     const remoteContext = await request(REMOTE, '/api/context');
     assert.strictEqual(remoteContext.status, 200);
@@ -177,7 +192,7 @@ async function main() {
         settings: { answer: 'titre', paliers: [0.2, 1], points: 1000 },
       }),
     });
-    assert.strictEqual(create.status, 201);
+    assert.strictEqual(create.status, 201, create.text);
     assert.ok(create.body.hostToken);
     assert.ok(create.body.inviteUrls.internet);
     ok('le PC local peut créer une partie');

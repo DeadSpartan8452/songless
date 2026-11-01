@@ -20,20 +20,12 @@ New-Item -ItemType Directory -Force -Path (Join-Path $DataRoot 'musiques') | Out
 New-Item -ItemType Directory -Force -Path (Join-Path $DataRoot 'metadata-backups') | Out-Null
 
 $LegacyLibraryRoot = Join-Path $env:USERPROFILE 'Codex\Songless'
-$LegacyMusicDir = Join-Path $LegacyLibraryRoot 'musiques'
-$LegacyMetadata = Join-Path $LegacyLibraryRoot 'metadata.json'
-if ((Test-Path -LiteralPath $LegacyMusicDir -PathType Container) -and
-    (Test-Path -LiteralPath $LegacyMetadata -PathType Leaf)) {
-  $LibraryRoot = $LegacyLibraryRoot
-  $MusicDir = $LegacyMusicDir
-  $MetadataFile = $LegacyMetadata
-  $MetadataBackupDir = Join-Path $LegacyLibraryRoot 'metadata-backups'
-} else {
-  $LibraryRoot = $DataRoot
-  $MusicDir = Join-Path $DataRoot 'musiques'
-  $MetadataFile = Join-Path $DataRoot 'metadata.json'
-  $MetadataBackupDir = Join-Path $DataRoot 'metadata-backups'
-}
+$Library = & (Join-Path $AppRoot 'tools\Resolve-LibraryPath.ps1') `
+  -DataRoot $DataRoot -LegacyRoot $LegacyLibraryRoot
+$LibraryRoot = $Library.LibraryRoot
+$MusicDir = $Library.MusicDir
+$MetadataFile = $Library.MetadataFile
+$MetadataBackupDir = $Library.MetadataBackupDir
 
 $ProcessPath = [Environment]::GetEnvironmentVariable(
   'Path', [EnvironmentVariableTarget]::Process
@@ -61,11 +53,11 @@ if ($Mode -eq 'menu') {
   $Form.StartPosition = 'CenterScreen'
   $Form.BackColor = [Drawing.Color]::FromArgb(20, 16, 31)
   $Form.ForeColor = [Drawing.Color]::White
-  $Form.Font = New-Object Drawing.Font('Segoe UI', 10)
+  $Form.Font = [Drawing.Font]::new('Segoe UI', [single]10, [Drawing.FontStyle]::Regular)
 
   $Title = New-Object Windows.Forms.Label
   $Title.Text = 'SONGLESS'
-  $Title.Font = New-Object Drawing.Font('Segoe UI', 26, 'Bold')
+  $Title.Font = [Drawing.Font]::new('Segoe UI', [single]26, [Drawing.FontStyle]::Bold)
   $Title.ForeColor = [Drawing.Color]::FromArgb(196, 143, 255)
   $Title.SetBounds(28, 20, 400, 45)
   $Form.Controls.Add($Title)

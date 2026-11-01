@@ -25,9 +25,11 @@
   let audioRoundKey = '';
   let audioPlaybackSignature = '';
   let audioObjectUrl = '';
+  let audioClockAnchor = null;
   let audioStartTimer = null;
   let audioStopTimer = null;
   let reverseAudioContext = null;
+  let partyAudioSource = null;
   let reverseSource = null;
   let reverseBuffer = null;
   let reverseBufferKey = '';
@@ -521,7 +523,11 @@
       await partyAudio.play();
       if (!reverseAudioContext) {
         const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-        if (AudioContextClass) reverseAudioContext = new AudioContextClass();
+        if (AudioContextClass) reverseAudioContext = new AudioContextClass({ latencyHint: 0.01 });
+      }
+      if (reverseAudioContext && !partyAudioSource) {
+        partyAudioSource = reverseAudioContext.createMediaElementSource(partyAudio);
+        partyAudioSource.connect(reverseAudioContext.destination);
       }
       if (reverseAudioContext && reverseAudioContext.state === 'suspended') {
         await reverseAudioContext.resume();
@@ -565,6 +571,7 @@
         : '🔇 Active le son dans les règles.');
       audioRoundKey = '';
       audioPlaybackSignature = '';
+      audioClockAnchor = null;
       reverseBuffer = null;
       reverseBufferKey = '';
       reverseBufferPromise = null;
@@ -589,12 +596,21 @@
         : '⏱️ Synchronisation de l’extrait…');
     if (playback.pausedAt) return;
 
-    const receivedAt = Date.now();
-    const serverAtReceipt = Number(current.serverNow) || receivedAt;
-    const estimatedServerNow = () => serverAtReceipt + (Date.now() - receivedAt);
+    const sameAnchor = audioClockAnchor && audioClockAnchor.signature === signature;
+    const receivedAt = sameAnchor ? audioClockAnchor.receivedAt : Date.now();
+    const serverAtReceipt = sameAnchor ? audioClockAnchor.serverAtReceipt
+      : Number(current.serverNow) || receivedAt;
+    if (!sameAnchor) audioClockAnchor = { signature, receivedAt, serverAtReceipt };
+    const estimatedServerNow = () => window.SonglessAudioSync
+      ? window.SonglessAudioSync.estimatedServerNow(serverAtReceipt, receivedAt)
+      : serverAtReceipt + (Date.now() - receivedAt);
     const elapsedMusic = () => Math.max(0,
       (estimatedServerNow() - Number(playback.startedAt)) / 1000 * Number(playback.speed || 1));
-    const delay = Math.max(0, Number(playback.startedAt) - serverAtReceipt);
+    const delay = window.SonglessAudioSync
+      ? window.SonglessAudioSync.remainingStartDelay(
+        Number(playback.startedAt), serverAtReceipt, receivedAt
+      )
+      : Math.max(0, Number(playback.startedAt) - estimatedServerNow());
     let url = partyAudioUrl(current);
     if (partyAudio.dataset.round !== key) {
       fetch(url, { headers: { 'X-Songless-Player': party.playerToken || '' } })
@@ -635,7 +651,11 @@
       const speed = Number(playback.speed) || 1;
 
       const elapsed = isFirstPlay ? elapsedMusic() : 0;
-      const remaining = fullDuration - elapsed;
+      const correction = window.SonglessAudioSync
+        ? window.SonglessAudioSync.contentOffsetSeconds(
+          reverseAudioContext, readText('songless-audio-sync-trim-ms'), speed
+        ) : 0;
+      const remaining = fullDuration - elapsed - correction;
       if (remaining <= 0 && isFirstPlay) {
         if (current.status === 'round' && !playback.reveal) {
           const loopDelay = Math.min(4.2, Math.max(2.2, 2.0 + fullDuration * 0.15));
@@ -646,7 +666,7 @@
         return stopPartyAudio('Extrait terminé. En attente de la révélation.');
       }
 
-      const position = startOffset + elapsed;
+      const position = Math.max(startOffset, startOffset + elapsed + correction);
       const playable = Math.min(Math.max(0.1, remaining), Math.max(0.1, partyAudio.duration - position));
       partyAudio.currentTime = position;
       partyAudio.play().then(() => {
@@ -687,7 +707,11 @@
         const fullDuration = Number(playback.duration) || 0.2;
         const speed = Number(playback.speed) || 1;
         const elapsed = isFirstPlay ? elapsedMusic() : 0;
-        const remaining = fullDuration - elapsed;
+        const correction = window.SonglessAudioSync
+          ? window.SonglessAudioSync.contentOffsetSeconds(
+            reverseAudioContext, readText('songless-audio-sync-trim-ms'), speed
+          ) : 0;
+        const remaining = fullDuration - elapsed - correction;
 
         if (remaining <= 0 && isFirstPlay) {
           if (party && state && state.status === 'round' && !playback.reveal) {
@@ -704,7 +728,8 @@
         reverseSource.buffer = reversed;
         reverseSource.playbackRate.value = speed;
         reverseSource.connect(reverseAudioContext.destination);
-        const offset = Math.max(0, reversed.duration - (Number(playback.offset) || 0) + elapsed);
+        const offset = Math.max(0,
+          reversed.duration - (Number(playback.offset) || 0) + elapsed + correction);
         const playable = Math.min(Math.max(0.1, remaining), Math.max(0.1, reversed.duration - offset));
         reverseSource.start(0, offset, playable);
         byId('audio-sync-status').innerText = '🔊 Lecture inversée synchronisée avec le PC.';
@@ -2010,6 +2035,7 @@
     actionSignature = '';
     audioRoundKey = '';
     audioPlaybackSignature = '';
+    audioClockAnchor = null;
     if (audioObjectUrl) URL.revokeObjectURL(audioObjectUrl);
     audioObjectUrl = '';
     delete partyAudio.dataset.round;
@@ -2228,6 +2254,20 @@
   byId('party-code').addEventListener('input', event => {
     event.target.value = event.target.value.toUpperCase().replace(/[^A-Z2-9]/g, '').slice(0, 5);
   });
+
+  const syncTrim = byId('controller-audio-sync-trim');
+  const syncTrimValue = byId('controller-audio-sync-trim-value');
+  if (syncTrim && syncTrimValue) {
+    syncTrim.value = readText('songless-audio-sync-trim-ms') || '0';
+    syncTrimValue.value = `${syncTrim.value} ms`;
+    syncTrimValue.textContent = syncTrimValue.value;
+    syncTrim.addEventListener('input', () => {
+      const milliseconds = String(Math.max(0, Math.min(250, Number(syncTrim.value) || 0)));
+      writeText('songless-audio-sync-trim-ms', milliseconds);
+      syncTrimValue.value = `${milliseconds} ms`;
+      syncTrimValue.textContent = syncTrimValue.value;
+    });
+  }
 
   document.addEventListener('input', event => {
     if (event.target.id === 'answer-input') {

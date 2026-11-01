@@ -99,6 +99,10 @@
         <h1 id="room-title">En attente de l’hôte…</h1>
         <p id="room-subtitle">Le son démarrera ici en même temps que sur le PC.</p>
         <p id="audio-sync-status" class="audio-sync-status">🔇 Active le son dans les règles.</p>
+        <label class="audio-sync-trim-label" for="controller-audio-sync-trim">Compensation supplémentaire de cette enceinte</label>
+        <input id="controller-audio-sync-trim" class="audio-sync-trim" type="range" min="0" max="250" step="10" value="0">
+        <output id="controller-audio-sync-trim-value" for="controller-audio-sync-trim">0 ms</output>
+        <small>Augmente si le son sort encore en retard ; ce réglage reste sur ce téléphone.</small>
         <audio id="party-audio" preload="auto" playsinline></audio>
         <div id="player-action" class="player-action"></div>
         <div id="round-votes" class="round-votes hidden"></div>
@@ -285,6 +289,7 @@
   <script src="trophies-data.js"></script>
   <script src="trophies.js"></script>
   <script src="easter-eggs.js"></script>
+  <script src="audio-sync.js"></script>
   <script src="controller.js"></script>
 </body>
 </html>

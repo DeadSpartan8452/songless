@@ -46,7 +46,8 @@
     const result=lastResult||B.select(candidateTracks,config.count,{seed:currentSeed,excludedIds:config.excludedIds});
     textLine(summary,result.selected.length+' / '+result.requested+' chansons disponibles après les filtres et la blacklist.','strong');
     for(const source of result.sources)textLine(summary,source.label+' : '+source.count);
-    if(result.missing)textLine(summary,result.missing+' chanson(s) manquante(s) : ajoute des morceaux ou élargis les sources et les filtres.');
+    if(result.selected.length===0)textLine(summary,'Aucun morceau jouable. Vérifie le dossier « musiques » et ajuste les filtres.');
+    else if(result.missing)textLine(summary,result.missing+' chanson(s) manquante(s) : ajoute des morceaux ou élargis les sources et les filtres.');
     if(result.sources.some(s=>s.id==='legacy'&&s.count))textLine(summary,'Les anciennes musiques sans origine sont regroupées ensemble. Attribue-leur une source pour mieux répartir le tirage.');
     if(result.sources.filter(s=>s.count>0).length<2)textLine(summary,'Une seule source disponible : la diversité entre sources n’est pas possible dans cette sélection.');
   }

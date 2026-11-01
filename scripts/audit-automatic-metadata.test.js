@@ -101,6 +101,16 @@ const metadataAutoSource = fs.readFileSync(
   assert.strictEqual(automatic.estVersionNonOfficielle({
     title: 'Morceau connu (Remastered)',
   }), false);
+  const translated = automatic.proposition({ title: 'Здравствуй мир' }, {
+    id: '01234567-89ab-cdef-0123-456789abcdef', translatedTitle: 'Hello world',
+  });
+  assert.strictEqual(translated.translatedTitle, 'Hello world');
+  assert.strictEqual(automatic.proposition({ title: 'A Latin title' }, {
+    translatedTitle: 'Titre latin',
+  }).translatedTitle, undefined);
+  assert.strictEqual(automatic.proposition({
+    title: 'Здравствуй мир', translatedTitle: 'Traduction manuelle',
+  }, { translatedTitle: 'Autre traduction' }).translatedTitle, undefined);
   const unofficial = automatic.proposition({
     title: 'Morceau connu (Sped Up)', genre: 'Autre', genreSource: 'unknown',
   }, {

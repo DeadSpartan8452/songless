@@ -164,11 +164,11 @@ $Form.Size = New-Object Drawing.Size(560, 370)
 $Form.StartPosition = 'CenterScreen'
 $Form.BackColor = [Drawing.Color]::FromArgb(20, 16, 31)
 $Form.ForeColor = [Drawing.Color]::White
-$Form.Font = New-Object Drawing.Font('Segoe UI', 10)
+$Form.Font = [Drawing.Font]::new('Segoe UI', [single]10, [Drawing.FontStyle]::Regular)
 
 $Title = New-Object Windows.Forms.Label
 $Title.Text = 'SONGLESS'
-$Title.Font = New-Object Drawing.Font('Segoe UI', 28, 'Bold')
+$Title.Font = [Drawing.Font]::new('Segoe UI', [single]28, [Drawing.FontStyle]::Bold)
 $Title.ForeColor = [Drawing.Color]::FromArgb(255, 220, 94)
 $Title.SetBounds(28, 24, 490, 52)
 $Form.Controls.Add($Title)

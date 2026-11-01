@@ -115,10 +115,26 @@ test('les parcours de sélection acceptent les bibliothèques de plus de 500 tit
   assert.match(sourceControls, /old\.schema>=2\?[\s\S]*?:20000/);
 });
 
+test('un tirage vide demande de vérifier les fichiers audio et les filtres', () => {
+  const sourceControls = read('source-controls.js');
+  assert.match(sourceControls,
+    /if\(result\.selected\.length===0\)textLine\(summary,'Aucun morceau jouable\.[\s\S]*?dossier/);
+  assert.match(sourceControls,
+    /else if\(result\.missing\)textLine\(summary,result\.missing/);
+});
+
 test('le lecteur audio demande le chemin Web Audio à faible latence', () => {
   const app = read('app.js');
+  const index = read('index.html');
+  const controller = read('controller.js');
+  const controllerHtml = read('controller.html');
   assert.match(app, /audio\.preload\s*=\s*'auto'/);
   assert.match(app, /new AudioContextClass\(\{\s*latencyHint:\s*0\.01\s*\}\)/);
+  assert.match(index, /id="audio-sync-trim"/);
+  assert.match(controllerHtml, /id="controller-audio-sync-trim"/);
+  assert.match(controller, /remainingStartDelay\(/);
+  assert.match(controller, /audioClockAnchor/);
+  assert.match(controller, /contentOffsetSeconds\(/);
 });
 
 test('les playlists existantes peuvent recevoir un propriétaire depuis leur éditeur', () => {
@@ -244,6 +260,9 @@ test('les filtres de bibliothèque couvrent genre précis, année et favoris san
   assert.match(app, /matchesArtist/);
   assert.match(app, /data-year/);
   assert.match(app, /data-favorite/);
+  assert.match(app, /normaliserRechercheBibliotheque/);
+  assert.match(app, /data-translated-title/);
+  assert.match(index, /id=["']edit-translated-title["']/);
   assert.doesNotMatch(app, /filterLibraryDisplay[\s\S]*?patch\.title/);
 });
 
@@ -471,6 +490,20 @@ test('les interfaces hors TV reprennent la charte visuelle du Songless original'
   assert.doesNotMatch(`${controllerHtml}\n${remoteHtml}\n${android}`, /RÉGIE DE POCHE|RÉGIE MOBILE/);
   assert.match(android, /backgroundColor: '#09090b'/);
   assert.match(android, /title: \{color: '#7c3aed'/);
+});
+
+test('la barre d’import distingue transfert, tri et association au profil', () => {
+  const index = read('index.html');
+  const app = read('app.js');
+  const css = read('style.css');
+  assert.match(index, /id="upload-progress-container"[^>]*role="progressbar"/);
+  assert.match(index, /id="upload-progress-text"[^>]*aria-live="polite"/);
+  assert.match(app, /X-Songless-Import-Id/);
+  assert.match(app, /api\/import-progress/);
+  assert.match(app, /Tri des morceaux/);
+  assert.match(app, /Association au profil/);
+  assert.match(css, /\.upload-progress-bar\.indetermine/);
+  assert.match(css, /@keyframes upload-progress-sweep/);
 });
 
 console.log(`\n${passed} tests statiques d’interface réussis.`);

@@ -222,6 +222,12 @@
                 </button>
                 <span class="time-display" id="time-max">0.2s</span>
               </div>
+              <div class="audio-sync-adjustment">
+                <label for="audio-sync-trim">Compensation supplémentaire de l’enceinte</label>
+                <input id="audio-sync-trim" type="range" min="0" max="250" step="10" value="0">
+                <output id="audio-sync-trim-value" for="audio-sync-trim">0 ms</output>
+                <small>Augmente si cette sortie reste en retard ; ce réglage est local à cet appareil.</small>
+              </div>
 
               <p class="shortcut-hint">
                 <kbd>Espace</kbd> lancer / pause / relancer
@@ -1092,9 +1098,9 @@
               <small class="import-security-note">À utiliser seulement pour un fichier de confiance. Le fichier reste soumis aux protections du système et aux contrôles de format.</small>
               <div class="import-report hidden" id="import-report"></div>
               <!-- Barre de progression de l'upload -->
-              <div class="upload-progress-container hidden" id="upload-progress-container">
+              <div class="upload-progress-container hidden" id="upload-progress-container" role="progressbar" aria-label="Progression de l’import" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
                 <div class="upload-progress-bar" id="upload-progress-bar"></div>
-                <span class="upload-progress-text" id="upload-progress-text">Téléchargement 0%</span>
+                <span class="upload-progress-text" id="upload-progress-text" aria-live="polite">Téléchargement 0%</span>
               </div>
             </div>
 
@@ -1295,6 +1301,9 @@
 
       <label for="edit-title">Titre affiché <span class="label-hint">c'est la réponse à deviner</span></label>
       <input type="text" id="edit-title">
+
+      <label for="edit-translated-title">Titre traduit <span class="label-hint">facultatif, titre d’origine conservé</span></label>
+      <input type="text" id="edit-translated-title" maxlength="240">
 
       <label for="edit-artist">Artiste</label>
       <input type="text" id="edit-artist">
@@ -1723,6 +1732,7 @@
   <script src="easter-eggs.js"></script>
   <script src="souvenir-card.js"></script>
   <script src="source-balance.js"></script>
+  <script src="audio-sync.js"></script>
   <script src="app.js"></script>
   <script src="duplicate-comparison.js"></script>
   <script src="expansions.js"></script>

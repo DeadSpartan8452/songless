@@ -60,6 +60,32 @@ function filesUnder(directory) {
 }
 
 function findExecutable(name) {
+  const candidates = [path.join(ROOT, 'tools', 'bin', name)];
+  const local = process.env.LOCALAPPDATA;
+  if (local) {
+    candidates.push(path.join(local, 'Microsoft', 'WinGet', 'Links', name));
+    const packages = path.join(local, 'Microsoft', 'WinGet', 'Packages');
+    try {
+      for (const directory of fs.readdirSync(packages)) {
+        const base = path.join(packages, directory);
+        if (/^yt-dlp\.yt-dlp_/i.test(directory) && name === 'yt-dlp.exe') {
+          candidates.push(path.join(base, name));
+        }
+        if (/^Gyan\.FFmpeg/i.test(directory)
+            && ['ffmpeg.exe', 'ffprobe.exe'].includes(name)) {
+          for (const subdirectory of fs.readdirSync(base)) {
+            candidates.push(path.join(base, subdirectory, 'bin', name));
+          }
+        }
+      }
+    } catch (_) { /* Winget absent */ }
+  }
+  for (const directory of String(process.env.PATH || '').split(path.delimiter)) {
+    if (directory) candidates.push(path.join(directory, name));
+  }
+  const localExecutable = candidates.find(fs.existsSync);
+  if (localExecutable) return localExecutable;
+
   const command = process.platform === 'win32' ? 'where.exe' : 'which';
   const found = spawnSync(command, [name], { encoding: 'utf8', windowsHide: true });
   return found.status === 0
